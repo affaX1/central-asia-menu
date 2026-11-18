@@ -46,7 +46,7 @@
   // понятные тексты ошибок
   function errText(e) {
     const m = String(e?.message || e || '');
-    if (/invalid login|invalid credentials/i.test(m)) return 'Неверный email или пароль.';
+    if (/invalid login|invalid credentials/i.test(m)) return 'Неверный email или пароль. Ещё не регистрировались? Нажмите «Меня пригласили — зарегистрироваться» ниже.';
     if (/email not confirmed/i.test(m)) return 'Email ещё не подтверждён — откройте ссылку из письма.';
     if (/already registered|already exists/i.test(m)) return 'Этот email уже зарегистрирован — войдите.';
     if (/password/i.test(m) && /(least|short|weak|characters)/i.test(m)) return 'Пароль слишком простой: минимум 8 символов.';
