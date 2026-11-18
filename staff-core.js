@@ -13,7 +13,7 @@
   // тема как у меню гостя
   try {
     const th = JSON.parse(localStorage.getItem('menu:theme') || 'null');
-    document.documentElement.dataset.theme = th || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    document.documentElement.dataset.theme = th === 'dark' ? 'dark' : 'light'; // панели сотрудников светлые, тёмная — только если выбрали сами
   } catch { /* светлая */ }
 
   const tr = (o) => (o == null ? '' : typeof o === 'string' ? o : o.ru || o.en || Object.values(o).find(Boolean) || '');
