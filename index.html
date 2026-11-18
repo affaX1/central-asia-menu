@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Меню</title>
+  <meta name="theme-color" content="#FBF6EE">
+  <meta name="description" content="Электронное меню ресторана">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍛</text></svg>">
+  <script>
+    try {
+      var t = localStorage.getItem('menu:theme');
+      t = t ? JSON.parse(t) : (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+      document.documentElement.dataset.theme = t;
+    } catch (e) {}
+  </script>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="hero">
+    <div class="hero-top">
+      <div class="brand">
+        <span class="logo" aria-hidden="true"></span>
+        <div>
+          <h1 id="r-name"></h1>
+          <p id="r-tagline"></p>
+        </div>
+      </div>
+      <div class="hero-actions">
+        <button id="lang-btn" class="pill" type="button"></button>
+        <button id="theme-btn" class="icon-btn" type="button">◐</button>
+      </div>
+    </div>
+    <div class="info" id="r-info"></div>
+    <label class="search">
+      <span aria-hidden="true">🔍</span>
+      <input id="search" type="search" autocomplete="off" enterkeyhint="search">
+    </label>
+  </header>
+
+  <nav class="cats" id="cats"></nav>
+
+  <main id="menu"></main>
+  <p class="empty" id="empty" hidden></p>
+  <footer class="foot" id="foot"></footer>
+
+  <button class="order-bar" id="order-bar" type="button" hidden></button>
+
+  <div class="sheet-backdrop" id="backdrop" hidden></div>
+  <section class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title" hidden>
+    <button class="sheet-close" id="sheet-close" type="button">×</button>
+    <div id="sheet-body"></div>
+  </section>
+
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

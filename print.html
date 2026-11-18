@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>QR на столы</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍛</text></svg>">
+  <style>
+    :root { --accent: #C8553D; --text: #2B2118; --muted: #7A6A5A; --line: #EADFCF; --bg: #FBF6EE; color-scheme: light; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; }
+
+    .panel { max-width: 900px; margin: 0 auto; padding: 20px 16px; }
+    .panel h1 { margin: 0 0 4px; font-size: 22px; }
+    .panel p { margin: 0 0 14px; color: var(--muted); }
+    .row { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; }
+    label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; font-weight: 600; color: var(--muted); }
+    input[type="url"], input[type="number"] {
+      height: 44px; padding: 0 12px; border: 1px solid var(--line); border-radius: 12px;
+      background: #fff; color: var(--text); font: inherit;
+    }
+    input[type="url"] { width: min(460px, 100%); }
+    input[type="number"] { width: 110px; }
+    .check { flex-direction: row; align-items: center; height: 44px; color: var(--text); }
+    button { height: 44px; padding: 0 20px; border: 0; border-radius: 12px; background: var(--accent); color: #fff; font: inherit; font-weight: 700; cursor: pointer; }
+    .warn { margin-top: 12px; padding: 10px 14px; border-radius: 12px; background: #FCE9C8; color: #6B4A10; font-size: 14px; }
+
+    .sheet { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; max-width: 900px; margin: 0 auto; padding: 0 16px 40px; }
+    .card {
+      display: flex; flex-direction: column; align-items: center; text-align: center;
+      padding: 22px 18px; border: 1.5px dashed #D9C9B3; border-radius: 18px; background: #fff;
+      break-inside: avoid; page-break-inside: avoid;
+    }
+    .card .logo { font-size: 34px; line-height: 1; }
+    .card .name { margin: 6px 0 2px; font-size: 20px; font-weight: 800; }
+    .card .sub { color: var(--muted); font-size: 13px; }
+    .card .qr { width: 190px; margin: 14px 0 10px; }
+    .card .qr svg { display: block; width: 100%; height: auto; }
+    .card .scan { font-size: 14px; font-weight: 600; }
+    .card .scan-en { color: var(--muted); font-size: 12px; }
+    .card .table { margin-top: 12px; padding: 4px 18px; border-radius: 999px; background: var(--accent); color: #fff; font-size: 22px; font-weight: 800; }
+
+    @media print {
+      @page { size: A4; margin: 10mm; }
+      body { background: #fff; }
+      .panel { display: none; }
+      .sheet { display: grid; grid-template-columns: 1fr 1fr; gap: 8mm; max-width: none; padding: 0; }
+      .card { height: 132mm; justify-content: center; border-radius: 6mm; }
+      .card .qr { width: 58mm; }
+      .card .table { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    }
+  </style>
+</head>
+<body>
+  <section class="panel">
+    <h1>QR-карточки на столы</h1>
+    <p>Укажи адрес меню и сколько столов. Каждая карточка открывает меню со своим номером стола. Потом нажми «Печать».</p>
+    <div class="row">
+      <label>Адрес меню
+        <input id="url" type="url" inputmode="url" spellcheck="false">
+      </label>
+      <label>Столов
+        <input id="count" type="number" min="1" max="200" value="10">
+      </label>
+      <label class="check"><input id="general" type="checkbox" checked> Общий QR (без стола)</label>
+      <button id="print" type="button">Печать</button>
+    </div>
+    <div class="warn" id="warn" hidden></div>
+  </section>
+
+  <main class="sheet" id="sheet"></main>
+
+  <script src="data.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
+  <script>
+    (() => {
+      const R = window.MENU.restaurant;
+      const name = typeof R.name === 'string' ? R.name : R.name.ru;
+      const sub = typeof R.tagline === 'string' ? R.tagline : (R.tagline?.ru || '');
+      const $ = (s) => document.querySelector(s);
+      const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+
+      // По умолчанию — адрес, с которого открыта эта страница.
+      const here = new URL('./', location.href).href;
+      let saved = null;
+      try { saved = localStorage.getItem('print:url'); } catch {}
+      $('#url').value = saved || here;
+
+      function qrSvg(text) {
+        const qr = qrcode(0, 'M');
+        qr.addData(text);
+        qr.make();
+        return qr.createSvgTag({ cellSize: 4, margin: 2 });
+      }
+
+      function linkFor(base, table) {
+        const u = new URL(base);
+        if (table) u.searchParams.set('table', String(table)); else u.searchParams.delete('table');
+        return u.href;
+      }
+
+      function render() {
+        const warn = $('#warn');
+        const sheet = $('#sheet');
+        if (typeof window.qrcode !== 'function') {
+          warn.hidden = false;
+          warn.textContent = 'Не загрузилась библиотека QR-кодов. Нужен интернет на этом компьютере — подключись и обнови страницу.';
+          sheet.innerHTML = '';
+          return;
+        }
+        let base;
+        try { base = new URL($('#url').value.trim()).href; } catch {
+          warn.hidden = false;
+          warn.textContent = 'Адрес меню выглядит неправильно. Пример: https://menu.example.com/';
+          sheet.innerHTML = '';
+          return;
+        }
+        try { localStorage.setItem('print:url', base); } catch {}
+
+        const host = new URL(base).hostname;
+        const local = host === 'localhost' || host === '127.0.0.1' || host === '::1' || host === '[::1]';
+        const lan = /^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(host);
+        warn.hidden = !(local || lan);
+        if (local) warn.textContent = 'Этот адрес открывается только на этом компьютере. С телефона гостя он не откроется.';
+        else if (lan) warn.textContent = 'Этот адрес работает только в твоей сети Wi-Fi — годится для проверки. Для гостей нужен адрес в интернете.';
+
+        const count = Math.max(0, Math.min(200, parseInt($('#count').value, 10) || 0));
+        const tables = [];
+        if ($('#general').checked) tables.push('');
+        for (let i = 1; i <= count; i++) tables.push(i);
+
+        sheet.innerHTML = tables.map((n) => `
+          <div class="card">
+            <div class="logo">${esc(R.logo || '🍽️')}</div>
+            <div class="name">${esc(name)}</div>
+            <div class="sub">${esc(sub)}</div>
+            <div class="qr">${qrSvg(linkFor(base, n))}</div>
+            <div class="scan">Наведите камеру — откроется меню</div>
+            <div class="scan-en">Scan to open the menu</div>
+            ${n ? `<div class="table">Стол ${n}</div>` : ''}
+          </div>`).join('');
+      }
+
+      ['input', 'change'].forEach((ev) => {
+        $('#url').addEventListener(ev, render);
+        $('#count').addEventListener(ev, render);
+        $('#general').addEventListener(ev, render);
+      });
+      $('#print').addEventListener('click', () => window.print());
+      render();
+    })();
+  </script>
+</body>
+</html>
