@@ -117,5 +117,105 @@ select t_ok(not exists (select 1 from public.staff where user_id = '33333333-333
 select public.revoke_invite('nobody@x.co');
 reset role; reset request.jwt.claim.sub;
 
-select t_ok((select count(*) from pg_publication_tables where pubname = 'supabase_realtime' and tablename in ('dishes', 'categories', 'settings')) = 3, 'живые обновления включены для меню и настроек');
+
+-- ============ 6. Столы и заказы ============
+set role authenticated; set request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
+select t_ok(public.create_tables(1, 3) = 3, 'владелец создаёт столы 1–3');
+select t_ok(public.create_tables(1, 4) = 1, 'повторное создание не дублирует столы');
+insert into public.tables (label) values ('VIP');
+update public.tables set active = false where label = '4';
+update public.settings set orders_when_closed = true, orders_enabled = true;
+update public.dishes set available = true, price = 28 where id = 'plov-tashkent';
+reset role; reset request.jwt.claim.sub;
+
+-- коды столов для тестов
+create temp table tk as select label, token, id from public.tables;
+grant select on tk to anon, authenticated;
+
+-- гость
+set role anon;
+select t_fails($$select * from public.tables$$, 'permission denied', 'гость не видит список столов и их коды');
+select t_ok((select label from public.table_info((select token from tk where label = '2'))) = '2', 'гость проверяет свой стол по QR');
+select t_ok(not exists (select 1 from public.table_info('0000000000000000000a')), 'неверный QR — стол не найден');
+select t_ok(not exists (select 1 from public.table_info((select token from tk where label = '4'))), 'отключённый стол не принимается');
+
+create temp table o1 as select * from public.place_order((select token from tk where label = '2'),
+  '[{"id":"plov-tashkent","qty":2,"price":28},{"id":"green-tea","qty":1,"price":10}]', 'без лука', 'ru',
+  'aaaaaaaa-0000-0000-0000-000000000001');
+grant select on o1 to authenticated;
+select t_ok((select total from o1) = 66 and (select table_label from o1) = '2' and (select status from o1) = 'new', 'гость отправил заказ: сумма 66 по ценам сервера, стол 2, статус «новый»');
+select t_ok((select no from public.place_order((select token from tk where label = '2'),
+  '[{"id":"plov-tashkent","qty":9,"price":28}]', null, 'ru', 'aaaaaaaa-0000-0000-0000-000000000001')) = (select no from o1),
+  'повторная отправка с тем же ключом возвращает тот же заказ, а не новый');
+select t_ok((select count(*) from public.get_order((select id from o1), (select guest_token from o1))) = 1, 'гость видит свой заказ по секрету');
+select t_ok((select count(*) from public.get_order((select id from o1), gen_random_uuid())) = 0, 'с чужим секретом заказ не виден');
+select t_fails($$select * from public.orders$$, 'permission denied', 'гость не читает заказы напрямую');
+select t_fails($$update public.orders set status = 'ready'$$, 'permission denied', 'гость не меняет статус');
+select t_fails($$select * from public.place_order('0000000000000000000a', '[{"id":"non","qty":1,"price":5}]', null, 'ru', gen_random_uuid())$$, 'bad_table', 'заказ с неверного QR не создаётся');
+select t_fails($$select * from public.place_order((select token from tk where label = '4'), '[{"id":"lagman-soup","qty":1,"price":24}]', null, 'ru', gen_random_uuid())$$, 'bad_table', 'заказ с отключённого стола не создаётся');
+select t_fails($$select * from public.place_order((select token from tk where label = '1'), '[]', null, 'ru', gen_random_uuid())$$, 'empty', 'пустой заказ не создаётся');
+select t_fails($$select * from public.place_order((select token from tk where label = '1'), '[{"id":"non","qty":1,"price":5}]', null, 'ru', gen_random_uuid())$$, 'unavailable:non', 'блюдо «нет в наличии» заказать нельзя');
+select t_fails($$select * from public.place_order((select token from tk where label = '1'), '[{"id":"jigar","qty":1,"price":22}]', null, 'ru', gen_random_uuid())$$, 'unavailable:jigar', 'скрытое блюдо заказать нельзя');
+select t_fails($$select * from public.place_order((select token from tk where label = '1'), '[{"id":"plov-tashkent","qty":1,"price":1}]', null, 'ru', gen_random_uuid())$$, 'price_changed:plov-tashkent', 'подставная или устаревшая цена не проходит');
+select t_fails($$select * from public.place_order((select token from tk where label = '1'), '[{"id":"plov-tashkent","qty":0,"price":28}]', null, 'ru', gen_random_uuid())$$, 'bad_items', 'количество 0 не проходит');
+select t_fails($$select * from public.place_order((select token from tk where label = '1'), '[{"id":"plov-tashkent","qty":1,"price":28},{"id":"plov-tashkent","qty":1,"price":28}]', null, 'ru', gen_random_uuid())$$, 'bad_items', 'одно блюдо дважды не проходит');
+select t_fails($$select * from public.place_order((select token from tk where label = '1'), '[{"id":"plov-tashkent","qty":1,"price":28}]', null, 'ru', null)$$, 'bad_request', 'без ключа защиты от повтора не проходит');
+reset role;
+
+-- закрыто / приём выключен
+update public.settings set orders_when_closed = false, schedule = '[{"closed":true,"open":"10:00","close":"22:00"},{"closed":true,"open":"10:00","close":"22:00"},{"closed":true,"open":"10:00","close":"22:00"},{"closed":true,"open":"10:00","close":"22:00"},{"closed":true,"open":"10:00","close":"22:00"},{"closed":true,"open":"10:00","close":"22:00"},{"closed":true,"open":"10:00","close":"22:00"}]';
+set role anon;
+select t_fails($$select * from public.place_order((select token from tk where label = '1'), '[{"id":"plov-tashkent","qty":1,"price":28}]', null, 'ru', gen_random_uuid())$$, 'closed', 'когда ресторан закрыт, заказ не создаётся');
+reset role;
+update public.settings set orders_when_closed = true, orders_enabled = false;
+set role anon;
+select t_fails($$select * from public.place_order((select token from tk where label = '1'), '[{"id":"plov-tashkent","qty":1,"price":28}]', null, 'ru', gen_random_uuid())$$, 'orders_off', 'когда приём заказов выключен, заказ не создаётся');
+reset role;
+update public.settings set orders_enabled = true;
+
+-- расписание в базе (Куала-Лумпур, UTC+8): пн 10–22, вт выходной, ср 18–02
+update public.settings set timezone = 'Asia/Kuala_Lumpur', schedule = '[{"closed":false,"open":"10:00","close":"22:00"},{"closed":true,"open":"10:00","close":"22:00"},{"closed":false,"open":"18:00","close":"02:00"},{"closed":false,"open":"10:00","close":"22:00"},{"closed":false,"open":"10:00","close":"22:00"},{"closed":false,"open":"10:00","close":"22:00"},{"closed":false,"open":"10:00","close":"22:00"}]';
+select t_ok(public.restaurant_open('2026-11-16 02:00+00'), 'пн 10:00 по Куала-Лумпуру — открыто');
+select t_ok(not public.restaurant_open('2026-11-16 01:59+00'), 'пн 09:59 — закрыто');
+select t_ok(not public.restaurant_open('2026-11-16 14:00+00'), 'пн 22:00 — закрыто');
+select t_ok(not public.restaurant_open('2026-11-17 04:00+00'), 'вт (выходной) 12:00 — закрыто');
+select t_ok(public.restaurant_open('2026-11-18 17:30+00'), 'ср→чт 01:30 ночью — ещё открыто (ночная смена)');
+select t_ok(not public.restaurant_open('2026-11-18 18:00+00'), 'чт 02:00 — ночная смена закончилась');
+
+-- спам с одного стола
+update public.settings set orders_when_closed = true;
+set role anon;
+select public.place_order((select token from tk where label = '3'), '[{"id":"green-tea","qty":1,"price":10}]', null, 'ru', gen_random_uuid()) from generate_series(1, 5);
+select t_fails($$select * from public.place_order((select token from tk where label = '3'), '[{"id":"green-tea","qty":1,"price":10}]', null, 'ru', gen_random_uuid())$$, 'too_many', 'шестой заказ со стола за 5 минут не проходит');
+reset role;
+
+-- официант: заказы и столы ему недоступны
+set role authenticated; set request.jwt.claim.sub = '22222222-2222-2222-2222-222222222222';
+reset role; update public.staff set active = true where user_id = '22222222-2222-2222-2222-222222222222';
+set role authenticated; set request.jwt.claim.sub = '22222222-2222-2222-2222-222222222222';
+select t_ok(public.is_staff(), 'официант снова с доступом');
+select t_ok((select count(*) from public.orders) = 0, 'официант не видит заказы');
+select t_ok(public.t_rows($$update public.orders set status = 'cancelled'$$) = 0, 'официант не меняет статусы заказов (прямой запрос)');
+select t_ok((select count(*) from public.tables) = 0, 'официант не видит столы и коды QR');
+select t_fails($$insert into public.tables (label) values ('W')$$, 'row-level security', 'официант не создаёт столы');
+select t_fails($$select public.create_tables(10, 12)$$, 'forbidden', 'официант не создаёт столы функцией');
+select t_fails($$select public.reset_table_token((select id from tk where label = '1'))$$, 'forbidden', 'официант не меняет QR столов');
+reset role; reset request.jwt.claim.sub;
+
+-- владелец ведёт заказ
+set role authenticated; set request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
+select t_ok((select count(*) from public.orders) = 6, 'владелец видит все заказы');
+select t_ok(public.t_rows($$update public.orders set status = 'accepted' where id = (select id from o1)$$) = 1, 'владелец принимает заказ');
+select t_ok(public.t_rows($$update public.orders set status = 'ready' where id = (select id from o1)$$) = 1, 'владелец ставит «готов»');
+select t_fails($$update public.orders set status = 'paid' where id = (select id from o1)$$, 'check', 'несуществующий статус не сохраняется');
+select t_fails($$update public.orders set total = 1 where id = (select id from o1)$$, 'permission denied', 'сумму заказа не может изменить даже владелец');
+select t_ok((select accepted_at is not null and ready_at is not null and status_by = '11111111-1111-1111-1111-111111111111' from public.orders where id = (select id from o1)), 'время и автор смены статуса записаны');
+select t_ok(public.reset_table_token((select id from tk where label = '2')) <> (select token from tk where label = '2'), 'владелец выпускает новый QR для стола');
+reset role; reset request.jwt.claim.sub;
+set role anon;
+select t_ok((select status from public.get_order((select id from o1), (select guest_token from o1))) = 'ready', 'гость видит новый статус «готов»');
+select t_ok(not exists (select 1 from public.table_info((select token from tk where label = '2'))), 'старый QR стола после замены не работает');
+reset role;
+
+select t_ok((select count(*) from pg_publication_tables where pubname = 'supabase_realtime' and tablename in ('dishes', 'categories', 'settings', 'orders', 'tables')) = 5, 'живые обновления включены для меню, настроек, заказов и столов');
 \echo ALL DATABASE TESTS PASSED

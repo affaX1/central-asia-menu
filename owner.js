@@ -26,6 +26,7 @@
   let tab = 'menu';
   let q = '';
   let stop = null;
+  let ordersTimer = null;
 
   const norm = (s) => String(s || '').toLowerCase().replace(/ё/g, 'е');
   const amount = (d) => (d.weight ? `${d.weight} ${S.unitLabel[d.unit] || ''}` : '');
@@ -44,18 +45,20 @@
 
   // ---------- переключение разделов ----------
   function setTab(next) {
-    tab = ['menu', 'restaurant', 'staff', 'qr'].includes(next) ? next : 'menu';
+    tab = ['orders', 'menu', 'tables', 'restaurant', 'staff'].includes(next) ? next : 'orders';
     document.querySelectorAll('.a-tab').forEach((a) => a.setAttribute('aria-current', a.dataset.tab === tab ? 'page' : 'false'));
     render();
   }
   window.addEventListener('hashchange', () => { if (api) setTab(location.hash.slice(1)); });
 
   function render() {
-    if (tab === 'menu') renderMenu();
+    if (tab === 'orders') renderOrders();
+    else if (tab === 'menu') renderMenu();
+    else if (tab === 'tables') renderTables();
     else if (tab === 'restaurant') renderRestaurant();
-    else if (tab === 'staff') renderStaff();
-    else renderQr();
+    else renderStaff();
   }
+
 
   async function loadMenu() {
     [cats, dishes] = await Promise.all([api.categories(), api.dishes()]);
@@ -375,14 +378,17 @@
           <label class="field"><span>Телефон</span><input name="phone" type="tel" inputmode="tel" maxlength="30" placeholder="+60 12 345 6789" value="${esc(st.phone || '')}"></label>
         </div></section>
 
-        <section class="panel"><div class="panel-head"><h3>Цены, язык, столы</h3></div><div class="panel-body">
+        <section class="panel"><div class="panel-head"><h3>Цены, язык, заказы</h3></div><div class="panel-body">
           <div class="form-grid">
             <label class="field"><span>Валюта</span><input name="currency" type="text" maxlength="8" required value="${esc(st.currency)}"></label>
             <label class="field"><span>Где писать валюту</span><select name="currency_before">
               <option value="1"${st.currency_before ? ' selected' : ''}>Перед ценой: ${esc(st.currency)} 28</option>
               <option value="0"${st.currency_before ? '' : ' selected'}>После цены: 28 ${esc(st.currency)}</option></select></label>
             <label class="field"><span>Язык, если язык телефона гостя не поддерживается</span><select name="default_language">${LANGS.map(([c, n]) => `<option value="${c}"${c === st.default_language ? ' selected' : ''}>${n}</option>`).join('')}</select></label>
-            <label class="field"><span>Сколько столов (для QR-кодов)</span><input name="tables_count" type="number" min="1" max="200" step="1" value="${esc(st.tables_count)}"></label>
+            <div class="field full"><span>Онлайн-заказы</span>
+              ${sw('name="orders_enabled"', st.orders_enabled, 'Принимать заказы из меню')}
+              ${sw('name="orders_when_closed"', st.orders_when_closed, 'Принимать и когда ресторан закрыт по расписанию')}
+              <span class="hint">Если приём выключен или ресторан закрыт, гость видит понятное сообщение и не может отправить заказ.</span></div>
           </div>
           ${langFields('footer', st.footer, { label: 'Подпись внизу меню (необязательно)' })}
         </div></section>
@@ -442,11 +448,9 @@
       const name = String(f.get('name') || '').trim();
       const phone = String(f.get('phone') || '').trim();
       const mapUrl = String(f.get('map_url') || '').trim();
-      const tables = Number(f.get('tables_count'));
       if (!name) return err('Впишите название ресторана.');
       if (phone && !/^[+0-9 ()-]{5,30}$/.test(phone)) return err('Телефон: только цифры, пробелы, +, -, скобки.');
       if (mapUrl && !/^https:\/\/\S+$/.test(mapUrl)) return err('Ссылка на карту должна начинаться с https://');
-      if (!(Number.isInteger(tables) && tables >= 1 && tables <= 200)) return err('Столов — от 1 до 200.');
       const schedule = [];
       for (let i = 0; i < 7; i++) {
         const open = f.get(`open_${i}`);
@@ -473,7 +477,8 @@
           currency: String(f.get('currency') || '').trim() || 'RM',
           currency_before: f.get('currency_before') === '1',
           default_language: f.get('default_language'),
-          tables_count: tables,
+          orders_enabled: !!f.get('orders_enabled'),
+          orders_when_closed: !!f.get('orders_when_closed'),
           footer: readLang(f, 'footer'),
           logo_url: uploaded || (removeLogo ? null : st.logo_url || null),
         };
@@ -572,21 +577,316 @@
   }
 
   // =================================================================
-  //  QR-КОДЫ И ССЫЛКИ
+  //  ЗАКАЗЫ
   // =================================================================
-  function renderQr() {
-    const st = S.settings;
-    const menuUrl = new URL('./', location.href).href;
-    $('#a-main').innerHTML = `
-      <section class="panel"><div class="panel-head"><h3>QR-коды на столы</h3></div><div class="panel-body">
-        <p class="help">Каждый QR открывает меню с номером стола. Столов сейчас: <b>${esc(st.tables_count)}</b> (меняется в разделе «Ресторан»).</p>
-        <div class="qr-box">
-          <a class="btn" href="print.html?count=${encodeURIComponent(st.tables_count)}" target="_blank" rel="noopener">${icon('qr', 'sm')}Открыть карточки для печати</a>
-          <a class="btn ghost" href="${esc(menuUrl)}" target="_blank" rel="noopener">${icon('external', 'sm')}Меню глазами гостя</a>
-          <a class="btn ghost" href="waiter.html" target="_blank" rel="noopener">${icon('external', 'sm')}Меню для официанта</a>
+  const ST = { new: 'Новый', accepted: 'Принят', cooking: 'Готовится', ready: 'Готов', cancelled: 'Отменён' };
+  const NEXT = { new: ['accepted', 'Принять заказ'], accepted: ['cooking', 'Готовится'], cooking: ['ready', 'Готов'] };
+  const pad = (n) => String(n).padStart(2, '0');
+  const localDate = (d = new Date()) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  const dayStart = (d = new Date()) => { const x = new Date(d); x.setHours(0, 0, 0, 0); return x; };
+  const hhmm = (iso) => new Date(iso).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+  const ago = (iso) => {
+    const m = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 60000));
+    if (m < 1) return 'только что';
+    if (m < 60) return `${m} мин назад`;
+    return `${Math.floor(m / 60)} ч ${m % 60} мин назад`;
+  };
+
+  let orders = [];
+  let history = [];
+  let ordersView = 'active';
+  let historyDay = localDate();
+  let ordersLive = false;
+  let seenOrders = null;       // id заказов, которые уже показывали (чтобы звенеть только на новые)
+  const busyOrders = new Set();
+
+  // ---------- звук и уведомления ----------
+  let audio = null;
+  let soundOn = (() => { try { return localStorage.getItem('owner:sound') !== '0'; } catch { return true; } })();
+  function unlockAudio() {
+    try {
+      if (!audio) audio = new (window.AudioContext || window.webkitAudioContext)();
+      if (audio.state === 'suspended') audio.resume();
+    } catch { /* без звука */ }
+    renderBanner();
+  }
+  ['pointerdown', 'keydown'].forEach((ev) => document.addEventListener(ev, unlockAudio, { capture: true }));
+  function ding() {
+    if (!soundOn || !audio || audio.state !== 'running') return;
+    const t0 = audio.currentTime;
+    [0, 0.22, 0.44].forEach((dt, i) => {
+      const o = audio.createOscillator();
+      const g = audio.createGain();
+      o.type = 'sine';
+      o.frequency.value = i === 2 ? 1175 : 880;
+      g.gain.setValueAtTime(0.0001, t0 + dt);
+      g.gain.exponentialRampToValueAtTime(0.45, t0 + dt + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + dt + 0.2);
+      o.connect(g).connect(audio.destination);
+      o.start(t0 + dt);
+      o.stop(t0 + dt + 0.22);
+    });
+  }
+  let bannerMsg = '';
+  function renderBanner() {
+    const el = $('#a-banner');
+    if (!el || !api) return;
+    const needSound = soundOn && (!audio || audio.state !== 'running');
+    const parts = [];
+    if (bannerMsg) parts.push(`<button type="button" class="banner-new" data-banner="orders">${icon('bell')}<span>${esc(bannerMsg)}</span></button>`);
+    if (needSound) parts.push(`<button type="button" class="banner-sound" data-banner="sound">${icon('bell')}<span>Нажмите здесь, чтобы включить звук новых заказов</span></button>`);
+    el.hidden = !parts.length;
+    el.innerHTML = parts.join('');
+  }
+  function announce(fresh) {
+    const o = fresh[fresh.length - 1];
+    bannerMsg = fresh.length > 1 ? `Новых заказов: ${fresh.length}` : `Новый заказ №${o.no} — стол ${o.table_label}`;
+    renderBanner();
+    ding();
+    try {
+      if ('Notification' in window && Notification.permission === 'granted' && document.hidden) {
+        new Notification(bannerMsg, { body: `${money(o.total)} · ${o.items.length} поз.`, tag: 'order-' + o.id, icon: 'icon.svg' });
+      }
+    } catch { /* без системных уведомлений */ }
+  }
+  function updateCount() {
+    const n = orders.filter((o) => o.status === 'new').length;
+    const el = $('#tab-count');
+    if (el) { el.hidden = !n; el.textContent = n; }
+    document.title = n ? `(${n}) Новый заказ — панель владельца` : 'Панель владельца';
+  }
+  setInterval(() => { if (api && orders.some((o) => o.status === 'new')) ding(); }, 30000); // напоминание, пока не приняли
+
+  async function loadOrders() {
+    const rows = await api.orders(dayStart().toISOString());
+    const fresh = seenOrders ? rows.filter((o) => o.status === 'new' && !seenOrders.has(o.id)) : [];
+    seenOrders = new Set([...(seenOrders || []), ...rows.map((o) => o.id)]);
+    orders = rows;
+    if (fresh.length) announce(fresh);
+    updateCount();
+  }
+  async function loadHistory() {
+    const from = new Date(`${historyDay}T00:00:00`);
+    const to = new Date(from.getTime() + 24 * 60 * 60 * 1000);
+    history = await api.orders(from.toISOString(), to.toISOString());
+  }
+
+  function orderCard(o) {
+    const next = NEXT[o.status];
+    const busy = busyOrders.has(o.id);
+    return `<article class="o-card${o.status === 'new' ? ' is-new' : ''}">
+      <div class="o-head"><b class="o-table">${icon('qr', 'sm')}Стол ${esc(o.table_label)}</b><span class="st st-${esc(o.status)}">${esc(ST[o.status] || o.status)}</span></div>
+      <div class="o-meta">Заказ №${esc(o.no)} · ${esc(hhmm(o.created_at))} · ${esc(ago(o.created_at))}${o.lang ? ` · язык гостя ${esc(String(o.lang).toUpperCase())}` : ''}</div>
+      <ul class="o-items">${(o.items || []).map((i) => `<li><span><b>${esc(i.qty)}×</b> ${esc(tr(i.name) || i.id)}</span><span>${money(i.price * i.qty)}</span></li>`).join('')}</ul>
+      ${o.note ? `<div class="o-note"><b>Комментарий гостя:</b> ${esc(o.note)}</div>` : ''}
+      <div class="o-total"><span>Итого</span><b>${money(o.total)}</b></div>
+      <div class="o-actions">
+        ${next ? `<button type="button" class="btn" data-order-next="${esc(o.id)}" data-to="${next[0]}"${busy ? ' disabled' : ''}>${esc(next[1])}</button>` : ''}
+        <label class="field o-select"><span class="sr-only">Статус</span><select data-order-status="${esc(o.id)}"${busy ? ' disabled' : ''}>
+          ${Object.entries(ST).map(([k, v]) => `<option value="${k}"${k === o.status ? ' selected' : ''}>${v}</option>`).join('')}</select></label>
+        ${o.status !== 'cancelled' ? `<button type="button" class="btn small danger" data-order-cancel="${esc(o.id)}"${busy ? ' disabled' : ''}>Отменить</button>` : ''}
+      </div>
+    </article>`;
+  }
+
+  function renderOrders() {
+    const main = $('#a-main');
+    const today = dayStart().getTime();
+    const todays = orders.filter((o) => new Date(o.created_at).getTime() >= today);
+    const active = orders
+      .filter((o) => ['new', 'accepted', 'cooking'].includes(o.status) || (o.status === 'ready' && new Date(o.created_at).getTime() >= today))
+      .sort((a, b) => ((b.status === 'new') - (a.status === 'new')) || (new Date(a.created_at) - new Date(b.created_at)));
+    const count = (s) => orders.filter((o) => o.status === s).length;
+    const sum = (list) => list.filter((o) => o.status !== 'cancelled').reduce((s, o) => s + Number(o.total), 0);
+    const list = ordersView === 'active' ? active : [...history].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    const canNotify = 'Notification' in window && Notification.permission === 'default';
+    const off = !S.settings?.orders_enabled;
+
+    main.innerHTML = `
+      ${off ? `<p class="notice bad">${icon('alert')}<span>Приём заказов из меню выключен (раздел «Ресторан»). Гости не могут отправить заказ.</span></p>` : ''}
+      ${!tables.length ? `<p class="notice">${icon('alert')}<span>Столов ещё нет — гости не смогут заказать. Создайте столы и распечатайте QR-коды в разделе «Столы и QR».</span></p>` : ''}
+      <div class="a-stats">
+        <div class="a-stat${count('new') ? ' hot' : ''}"><b>${count('new')}</b><span>новых</span></div>
+        <div class="a-stat"><b>${count('accepted') + count('cooking')}</b><span>принято и готовится</span></div>
+        <div class="a-stat"><b>${todays.filter((o) => o.status === 'ready').length}</b><span>готово сегодня</span></div>
+        <div class="a-stat"><b>${money(sum(todays))}</b><span>заказов сегодня: ${todays.filter((o) => o.status !== 'cancelled').length}</span></div>
+      </div>
+      <div class="toolbar">
+        <div class="chips" style="margin:0">
+          <button type="button" class="chip${ordersView === 'active' ? ' active' : ''}" data-ov="active">Активные<b>${active.length}</b></button>
+          <button type="button" class="chip${ordersView === 'history' ? ' active' : ''}" data-ov="history">История</button>
         </div>
-        <p class="help" style="margin-top:12px">Ссылка на меню: <b>${esc(menuUrl)}</b></p>
-      </div></section>`;
+        ${ordersView === 'history' ? `<label class="field" style="margin:0"><span class="sr-only">День</span><input type="date" id="hist-day" value="${esc(historyDay)}" max="${esc(localDate())}"></label>` : ''}
+        <span class="grow"></span>
+        <span class="live-dot${ordersLive ? '' : ' off'}">${ordersLive ? 'Заказы приходят сразу' : 'Проверка каждые 15 секунд'}</span>
+        <button type="button" class="btn small ghost" data-sound>${icon('bell', 'sm')}${soundOn ? 'Звук включён' : 'Звук выключен'}</button>
+        ${canNotify ? `<button type="button" class="btn small ghost" data-notify>${icon('bell', 'sm')}Уведомления на этом устройстве</button>` : ''}
+      </div>
+      ${ordersView === 'history' ? `<p class="help">${esc(historyDay)}: заказов ${history.filter((o) => o.status !== 'cancelled').length}, сумма ${money(sum(history))}, отменено ${history.filter((o) => o.status === 'cancelled').length}.</p>` : ''}
+      ${list.length ? `<div class="o-grid">${list.map(orderCard).join('')}</div>`
+        : `<div class="a-empty">${ordersView === 'active' ? 'Активных заказов нет. Новый заказ появится здесь сам — со звуком.' : 'В этот день заказов не было.'}</div>`}`;
+  }
+
+  async function setOrderStatus(id, status) {
+    const o = orders.find((x) => x.id === id) || history.find((x) => x.id === id);
+    if (!o || busyOrders.has(id)) return;
+    if (status === 'cancelled' && !confirm(`Отменить заказ №${o.no} (стол ${o.table_label})? Гость увидит, что заказ отменён.`)) { render(); return; }
+    busyOrders.add(id);
+    render();
+    try {
+      const saved = await api.setOrderStatus(id, status);
+      orders = orders.map((x) => (x.id === id ? saved : x));
+      history = history.map((x) => (x.id === id ? saved : x));
+      if (status !== 'new' && bannerMsg && !orders.some((x) => x.status === 'new')) { bannerMsg = ''; renderBanner(); }
+      S.toast(`Заказ №${o.no}: ${ST[status]}`);
+    } catch (ex) {
+      S.toast(S.errText(ex), true);
+    } finally {
+      busyOrders.delete(id);
+      updateCount();
+      render();
+    }
+  }
+
+  // =================================================================
+  //  СТОЛЫ И QR-КОДЫ
+  // =================================================================
+  let tables = [];
+  const menuBase = () => new URL('./', location.href).href;
+  const tableUrl = (tb) => `${menuBase()}?t=${tb.token}`;
+  const hasQr = () => typeof window.qrcode === 'function';
+
+  function qrModules(text) {
+    const q = window.qrcode(0, 'M');
+    q.addData(text);
+    q.make();
+    return q;
+  }
+  function qrSvg(text, cls = 'qr-svg') {
+    if (!hasQr()) return '';
+    const q = qrModules(text);
+    const n = q.getModuleCount();
+    let d = '';
+    for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) if (q.isDark(r, c)) d += `M${c + 2} ${r + 2}h1v1h-1z`;
+    return `<svg class="${cls}" viewBox="0 0 ${n + 4} ${n + 4}" shape-rendering="crispEdges" role="img" aria-label="QR-код"><rect width="${n + 4}" height="${n + 4}" fill="#fff"/><path d="${d}" fill="#24190F"/></svg>`;
+  }
+  function downloadPng(tb) {
+    const q = qrModules(tableUrl(tb));
+    const n = q.getModuleCount();
+    const W = 900;
+    const H = 1200;
+    const cv = document.createElement('canvas');
+    cv.width = W;
+    cv.height = H;
+    const g = cv.getContext('2d');
+    g.fillStyle = '#FFFFFF';
+    g.fillRect(0, 0, W, H);
+    g.fillStyle = '#24190F';
+    g.textAlign = 'center';
+    g.font = '700 54px Georgia, serif';
+    g.fillText(S.settings?.name || '', W / 2, 120, W - 80);
+    const size = 680;
+    const cell = Math.floor(size / (n + 4));
+    const x0 = Math.round((W - cell * (n + 4)) / 2);
+    const y0 = 170;
+    for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) if (q.isDark(r, c)) g.fillRect(x0 + (c + 2) * cell, y0 + (r + 2) * cell, cell, cell);
+    g.fillStyle = '#B5462E';
+    g.font = '800 72px Helvetica, Arial, sans-serif';
+    g.fillText(`Стол ${tb.label}`, W / 2, y0 + cell * (n + 4) + 110);
+    g.fillStyle = '#6F5E4A';
+    g.font = '500 34px Helvetica, Arial, sans-serif';
+    g.fillText('Наведите камеру — откроется меню · Scan for the menu', W / 2, H - 70, W - 80);
+    const a = document.createElement('a');
+    a.href = cv.toDataURL('image/png');
+    a.download = `qr-stol-${String(tb.label).replace(/[^\p{L}\p{N}-]+/gu, '-')}.png`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  }
+  function printAll() {
+    const list = tables.filter((t) => t.active);
+    if (!list.length) { S.toast('Нет включённых столов.', true); return; }
+    $('#print-area').innerHTML = list.map((tb) => `<div class="p-card">
+      <div class="p-name">${esc(S.settings?.name || '')}</div>
+      ${qrSvg(tableUrl(tb), 'p-qr')}
+      <div class="p-table">Стол ${esc(tb.label)}</div>
+      <div class="p-hint">Наведите камеру — откроется меню</div>
+      <div class="p-hint">Scan for the menu · Imbas untuk menu · Menyuni ochish</div>
+    </div>`).join('');
+    window.print();
+  }
+
+  async function loadTables() { tables = await api.tables(); }
+
+  function renderTables() {
+    const main = $('#a-main');
+    if (!hasQr()) {
+      main.innerHTML = `<p class="notice bad">${icon('alert')}<span>Не загрузилась библиотека QR-кодов — проверьте интернет и обновите страницу.</span></p>`;
+      return;
+    }
+    const sorted = [...tables].sort((a, b) => a.sort - b.sort || String(a.label).localeCompare(String(b.label), 'ru', { numeric: true }));
+    main.innerHTML = `
+      <section class="panel"><div class="panel-head"><h3>Добавить столы</h3></div><div class="panel-body">
+        <form id="tbl-range" class="form-grid" novalidate>
+          <label class="field"><span>С номера</span><input name="from" type="number" min="1" max="500" value="${tables.length ? '' : 1}" required></label>
+          <label class="field"><span>По номер</span><input name="to" type="number" min="1" max="500" value="${tables.length ? '' : 10}" required></label>
+          <div class="field full" style="margin-top:8px"><button class="btn" type="submit">${icon('plus', 'sm')}Создать столы</button></div>
+        </form>
+        <form id="tbl-one" class="form-grid" novalidate style="margin-top:6px">
+          <label class="field"><span>Или один стол с любым названием</span><input name="label" type="text" maxlength="20" placeholder="Например: VIP, Терраса 2"></label>
+          <div class="field" style="justify-content:flex-end"><button class="btn ghost" type="submit">${icon('plus', 'sm')}Добавить</button></div>
+        </form>
+        <p class="help" style="margin:12px 0 0">У каждого стола свой секретный код в QR. Гость с неверным или отключённым QR заказ отправить не сможет. «Новый QR» делает старую наклейку недействительной.</p>
+      </div></section>
+      <div class="toolbar">
+        <b>Столов: ${tables.length}, включено: ${tables.filter((t) => t.active).length}</b><span class="grow"></span>
+        <button type="button" class="btn small" data-print${tables.some((t) => t.active) ? '' : ' disabled'}>${icon('printer', 'sm')}Печать всех QR</button>
+      </div>
+      ${sorted.length ? `<section class="panel"><ul class="rows">${sorted.map((tb) => `
+        <li class="${tb.active ? '' : 'is-off'}">
+          <div class="qr-thumb">${qrSvg(tableUrl(tb))}</div>
+          <div class="grow"><b>Стол ${esc(tb.label)}</b><small>${tb.active ? esc(tableUrl(tb)) : 'отключён — заказы с этого QR не принимаются'}</small></div>
+          <div class="row-btns">
+            ${sw(`data-tbl-active="${esc(tb.id)}" aria-label="Стол ${esc(tb.label)} включён"`, tb.active, 'Включён')}
+            <button type="button" class="btn small ghost" data-tbl-png="${esc(tb.id)}">${icon('download', 'sm')}PNG</button>
+            <button type="button" class="btn small ghost" data-tbl-edit="${esc(tb.id)}">${icon('edit', 'sm')}Название</button>
+            <button type="button" class="btn small ghost" data-tbl-reset="${esc(tb.id)}">${icon('refresh', 'sm')}Новый QR</button>
+            <button type="button" class="btn small danger" data-tbl-del="${esc(tb.id)}" aria-label="Удалить стол ${esc(tb.label)}">${icon('trash', 'sm')}</button>
+          </div>
+        </li>`).join('')}</ul></section>` : '<div class="a-empty">Столов пока нет. Создайте их выше — например, с 1 по 10.</div>'}`;
+
+    $('#tbl-range').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const f = new FormData(e.target);
+      const from = Number(f.get('from'));
+      const to = Number(f.get('to'));
+      if (!(Number.isInteger(from) && Number.isInteger(to) && from >= 1 && to >= from && to <= 500 && to - from < 200)) {
+        S.toast('Укажите номера от 1 до 500, не больше 200 столов за раз.', true);
+        return;
+      }
+      try {
+        const n = await api.createTables(from, to);
+        await loadTables();
+        S.toast(n ? `Создано столов: ${n}` : 'Такие столы уже есть');
+        renderTables();
+      } catch (ex) { S.toast(S.errText(ex), true); }
+    });
+    $('#tbl-one').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const label = String(new FormData(e.target).get('label') || '').trim();
+      if (!label) { S.toast('Впишите название стола.', true); return; }
+      try {
+        await api.saveTable({ label, sort: (Math.max(0, ...tables.map((t) => t.sort)) + 1) });
+        await loadTables();
+        S.toast('Стол добавлен');
+        renderTables();
+      } catch (ex) { S.toast(/duplicate|unique/i.test(ex.message) ? 'Стол с таким названием уже есть.' : S.errText(ex), true); }
+    });
+  }
+
+  async function tableAction(fn, ok) {
+    try { await fn(); await loadTables(); if (ok) S.toast(ok); } catch (ex) { S.toast(/duplicate|unique/i.test(ex.message) ? 'Стол с таким названием уже есть.' : S.errText(ex), true); await loadTables(); }
+    renderTables();
   }
 
   // =================================================================
@@ -604,6 +904,14 @@
     } else if (t.dataset.shown) {
       const d = dishes.find((x) => x.id === t.dataset.shown);
       quickPatch(d.id, { hidden: !t.checked }, t.checked ? 'Блюдо показано гостям' : 'Блюдо скрыто от гостей');
+    } else if (t.dataset.orderStatus) {
+      setOrderStatus(t.dataset.orderStatus, t.value);
+    } else if (t.dataset.tblActive) {
+      const tb = tables.find((x) => x.id === t.dataset.tblActive);
+      tableAction(() => api.saveTable({ id: tb.id, label: tb.label, sort: tb.sort, active: t.checked }), t.checked ? `Стол ${tb.label} включён` : `Стол ${tb.label} отключён — его QR не принимает заказы`);
+    } else if (t.id === 'hist-day') {
+      historyDay = t.value || localDate();
+      loadHistory().then(renderOrders).catch((ex) => S.toast(S.errText(ex), true));
     } else if (t.dataset.role) {
       const s = staff.find((x) => x.user_id === t.dataset.role);
       staffAction(() => api.setStaff(s.user_id, t.value, s.name, s.active), 'Роль изменена');
@@ -625,6 +933,55 @@
       else if (a.dataset.act === 'cat-down') moveCat(id, 1);
       return;
     }
+    const on = e.target.closest('[data-order-next]');
+    if (on) { setOrderStatus(on.dataset.orderNext, on.dataset.to); return; }
+    const oc = e.target.closest('[data-order-cancel]');
+    if (oc) { setOrderStatus(oc.dataset.orderCancel, 'cancelled'); return; }
+    const ov = e.target.closest('[data-ov]');
+    if (ov) {
+      ordersView = ov.dataset.ov;
+      if (ordersView === 'history') loadHistory().then(renderOrders).catch((ex) => S.toast(S.errText(ex), true)); else renderOrders();
+      return;
+    }
+    if (e.target.closest('[data-sound]')) {
+      soundOn = !soundOn;
+      try { localStorage.setItem('owner:sound', soundOn ? '1' : '0'); } catch { /* ok */ }
+      if (soundOn) { unlockAudio(); ding(); }
+      renderBanner();
+      renderOrders();
+      return;
+    }
+    if (e.target.closest('[data-notify]')) {
+      Notification.requestPermission().then(() => renderOrders());
+      return;
+    }
+    const bn = e.target.closest('[data-banner]');
+    if (bn) {
+      if (bn.dataset.banner === 'sound') { unlockAudio(); ding(); } else { bannerMsg = ''; location.hash = '#orders'; renderBanner(); }
+      return;
+    }
+    if (e.target.closest('[data-print]')) { printAll(); return; }
+    const tp = e.target.closest('[data-tbl-png]');
+    if (tp) { downloadPng(tables.find((x) => x.id === tp.dataset.tblPng)); return; }
+    const te = e.target.closest('[data-tbl-edit]');
+    if (te) {
+      const tb = tables.find((x) => x.id === te.dataset.tblEdit);
+      const label = prompt('Новое название стола (до 20 символов). QR-код при этом не меняется.', tb.label);
+      if (label && label.trim() && label.trim() !== tb.label) tableAction(() => api.saveTable({ id: tb.id, label: label.trim().slice(0, 20), sort: tb.sort, active: tb.active }), 'Название изменено');
+      return;
+    }
+    const tr2 = e.target.closest('[data-tbl-reset]');
+    if (tr2) {
+      const tb = tables.find((x) => x.id === tr2.dataset.tblReset);
+      if (confirm(`Сделать новый QR для стола ${tb.label}? Старая наклейка перестанет работать — распечатайте новую.`)) tableAction(() => api.resetTableToken(tb.id), 'Новый QR готов — скачайте или распечатайте его');
+      return;
+    }
+    const td = e.target.closest('[data-tbl-del]');
+    if (td) {
+      const tb = tables.find((x) => x.id === td.dataset.tblDel);
+      if (confirm(`Удалить стол ${tb.label}? Его QR перестанет работать. Старые заказы останутся в истории.`)) tableAction(() => api.deleteTable(tb.id), 'Стол удалён');
+      return;
+    }
     const rv = e.target.closest('[data-revoke]');
     if (rv) { staffAction(() => api.revokeInvite(rv.dataset.revoke), 'Приглашение отменено'); return; }
     const rm = e.target.closest('[data-remove]');
@@ -643,16 +1000,26 @@
       me = ctx.me;
       paintBrand();
       try {
-        await Promise.all([loadMenu(), loadStaff()]);
+        await Promise.all([loadMenu(), loadStaff(), loadOrders(), loadTables()]);
       } catch (ex) { S.toast(S.errText(ex), true); }
-      setTab(location.hash.slice(1) || 'menu');
+      setTab(location.hash.slice(1) || 'orders');
+      renderBanner();
       stop?.();
-      // если меню меняет другой владелец на другом устройстве — подтягиваем, но не мешаем открытой форме
-      stop = api.subscribe(['dishes', 'categories'], async () => {
-        if (document.querySelector('.modal')) return;
-        try { await loadMenu(); if (tab === 'menu') renderMenu(); } catch { /* позже */ }
-      });
+      // заказы — сразу, как пришли; меню — если его меняют на другом устройстве (не мешая открытой форме)
+      stop = api.subscribe(['orders', 'dishes', 'categories', 'tables'], async (table) => {
+        try {
+          if (table === 'orders') { await loadOrders(); if (tab === 'orders') renderOrders(); return; }
+          if (document.querySelector('.modal')) return;
+          if (table === 'tables') { await loadTables(); if (tab === 'tables') renderTables(); return; }
+          await loadMenu();
+          if (tab === 'menu') renderMenu();
+        } catch { /* позже */ }
+      }, (ok) => { ordersLive = ok; if (tab === 'orders') renderOrders(); });
+      clearInterval(ordersTimer);
+      ordersTimer = setInterval(async () => {
+        try { await loadOrders(); if (tab === 'orders' && !document.querySelector('.modal')) renderOrders(); } catch { /* нет сети */ }
+      }, 15000);
     },
-    onLogout() { stop?.(); stop = null; },
+    onLogout() { stop?.(); stop = null; clearInterval(ordersTimer); bannerMsg = ''; renderBanner(); },
   });
 })();

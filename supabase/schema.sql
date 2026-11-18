@@ -4,26 +4,31 @@
 --  меню, настройки и сотрудники при этом не теряются.
 --
 --  Роли и права (проверяет сама база, а не браузер):
---    гость (anon)      — читает опубликованное меню и данные ресторана. Больше ничего.
+--    гость (anon)      — читает опубликованное меню, проверяет свой стол по QR,
+--                        отправляет заказ и видит только СВОЙ заказ (по секретному ключу).
 --    официант (waiter) — входит под своим аккаунтом, видит меню, цены и наличие.
---                        Только чтение: изменить ничего не может.
---    владелец (owner)  — меняет всё: меню, цены, наличие, фото, данные ресторана,
---                        расписание и доступ сотрудников.
+--                        Только чтение: ни меню, ни заказы, ни столы изменить не может.
+--    владелец (owner)  — меняет всё: заказы и их статусы, меню, цены, наличие, фото,
+--                        столы и QR-коды, данные ресторана, расписание и сотрудников.
 --  Доступ получают только приглашённые email (приглашает владелец),
 --  и только после подтверждения email. Первого владельца назначают
 --  одной командой в SQL Editor (см. SETUP.md).
 -- =====================================================================
 
--- ---------- Уборка после старой версии (заказы из меню больше не отправляются) ----------
+-- ---------- Уборка после прошлых версий ----------
 drop function if exists public.place_order(text, jsonb, text, text);
 drop function if exists public.order_status(uuid);
 drop function if exists public.set_dish_available(text, boolean);
 drop function if exists public.approve_staff(uuid, text);
 drop function if exists public.update_staff(uuid, text, text);
 drop table if exists public.staff_requests;
+-- самая первая версия заказов (номер стола текстом, без проверки) — убираем в архив, не удаляя
 do $$ begin
-  if to_regclass('public.orders') is not null then
-    execute 'revoke all on public.orders from anon, authenticated';
+  if to_regclass('public.orders') is not null
+     and exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'orders' and column_name = 'table_no')
+     and not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'orders' and column_name = 'client_key') then
+    execute 'alter table public.orders rename to orders_v1_archive';
+    execute 'revoke all on public.orders_v1_archive from anon, authenticated';
   end if;
 end $$;
 
@@ -127,15 +132,18 @@ create table if not exists public.settings (
   footer           jsonb not null default '{}',
   default_language text not null default 'en' check (default_language in ('ru', 'uz', 'en', 'ar', 'ms')),
   tables_count     int  not null default 10 check (tables_count between 1 and 200),
+  orders_enabled   boolean not null default true,   -- принимать заказы из меню
+  orders_when_closed boolean not null default false, -- принимать и вне часов работы
   updated_at       timestamptz not null default now()
 );
 -- старые колонки предыдущей версии, если были
 alter table public.settings drop column if exists logo;
 alter table public.settings drop column if exists open_time;
 alter table public.settings drop column if exists close_time;
-alter table public.settings drop column if exists orders_paused;
 alter table public.settings add column if not exists logo_url text check (logo_url is null or logo_url ~ '^https://');
 alter table public.settings add column if not exists map_url text check (map_url is null or map_url ~ '^https://');
+alter table public.settings add column if not exists orders_enabled boolean not null default true;
+alter table public.settings add column if not exists orders_when_closed boolean not null default false;
 alter table public.settings add column if not exists schedule jsonb not null default
   '[{"closed":false,"open":"10:00","close":"22:00"},{"closed":false,"open":"10:00","close":"22:00"},{"closed":false,"open":"10:00","close":"22:00"},{"closed":false,"open":"10:00","close":"22:00"},{"closed":false,"open":"10:00","close":"22:00"},{"closed":false,"open":"10:00","close":"22:00"},{"closed":false,"open":"10:00","close":"22:00"}]';
 insert into public.settings (id) values (1) on conflict (id) do nothing;
@@ -366,6 +374,248 @@ grant execute on function public.revoke_invite(text) to authenticated;
 grant execute on function public.set_staff(uuid, text, text, boolean) to authenticated;
 grant execute on function public.remove_staff(uuid) to authenticated;
 
+-- =====================================================================
+--  СТОЛЫ И ЗАКАЗЫ
+-- =====================================================================
+
+-- ---------- Столы: у каждого свой секретный код для QR ----------
+create table if not exists public.tables (
+  id         uuid primary key default gen_random_uuid(),
+  label      text not null check (char_length(btrim(label)) between 1 and 20),
+  token      text not null unique default substr(replace(gen_random_uuid()::text, '-', ''), 1, 20)
+             check (token ~ '^[a-f0-9]{20}$'),
+  active     boolean not null default true,
+  sort       int not null default 0,
+  created_at timestamptz not null default now()
+);
+create unique index if not exists tables_label_uniq on public.tables (lower(btrim(label)));
+
+-- ---------- Заказы ----------
+create table if not exists public.orders (
+  id          uuid primary key default gen_random_uuid(),
+  no          bigint generated always as identity,          -- номер, который видят гость и владелец
+  table_id    uuid references public.tables (id) on delete set null,
+  table_label text not null,                                  -- стол на момент заказа
+  items       jsonb not null,                                 -- [{ id, qty, price, name }] — проверено сервером
+  total       numeric(10, 2) not null check (total >= 0),
+  note        text check (note is null or char_length(note) <= 300),
+  lang        text check (lang is null or char_length(lang) <= 5),
+  status      text not null default 'new' check (status in ('new', 'accepted', 'cooking', 'ready', 'cancelled')),
+  client_key  uuid not null unique,                           -- защита от двойной отправки
+  guest_token uuid not null default gen_random_uuid(),        -- секрет гостя: только он видит свой заказ
+  created_at  timestamptz not null default now(),
+  updated_at  timestamptz not null default now(),
+  accepted_at timestamptz,
+  ready_at    timestamptz,
+  cancelled_at timestamptz,
+  status_by   uuid references auth.users (id) on delete set null
+);
+create index if not exists orders_created_idx on public.orders (created_at desc);
+create index if not exists orders_table_created_idx on public.orders (table_id, created_at desc);
+create index if not exists orders_active_idx on public.orders (status) where status in ('new', 'accepted', 'cooking', 'ready');
+
+create or replace function public.orders_on_update()
+returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  new.updated_at := now();
+  if new.status is distinct from old.status then
+    new.status_by := auth.uid();
+    if new.status = 'accepted' and new.accepted_at is null then new.accepted_at := now(); end if;
+    if new.status = 'ready' then new.ready_at := now(); end if;
+    if new.status = 'cancelled' then new.cancelled_at := now(); else new.cancelled_at := null; end if;
+  end if;
+  return new;
+end $$;
+drop trigger if exists orders_on_update on public.orders;
+create trigger orders_on_update before update on public.orders for each row execute function public.orders_on_update();
+
+-- ---------- Открыт ли ресторан сейчас (по расписанию и часовому поясу ресторана) ----------
+create or replace function public.hm(t text) returns int language sql immutable as $$
+  select split_part(t, ':', 1)::int * 60 + split_part(t, ':', 2)::int;
+$$;
+
+create or replace function public.restaurant_open(p_at timestamptz default now())
+returns boolean language plpgsql stable security definer set search_path = public as $$
+declare
+  s   public.settings%rowtype;
+  lt  timestamp;
+  d   int;
+  m   int;
+  td  jsonb;
+  pd  jsonb;
+begin
+  select * into s from public.settings where id = 1;
+  lt := p_at at time zone s.timezone;
+  d  := extract(isodow from lt)::int - 1;                 -- 0 = понедельник
+  m  := extract(hour from lt)::int * 60 + extract(minute from lt)::int;
+  pd := s.schedule -> ((d + 6) % 7);                      -- вчера: хвост ночной смены
+  if not (pd ->> 'closed')::boolean and public.hm(pd ->> 'close') < public.hm(pd ->> 'open')
+     and m < public.hm(pd ->> 'close') then
+    return true;
+  end if;
+  td := s.schedule -> d;
+  if (td ->> 'closed')::boolean then return false; end if;
+  if public.hm(td ->> 'close') > public.hm(td ->> 'open') then
+    return m >= public.hm(td ->> 'open') and m < public.hm(td ->> 'close');
+  end if;
+  return m >= public.hm(td ->> 'open');
+end $$;
+
+-- ---------- Права ----------
+alter table public.tables enable row level security;
+alter table public.orders enable row level security;
+revoke all on public.tables, public.orders from anon, authenticated;
+-- столы и заказы видит и меняет только владелец; гость — только через функции ниже
+grant select, insert, update, delete on public.tables to authenticated;
+grant select on public.orders to authenticated;
+grant update (status) on public.orders to authenticated;
+
+drop policy if exists tables_owner_all on public.tables;
+create policy tables_owner_all on public.tables for all to authenticated
+  using (public.is_owner()) with check (public.is_owner());
+drop policy if exists orders_owner_read on public.orders;
+create policy orders_owner_read on public.orders for select to authenticated using (public.is_owner());
+drop policy if exists orders_owner_status on public.orders;
+create policy orders_owner_status on public.orders for update to authenticated
+  using (public.is_owner()) with check (public.is_owner());
+
+-- ---------- Гость: проверить стол по коду из QR ----------
+create or replace function public.table_info(p_token text)
+returns table (label text) language sql stable security definer set search_path = public as $$
+  select t.label from public.tables t
+  where t.token = lower(btrim(coalesce(p_token, ''))) and t.active;
+$$;
+
+-- ---------- Гость: отправить заказ ----------
+-- p_items: [{ "id": "plov-tashkent", "qty": 2, "price": 28 }] — price = цена, которую гость видел.
+-- Если цена изменилась или блюдо закончилось — заказ НЕ создаётся, гость видит актуальные данные.
+-- p_client_key: один и тот же ключ при повторной отправке — вернётся тот же заказ, второй не создастся.
+create or replace function public.place_order(
+  p_table text, p_items jsonb, p_note text, p_lang text, p_client_key uuid
+)
+returns table (id uuid, no bigint, guest_token uuid, total numeric, status text, table_label text, items jsonb, note text, created_at timestamptz)
+language plpgsql security definer set search_path = public as $$
+declare
+  v_set   public.settings%rowtype;
+  v_tab   public.tables%rowtype;
+  v_old   public.orders%rowtype;
+  v_item  jsonb;
+  v_id    text;
+  v_qty   int;
+  v_seen  numeric;
+  v_dish  public.dishes%rowtype;
+  v_items jsonb := '[]'::jsonb;
+  v_total numeric(10, 2) := 0;
+  v_count int := 0;
+  v_note  text := nullif(btrim(coalesce(p_note, '')), '');
+  v_ids   text[] := '{}';
+begin
+  if p_client_key is null then raise exception 'bad_request'; end if;
+
+  -- повторная отправка того же заказа (плохой интернет, двойное нажатие)
+  select * into v_old from public.orders o where o.client_key = p_client_key;
+  if found then
+    return query select v_old.id, v_old.no, v_old.guest_token, v_old.total, v_old.status, v_old.table_label, v_old.items, v_old.note, v_old.created_at;
+    return;
+  end if;
+
+  select * into v_tab from public.tables t where t.token = lower(btrim(coalesce(p_table, ''))) and t.active;
+  if not found then raise exception 'bad_table'; end if;
+
+  select * into v_set from public.settings where settings.id = 1;
+  if not v_set.orders_enabled then raise exception 'orders_off'; end if;
+  if not v_set.orders_when_closed and not public.restaurant_open() then raise exception 'closed'; end if;
+
+  if p_items is null or jsonb_typeof(p_items) <> 'array' or jsonb_array_length(p_items) = 0 then raise exception 'empty'; end if;
+  if jsonb_array_length(p_items) > 50 then raise exception 'bad_items'; end if;
+
+  for v_item in select value from jsonb_array_elements(p_items) loop
+    v_id := v_item ->> 'id';
+    begin
+      v_qty  := (v_item ->> 'qty')::int;
+      v_seen := (v_item ->> 'price')::numeric;
+    exception when others then
+      raise exception 'bad_items';
+    end;
+    if v_id is null or v_id !~ '^[a-z0-9-]{1,40}$' or v_qty is null or v_qty < 1 or v_qty > 50 or v_seen is null then
+      raise exception 'bad_items';
+    end if;
+    if v_id = any (v_ids) then raise exception 'bad_items'; end if;
+    v_ids := v_ids || v_id;
+
+    select d.* into v_dish from public.dishes d join public.categories c on c.id = d.category_id
+      where d.id = v_id and not d.hidden and not c.hidden;
+    if not found or not v_dish.available then raise exception 'unavailable:%', v_id; end if;
+    if v_dish.price <> v_seen then raise exception 'price_changed:%', v_id; end if;
+
+    v_count := v_count + v_qty;
+    v_total := v_total + v_dish.price * v_qty;
+    v_items := v_items || jsonb_build_array(jsonb_build_object('id', v_id, 'qty', v_qty, 'price', v_dish.price, 'name', v_dish.name));
+  end loop;
+  if v_count > 100 then raise exception 'bad_items'; end if;
+
+  -- защита от спама: не больше 5 заказов со стола за 5 минут и 60 со всего ресторана за минуту
+  if (select count(*) from public.orders o where o.table_id = v_tab.id and o.created_at > now() - interval '5 minutes') >= 5
+     or (select count(*) from public.orders o where o.created_at > now() - interval '1 minute') >= 60 then
+    raise exception 'too_many';
+  end if;
+
+  return query
+    insert into public.orders as o (table_id, table_label, items, total, note, lang, client_key)
+    values (v_tab.id, v_tab.label, v_items, v_total, left(v_note, 300),
+            left(nullif(btrim(coalesce(p_lang, '')), ''), 5), p_client_key)
+    returning o.id, o.no, o.guest_token, o.total, o.status, o.table_label, o.items, o.note, o.created_at;
+end $$;
+
+-- ---------- Гость: посмотреть СВОЙ заказ (нужны и номер заказа, и его секрет) ----------
+create or replace function public.get_order(p_id uuid, p_token uuid)
+returns table (id uuid, no bigint, status text, total numeric, table_label text, items jsonb, note text, created_at timestamptz, updated_at timestamptz)
+language sql stable security definer set search_path = public as $$
+  select o.id, o.no, o.status, o.total, o.table_label, o.items, o.note, o.created_at, o.updated_at
+  from public.orders o
+  where o.id = p_id and o.guest_token = p_token and o.created_at > now() - interval '3 days';
+$$;
+
+-- ---------- Владелец: создать сразу N столов (1, 2, 3…) ----------
+create or replace function public.create_tables(p_from int, p_to int)
+returns int language plpgsql security definer set search_path = public as $$
+declare n int := 0; i int;
+begin
+  if not public.is_owner() then raise exception 'forbidden'; end if;
+  if p_from < 1 or p_to > 500 or p_to < p_from or p_to - p_from > 199 then raise exception 'bad_range'; end if;
+  for i in p_from..p_to loop
+    if not exists (select 1 from public.tables where lower(btrim(label)) = i::text) then
+      insert into public.tables (label, sort) values (i::text, i);
+      n := n + 1;
+    end if;
+  end loop;
+  return n;
+end $$;
+
+-- ---------- Владелец: новый QR для стола (старый перестанет работать) ----------
+create or replace function public.reset_table_token(p_id uuid)
+returns text language plpgsql security definer set search_path = public as $$
+declare v text;
+begin
+  if not public.is_owner() then raise exception 'forbidden'; end if;
+  update public.tables set token = substr(replace(gen_random_uuid()::text, '-', ''), 1, 20) where id = p_id returning token into v;
+  if v is null then raise exception 'not_found'; end if;
+  return v;
+end $$;
+
+revoke all on function public.table_info(text) from public;
+revoke all on function public.place_order(text, jsonb, text, text, uuid) from public;
+revoke all on function public.get_order(uuid, uuid) from public;
+revoke all on function public.create_tables(int, int) from public;
+revoke all on function public.reset_table_token(uuid) from public;
+revoke all on function public.restaurant_open(timestamptz) from public;
+grant execute on function public.table_info(text) to anon, authenticated;
+grant execute on function public.place_order(text, jsonb, text, text, uuid) to anon, authenticated;
+grant execute on function public.get_order(uuid, uuid) to anon, authenticated;
+grant execute on function public.restaurant_open(timestamptz) to anon, authenticated;
+grant execute on function public.create_tables(int, int) to authenticated;
+grant execute on function public.reset_table_token(uuid) to authenticated;
+
 -- ---------- Фото блюд и логотип (Storage) ----------
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 values ('menu-photos', 'menu-photos', true, 3145728, array['image/jpeg', 'image/png', 'image/webp'])
@@ -394,7 +644,7 @@ do $$
 declare t text;
 begin
   if exists (select 1 from pg_publication where pubname = 'supabase_realtime') then
-    foreach t in array array['dishes', 'categories', 'settings'] loop
+    foreach t in array array['dishes', 'categories', 'settings', 'orders', 'tables'] loop
       if not exists (select 1 from pg_publication_tables
                      where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = t) then
         execute format('alter publication supabase_realtime add table public.%I', t);

@@ -87,6 +87,38 @@
         await sb.storage.from(BUCKET).remove([path]); // ошибку не показываем: старый файл просто останется
       },
 
+      // ---------- заказы (только владелец — проверяет база) ----------
+      // без toIso: все незакрытые + всё созданное с fromIso; с toIso: история за период
+      async orders(fromIso, toIso) {
+        let q = sb.from('orders').select('*');
+        q = toIso
+          ? q.gte('created_at', fromIso).lt('created_at', toIso)
+          : q.or(`created_at.gte.${fromIso},status.in.(new,accepted,cooking)`);
+        const { data, error } = await q.order('created_at', { ascending: true }).limit(2000);
+        fail(error); return data || [];
+      },
+      async setOrderStatus(id, status) {
+        const { data, error } = await sb.from('orders').update({ status }).eq('id', id).select().single();
+        fail(error); return data;
+      },
+
+      // ---------- столы и QR ----------
+      async tables() {
+        const { data, error } = await sb.from('tables').select('*').order('sort').order('label');
+        fail(error); return data || [];
+      },
+      async saveTable(row) {
+        const { data, error } = await sb.from('tables').upsert(row).select().single();
+        fail(error); return data;
+      },
+      async deleteTable(id) { const { error } = await sb.from('tables').delete().eq('id', id); fail(error); },
+      async createTables(from, to) {
+        const { data, error } = await sb.rpc('create_tables', { p_from: from, p_to: to }); fail(error); return data;
+      },
+      async resetTableToken(id) {
+        const { data, error } = await sb.rpc('reset_table_token', { p_id: id }); fail(error); return data;
+      },
+
       // ---------- сотрудники ----------
       async staff() {
         const { data, error } = await sb.from('staff').select('*').order('created_at');

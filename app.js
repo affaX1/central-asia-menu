@@ -38,6 +38,27 @@
       loading: 'Загружаем меню…', loadError: 'Не удалось загрузить меню', loadErrorHint: 'Проверьте интернет и попробуйте ещё раз.', retry: 'Повторить',
       emptyMenu: 'Меню скоро появится', emptyMenuHint: 'Ресторан ещё заполняет меню. Спросите официанта.',
       offline: 'Нет связи — показано меню, загруженное ранее.',
+      sendOrder: 'Отправить заказ', sending: 'Отправляем…',
+      noteLabel: 'Комментарий к заказу', notePh: 'Например: без лука, острое отдельно',
+      yourTable: 'Ваш стол',
+      noTable: 'Чтобы отправить заказ, отсканируйте QR-код на своём столе.',
+      badTable: 'Этот QR-код недействителен или стол отключён. Попросите официанта помочь.',
+      checkingTable: 'Проверяем стол…',
+      noServer: 'Онлайн-заказы пока не подключены. Покажите этот список официанту.',
+      ordersOff: 'Сейчас заказы через меню не принимаются. Пожалуйста, позовите официанта.',
+      closedNoOrders: 'Ресторан сейчас закрыт — заказы не принимаются.',
+      removeSold: 'Уберите из заказа блюда, которых нет в наличии, — тогда заказ можно отправить.',
+      errNetwork: 'Нет связи — заказ не отправлен. Проверьте интернет и нажмите «Отправить заказ» ещё раз.',
+      errServer: 'Сервер не ответил — заказ не отправлен. Попробуйте ещё раз.',
+      errTooMany: 'Слишком много заказов подряд с этого стола. Подождите несколько минут или позовите официанта.',
+      errChanged: 'Меню изменилось. Проверьте заказ — и отправьте ещё раз.',
+      sentTitle: (n) => `Заказ №${n} отправлен`,
+      orderNo: (n) => `Заказ №${n}`,
+      sentAt: (x) => `Отправлен в ${x}`,
+      statuses: { new: 'Отправлен', accepted: 'Принят', cooking: 'Готовится', ready: 'Готов', cancelled: 'Отменён' },
+      statusHint: { new: 'Ресторан получил заказ и скоро его примет.', accepted: 'Ресторан принял ваш заказ.', cooking: 'Ваш заказ готовится.', ready: 'Ваш заказ готов.', cancelled: 'Ресторан отменил заказ. Пожалуйста, обратитесь к официанту.' },
+      statusStale: 'Не удалось обновить статус — проверим ещё раз через несколько секунд.',
+      myOrders: 'Мои заказы', orderMore: 'Заказать ещё', note: 'Комментарий',
     },
     uz: {
       langName: "O'zbekcha", locale: 'uz-Latn-UZ', dir: 'ltr',
@@ -69,6 +90,27 @@
       loading: 'Menyu yuklanmoqda…', loadError: "Menyuni yuklab bo'lmadi", loadErrorHint: "Internetni tekshirib, qayta urinib ko'ring.", retry: 'Qayta urinish',
       emptyMenu: "Menyu tez orada paydo bo'ladi", emptyMenuHint: "Restoran menyuni to'ldirmoqda. Ofitsiantdan so'rang.",
       offline: "Aloqa yo'q — avval yuklangan menyu ko'rsatilmoqda.",
+      sendOrder: 'Buyurtmani yuborish', sending: 'Yuborilmoqda…',
+      noteLabel: 'Buyurtmaga izoh', notePh: "Masalan: piyozsiz, achchiq alohida",
+      yourTable: 'Stolingiz',
+      noTable: "Buyurtma yuborish uchun stolingizdagi QR-kodni skanerlang.",
+      badTable: "Bu QR-kod yaroqsiz yoki stol o'chirilgan. Ofitsiantdan yordam so'rang.",
+      checkingTable: 'Stol tekshirilmoqda…',
+      noServer: "Onlayn buyurtma hali ulanmagan. Ushbu ro'yxatni ofitsiantga ko'rsating.",
+      ordersOff: "Hozir menyu orqali buyurtma qabul qilinmayapti. Iltimos, ofitsiantni chaqiring.",
+      closedNoOrders: 'Restoran hozir yopiq — buyurtmalar qabul qilinmaydi.',
+      removeSold: "Mavjud bo'lmagan taomlarni olib tashlang — shunda buyurtmani yuborish mumkin.",
+      errNetwork: "Aloqa yo'q — buyurtma yuborilmadi. Internetni tekshirib, «Buyurtmani yuborish»ni yana bosing.",
+      errServer: "Server javob bermadi — buyurtma yuborilmadi. Qayta urinib ko'ring.",
+      errTooMany: "Bu stoldan juda ko'p buyurtma. Bir necha daqiqa kuting yoki ofitsiantni chaqiring.",
+      errChanged: "Menyu o'zgardi. Buyurtmani tekshirib, qayta yuboring.",
+      sentTitle: (n) => `Buyurtma №${n} yuborildi`,
+      orderNo: (n) => `Buyurtma №${n}`,
+      sentAt: (x) => `${x} da yuborilgan`,
+      statuses: { new: 'Yuborildi', accepted: 'Qabul qilindi', cooking: 'Tayyorlanmoqda', ready: 'Tayyor', cancelled: 'Bekor qilindi' },
+      statusHint: { new: 'Restoran buyurtmani oldi va tez orada qabul qiladi.', accepted: 'Restoran buyurtmangizni qabul qildi.', cooking: 'Buyurtmangiz tayyorlanmoqda.', ready: 'Buyurtmangiz tayyor.', cancelled: "Restoran buyurtmani bekor qildi. Iltimos, ofitsiantga murojaat qiling." },
+      statusStale: "Holatni yangilab bo'lmadi — bir necha soniyadan keyin yana tekshiramiz.",
+      myOrders: 'Buyurtmalarim', orderMore: 'Yana buyurtma berish', note: 'Izoh',
     },
     en: {
       langName: 'English', locale: 'en-US', dir: 'ltr',
@@ -100,6 +142,27 @@
       loading: 'Loading the menu…', loadError: "Couldn't load the menu", loadErrorHint: 'Check your connection and try again.', retry: 'Try again',
       emptyMenu: 'The menu is coming soon', emptyMenuHint: 'The restaurant is still filling in the menu. Please ask your waiter.',
       offline: 'No connection — showing the menu loaded earlier.',
+      sendOrder: 'Send order', sending: 'Sending…',
+      noteLabel: 'Note for the order', notePh: 'For example: no onion, sauce on the side',
+      yourTable: 'Your table',
+      noTable: 'To send an order, scan the QR code on your table.',
+      badTable: 'This QR code is not valid or the table is disabled. Please ask your waiter.',
+      checkingTable: 'Checking your table…',
+      noServer: 'Online ordering is not connected yet. Please show this list to your waiter.',
+      ordersOff: 'Ordering from the menu is paused right now. Please call your waiter.',
+      closedNoOrders: 'The restaurant is closed now — orders are not accepted.',
+      removeSold: 'Remove the sold-out dishes from your order, then you can send it.',
+      errNetwork: 'No connection — the order was not sent. Check your internet and tap “Send order” again.',
+      errServer: 'The server did not respond — the order was not sent. Please try again.',
+      errTooMany: 'Too many orders from this table. Please wait a few minutes or call your waiter.',
+      errChanged: 'The menu has changed. Please check your order and send it again.',
+      sentTitle: (n) => `Order #${n} sent`,
+      orderNo: (n) => `Order #${n}`,
+      sentAt: (x) => `Sent at ${x}`,
+      statuses: { new: 'Sent', accepted: 'Accepted', cooking: 'Cooking', ready: 'Ready', cancelled: 'Cancelled' },
+      statusHint: { new: 'The restaurant has your order and will accept it shortly.', accepted: 'The restaurant accepted your order.', cooking: 'Your order is being prepared.', ready: 'Your order is ready.', cancelled: 'The restaurant cancelled the order. Please talk to your waiter.' },
+      statusStale: "Couldn't refresh the status — we'll check again in a few seconds.",
+      myOrders: 'My orders', orderMore: 'Order more', note: 'Note',
     },
     ar: {
       // цифры привычные (0–9), как на ценниках и в часах работы
@@ -132,6 +195,27 @@
       loading: 'جارٍ تحميل القائمة…', loadError: 'تعذّر تحميل القائمة', loadErrorHint: 'تحقّق من الاتصال وحاول مرة أخرى.', retry: 'إعادة المحاولة',
       emptyMenu: 'القائمة قريبًا', emptyMenuHint: 'المطعم ما زال يُعدّ القائمة. يرجى سؤال النادل.',
       offline: 'لا يوجد اتصال — تُعرض القائمة المحمّلة سابقًا.',
+      sendOrder: 'إرسال الطلب', sending: 'جارٍ الإرسال…',
+      noteLabel: 'ملاحظة على الطلب', notePh: 'مثال: بدون بصل، الصلصة منفصلة',
+      yourTable: 'طاولتك',
+      noTable: 'لإرسال الطلب، امسح رمز QR الموجود على طاولتك.',
+      badTable: 'رمز QR هذا غير صالح أو الطاولة معطّلة. يرجى سؤال النادل.',
+      checkingTable: 'جارٍ التحقق من الطاولة…',
+      noServer: 'الطلب عبر الإنترنت غير مفعّل بعد. يرجى عرض هذه القائمة على النادل.',
+      ordersOff: 'الطلب عبر القائمة متوقف حاليًا. يرجى مناداة النادل.',
+      closedNoOrders: 'المطعم مغلق الآن — لا تُقبل الطلبات.',
+      removeSold: 'أزل الأطباق غير المتوفرة من طلبك، ثم يمكنك إرساله.',
+      errNetwork: 'لا يوجد اتصال — لم يُرسل الطلب. تحقّق من الإنترنت واضغط «إرسال الطلب» مرة أخرى.',
+      errServer: 'الخادم لم يستجب — لم يُرسل الطلب. حاول مرة أخرى.',
+      errTooMany: 'طلبات كثيرة من هذه الطاولة. انتظر بضع دقائق أو اطلب النادل.',
+      errChanged: 'تغيّرت القائمة. راجع طلبك ثم أرسله مرة أخرى.',
+      sentTitle: (n) => `تم إرسال الطلب رقم ${n}`,
+      orderNo: (n) => `الطلب رقم ${n}`,
+      sentAt: (x) => `أُرسل الساعة ${x}`,
+      statuses: { new: 'أُرسل', accepted: 'تم القبول', cooking: 'قيد التحضير', ready: 'جاهز', cancelled: 'أُلغي' },
+      statusHint: { new: 'استلم المطعم طلبك وسيقبله قريبًا.', accepted: 'قبل المطعم طلبك.', cooking: 'طلبك قيد التحضير.', ready: 'طلبك جاهز.', cancelled: 'ألغى المطعم الطلب. يرجى التحدث إلى النادل.' },
+      statusStale: 'تعذّر تحديث الحالة — سنحاول مجددًا بعد ثوانٍ.',
+      myOrders: 'طلباتي', orderMore: 'اطلب المزيد', note: 'ملاحظة',
     },
     ms: {
       langName: 'Bahasa Melayu', locale: 'ms-MY', dir: 'ltr',
@@ -163,6 +247,27 @@
       loading: 'Memuatkan menu…', loadError: 'Menu gagal dimuatkan', loadErrorHint: 'Semak sambungan dan cuba lagi.', retry: 'Cuba lagi',
       emptyMenu: 'Menu akan datang', emptyMenuHint: 'Restoran sedang menyediakan menu. Sila tanya pelayan.',
       offline: 'Tiada sambungan — menu yang dimuatkan sebelum ini dipaparkan.',
+      sendOrder: 'Hantar pesanan', sending: 'Menghantar…',
+      noteLabel: 'Nota pesanan', notePh: 'Contoh: tanpa bawang, sos berasingan',
+      yourTable: 'Meja anda',
+      noTable: 'Untuk menghantar pesanan, imbas kod QR di meja anda.',
+      badTable: 'Kod QR ini tidak sah atau meja telah dinyahaktifkan. Sila minta bantuan pelayan.',
+      checkingTable: 'Menyemak meja…',
+      noServer: 'Pesanan dalam talian belum disambungkan. Sila tunjukkan senarai ini kepada pelayan.',
+      ordersOff: 'Pesanan melalui menu ditangguhkan buat masa ini. Sila panggil pelayan.',
+      closedNoOrders: 'Restoran ditutup sekarang — pesanan tidak diterima.',
+      removeSold: 'Buang hidangan yang habis daripada pesanan, kemudian anda boleh menghantarnya.',
+      errNetwork: 'Tiada sambungan — pesanan tidak dihantar. Semak internet dan tekan «Hantar pesanan» sekali lagi.',
+      errServer: 'Pelayan tidak menjawab — pesanan tidak dihantar. Sila cuba lagi.',
+      errTooMany: 'Terlalu banyak pesanan dari meja ini. Tunggu beberapa minit atau panggil pelayan.',
+      errChanged: 'Menu telah berubah. Semak pesanan anda dan hantar sekali lagi.',
+      sentTitle: (n) => `Pesanan #${n} dihantar`,
+      orderNo: (n) => `Pesanan #${n}`,
+      sentAt: (x) => `Dihantar pada ${x}`,
+      statuses: { new: 'Dihantar', accepted: 'Diterima', cooking: 'Sedang dimasak', ready: 'Siap', cancelled: 'Dibatalkan' },
+      statusHint: { new: 'Restoran telah menerima pesanan dan akan mengesahkannya sebentar lagi.', accepted: 'Restoran telah menerima pesanan anda.', cooking: 'Pesanan anda sedang disediakan.', ready: 'Pesanan anda sudah siap.', cancelled: 'Restoran membatalkan pesanan. Sila berjumpa pelayan.' },
+      statusStale: 'Status gagal dikemas kini — kami akan cuba lagi sebentar lagi.',
+      myOrders: 'Pesanan saya', orderMore: 'Pesan lagi', note: 'Nota',
     },
   };
 
@@ -192,6 +297,7 @@
         name: r.name, tagline: r.tagline, logoUrl: r.logoUrl || null,
         currency: r.currency, currencyBefore: !!r.currencyBefore, timezone: r.timezone, schedule: r.schedule,
         address: nonEmpty(r.address), mapUrl: r.mapUrl || null, phone: r.phone || '', footer: nonEmpty(r.footer),
+        ordersEnabled: false, ordersWhenClosed: false,
         defaultLanguage: b.defaultLanguage,
       },
       categories: b.categories.map((c) => ({ id: c.id, name: c.name })),
@@ -211,6 +317,7 @@
         name: st.name, tagline: nonEmpty(st.tagline), logoUrl: st.logo_url || null,
         currency: st.currency, currencyBefore: st.currency_before, timezone: st.timezone, schedule: st.schedule,
         address: nonEmpty(st.address), mapUrl: st.map_url || null, phone: st.phone || '', footer: nonEmpty(st.footer),
+        ordersEnabled: !!st.orders_enabled, ordersWhenClosed: !!st.orders_when_closed,
         defaultLanguage: st.default_language,
       },
       categories: shown.map((c) => ({ id: c.id, name: c.name })),
@@ -256,20 +363,37 @@
   let priceChanges = [];   // [{ id, from, to }]
   let attention = false;   // в списке что-то изменилось, гость ещё не открыл его
 
-  // Номер стола из QR (?table=5). Помним 6 часов, чтобы он не пропал при обновлении.
+  // Стол из QR: ?t=<код стола>. Код проверяет сервер — придумать номер стола нельзя.
   const TABLE_TTL = 6 * 60 * 60 * 1000;
-  let table = '';
+  let tableToken = '';
+  let table = '';             // название стола, подтверждённое сервером
+  let tableState = 'none';    // none — нет кода | checking | ok | invalid | unknown (нет связи)
   {
     const p = new URLSearchParams(location.search);
-    const fromUrl = (p.get('table') || p.get('t') || '').trim();
-    if (/^[\p{L}\p{N}-]{1,10}$/u.test(fromUrl)) {
-      table = fromUrl;
-      store.set('table', { v: table, at: Date.now() });
+    const fromUrl = (p.get('t') || '').trim().toLowerCase();
+    if (p.has('t')) {
+      tableToken = /^[a-f0-9]{20}$/.test(fromUrl) ? fromUrl : '';
+      tableState = tableToken ? 'checking' : 'invalid';
+      store.set('table', tableToken ? { token: tableToken, at: Date.now() } : null);
     } else {
       const saved = store.get('table', null);
-      if (saved && typeof saved.v === 'string' && Date.now() - saved.at < TABLE_TTL) table = saved.v;
+      if (saved?.token && Date.now() - saved.at < TABLE_TTL) {
+        tableToken = saved.token;
+        table = saved.label || '';
+        tableState = 'checking';
+      }
     }
   }
+
+  // Заказы гостя: черновик комментария, защита от повторной отправки, отправленные заказы
+  let note = store.get('note', '') || '';
+  let sending = false;
+  let sendError = '';
+  let pendingKey = store.get('pendingKey', null);  // { key, sig } — один ключ на одну попытку заказа
+  let myOrders = (store.get('myOrders', []) || []).filter((o) => o && o.id && o.token && Date.now() - o.at < 24 * 60 * 60 * 1000);
+  let tracked = store.get('tracked', {}) || {};     // id → последний ответ сервера по заказу
+  let trackStale = false;
+  let justSent = null;
 
   let query = '';
   let sheet = null;        // { type: 'dish', id } | { type: 'order' } | { type: 'lang' } | { type: 'hours' }
@@ -364,7 +488,7 @@
 
     const st = statusInfo();
     const badges = [];
-    if (table) badges.push(`<span class="badge">${icon('table', 'sm')}${esc(t('table'))} ${esc(table)}</span>`);
+    if (table && tableState !== 'invalid') badges.push(`<span class="badge">${icon('table', 'sm')}${esc(t('table'))} ${esc(table)}</span>`);
     badges.push(`<span class="badge ${st.open ? 'ok' : 'off'}"><span class="dot"></span>${esc(st.text)}</span>`);
 
     const links = [];
@@ -449,7 +573,8 @@
 
     cats.innerHTML = groups.map(({ c }) => `<button type="button" class="chip" data-cat="${esc(c.id)}">${esc(L(c.name))}</button>`).join('');
 
-    const offline = stale ? `<p class="notice info" role="status">${icon('alert')}<span>${esc(t('offline'))}</span></p>` : '';
+    const offline = (stale ? `<p class="notice info" role="status">${icon('alert')}<span>${esc(t('offline'))}</span></p>` : '')
+      + (ONLINE && tableState === 'invalid' ? `<p class="notice bad" role="alert">${icon('alert')}<span>${esc(t('badTable'))}</span></p>` : '');
     if (!M.dishes.length) {
       main.innerHTML = `${offline}<div class="state">${icon('dish')}<h2>${esc(t('emptyMenu'))}</h2><p>${esc(t('emptyMenuHint'))}</p></div>`;
     } else if (!groups.length) {
@@ -509,14 +634,28 @@
     return { count, sum, gone };
   }
 
+  const latestOrder = () => myOrders
+    .map((o) => ({ ...o, data: tracked[o.id] }))
+    .find((o) => o.data && o.data.status !== 'cancelled' && Date.now() - o.at < 12 * 60 * 60 * 1000);
+
   function renderBar() {
     const bar = $('#order-bar');
     if (!M) { bar.hidden = true; document.body.classList.remove('has-bar'); return; }
     const { count, sum } = totals();
-    bar.hidden = count === 0;
-    bar.innerHTML = `<span class="bar-left"><span class="count">${count}</span>${esc(t('order'))}${attention ? '<span class="warn-dot" aria-hidden="true"></span>' : ''}</span><span class="bar-sum">${money(sum)}</span>`;
-    bar.setAttribute('aria-label', `${t('order')}: ${count}, ${t('total')} ${money(sum)}`);
-    document.body.classList.toggle('has-bar', count > 0);
+    const last = count ? null : latestOrder();
+    bar.classList.toggle('status-bar', !!last);
+    if (count) {
+      bar.dataset.go = 'order';
+      bar.innerHTML = `<span class="bar-left"><span class="count">${count}</span>${esc(t('order'))}${attention ? '<span class="warn-dot" aria-hidden="true"></span>' : ''}</span><span class="bar-sum">${money(sum)}</span>`;
+      bar.setAttribute('aria-label', `${t('order')}: ${count}, ${t('total')} ${money(sum)}`);
+    } else if (last) {
+      bar.dataset.go = 'track:' + last.id;
+      const st = last.data.status;
+      bar.innerHTML = `<span class="bar-left">${icon('list')}${esc(t('orderNo')(last.no))}</span><span class="bar-sum st-${esc(st)}">${esc(t('statuses')[st] || st)}</span>`;
+      bar.setAttribute('aria-label', `${t('orderNo')(last.no)}: ${t('statuses')[st] || st}`);
+    }
+    bar.hidden = !count && !last;
+    document.body.classList.toggle('has-bar', !bar.hidden);
   }
 
   function remember(id) {
@@ -540,15 +679,28 @@
     if (sheet?.type === 'order') renderSheet();
   }
 
+  // Почему сейчас нельзя отправить заказ (пустая строка — можно)
+  function orderBlocker() {
+    if (!ONLINE) return t('noServer');
+    if (tableState === 'none') return t('noTable');
+    if (tableState === 'invalid') return t('badTable');
+    if (!R().ordersEnabled) return t('ordersOff');
+    if (!R().ordersWhenClosed && !SCH.status(R().schedule, R().timezone).open) return `${t('closedNoOrders')} ${statusInfo().text}.`;
+    if (lines().some((l) => !l.ok)) return t('removeSold');
+    return '';
+  }
+
   function orderSheetHtml() {
     const ls = lines();
     const out = [`<h2 class="sheet-title" id="sheet-title">${esc(t('order'))}</h2>`];
-    if (table) out.push(`<span class="table-tag">${icon('table')}${esc(t('table'))} ${esc(table)}</span>`);
+    if (table && tableState !== 'invalid') {
+      out.push(`<p class="table-line"><span>${esc(t('yourTable'))}</span><span class="table-tag">${icon('table')}${esc(t('table'))} ${esc(table)}</span></p>`);
+    }
     if (!ls.length) {
       out.push(`<div class="state">${icon('list')}<p>${esc(t('orderEmpty'))}</p></div>`);
+      out.push(myOrdersHtml());
       return out.join('');
     }
-    out.push(`<p class="waiter-card">${icon('list')}<span>${esc(t('waiter'))}</span></p>`);
     const gone = ls.filter((l) => !l.ok);
     if (gone.length) out.push(`<p class="notice bad" role="alert">${icon('alert')}<span>${esc(t('unavailableNotice')(gone.map((l) => itemName(l.id)).join(', ')))}</span></p>`);
     if (priceChanges.length) {
@@ -563,9 +715,187 @@
         <div class="o-ctl">${ok ? control(id) : '<span></span>'}
           <button type="button" class="o-remove" data-act="del" data-id="${esc(id)}">${icon('trash', 'sm')}${esc(t('removeItem'))}</button></div>
       </li>`).join('')}</ul>`);
+    if (ONLINE) {
+      out.push(`<label class="note-field"><span>${esc(t('noteLabel'))}</span>
+        <textarea id="note-input" rows="2" maxlength="300" placeholder="${esc(t('notePh'))}">${esc(note)}</textarea></label>`);
+    }
     out.push(`<div class="order-total"><span>${esc(t('total'))}</span><strong>${money(totals().sum)}</strong></div>`);
-    out.push(`<button type="button" class="btn ghost block" data-act="clear">${icon('trash', 'sm')}${esc(t('clear'))}</button>`);
+    out.push(`<button type="button" class="link-clear" data-act="clear">${icon('trash', 'sm')}${esc(t('clear'))}</button>`);
+
+    // закреплённый низ: причина, ошибка, кнопка отправки
+    const block = orderBlocker();
+    const foot = [];
+    if (block) foot.push(`<p class="notice ${tableState === 'invalid' || !ONLINE ? 'bad' : ''}" role="status">${icon('alert')}<span>${esc(block)}</span></p>`);
+    else if (tableState === 'checking') foot.push(`<p class="notice info" role="status">${icon('refresh')}<span>${esc(t('checkingTable'))}</span></p>`);
+    if (sendError) foot.push(`<p class="notice bad" role="alert">${icon('alert')}<span>${esc(sendError)}</span></p>`);
+    if (ONLINE) {
+      foot.push(`<button type="button" class="btn block send-btn" data-act="send"${block || sending ? ' disabled' : ''}>
+        ${sending ? `<span class="spinner" aria-hidden="true"></span>${esc(t('sending'))}` : `${esc(t('sendOrder'))} · <bdi dir="ltr">${money(totals().sum)}</bdi>`}</button>`);
+    }
+    out.push(`<div class="sheet-actions">${foot.join('')}</div>`);
+    out.push(myOrdersHtml());
     return out.join('');
+  }
+
+  function myOrdersHtml() {
+    const list = myOrders.filter((o) => tracked[o.id]);
+    if (!list.length) return '';
+    return `<h4>${esc(t('myOrders'))}</h4><ul class="my-orders">${list.map((o) => {
+      const st = tracked[o.id].status;
+      return `<li><button type="button" class="my-order" data-act="track" data-id="${esc(o.id)}">
+        <span><b>${esc(t('orderNo')(o.no))}</b><small>${esc(t('sentAt')(timeOf(tracked[o.id].created_at)))}</small></span>
+        <span class="st st-${esc(st)}">${esc(t('statuses')[st] || st)}</span>${icon('chevron', 'chev')}</button></li>`;
+    }).join('')}</ul>`;
+  }
+
+  const timeOf = (iso) => new Intl.DateTimeFormat(t('locale'), { hour: '2-digit', minute: '2-digit', hour12: lang === 'en' }).format(new Date(iso));
+  const STEPS = ['new', 'accepted', 'cooking', 'ready'];
+
+  function trackSheetHtml(id) {
+    const o = tracked[id];
+    const mine = myOrders.find((x) => x.id === id);
+    if (!o || !mine) return `<div class="state">${icon('alert')}<p>${esc(t('errServer'))}</p></div>`;
+    const cancelled = o.status === 'cancelled';
+    const step = STEPS.indexOf(o.status);
+    return `
+      ${justSent === id ? `<p class="sent-ok" role="status">${icon('check')}<span>${esc(t('sentTitle')(o.no))}</span></p>` : ''}
+      <h2 class="sheet-title" id="sheet-title">${esc(t('orderNo')(o.no))}</h2>
+      <p class="track-meta"><span class="table-tag">${icon('table')}${esc(t('table'))} ${esc(o.table_label)}</span><span>${esc(t('sentAt')(timeOf(o.created_at)))}</span></p>
+      <div class="track-card ${cancelled ? 'is-cancelled' : ''}" aria-live="polite">
+        <b>${esc(t('statuses')[o.status] || o.status)}</b>
+        <span>${esc(t('statusHint')[o.status] || '')}</span>
+        ${cancelled ? '' : `<ol class="steps">${STEPS.map((s, i) => `<li class="${i < step ? 'done' : i === step ? 'now' : ''}"><i></i><span>${esc(t('statuses')[s])}</span></li>`).join('')}</ol>`}
+      </div>
+      ${trackStale ? `<p class="notice info">${icon('alert')}<span>${esc(t('statusStale'))}</span></p>` : ''}
+      <ul class="order-list track-list">${(o.items || []).map((i) => `
+        <li><span class="o-name"><b>${esc(L(i.name) || i.id)}</b><small>${money(i.price)} × ${i.qty}</small></span><span class="o-sum">${money(i.price * i.qty)}</span></li>`).join('')}</ul>
+      ${o.note ? `<p class="notice info">${icon('list')}<span><b>${esc(t('note'))}:</b> ${esc(o.note)}</span></p>` : ''}
+      <div class="order-total"><span>${esc(t('total'))}</span><strong>${money(o.total)}</strong></div>
+      <button type="button" class="btn ghost block" data-act="more">${esc(t('orderMore'))}</button>`;
+  }
+
+  // ---------- Отправка заказа ----------
+  function uuid() {
+    if (crypto.randomUUID) return crypto.randomUUID();
+    const b = crypto.getRandomValues(new Uint8Array(16));
+    b[6] = (b[6] & 15) | 64; b[8] = (b[8] & 63) | 128;
+    const h = [...b].map((x) => x.toString(16).padStart(2, '0')).join('');
+    return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
+  }
+  const cartSig = () => JSON.stringify([tableToken, note.trim(), lines().map((l) => [l.id, l.n, l.d?.price]).sort()]);
+
+  async function sendOrder() {
+    if (sending || !lines().length || orderBlocker()) { renderSheet(); return; }
+    sending = true;
+    sendError = '';
+    renderSheet();
+    try {
+      // 1) свежие цены и наличие: если что-то изменилось — показываем гостю и НЕ отправляем
+      const before = JSON.stringify(lines().map((l) => [l.id, l.ok, l.d?.price]));
+      const fresh = await refreshMenu(true);
+      if (!fresh) throw Object.assign(new Error('network'), { net: true });
+      if (JSON.stringify(lines().map((l) => [l.id, l.ok, l.d?.price])) !== before) { sendError = t('errChanged'); return; }
+      if (orderBlocker()) return;
+      // 2) один ключ на одну попытку: повторное нажатие и плохой интернет не создадут второй заказ
+      const sig = cartSig();
+      if (!pendingKey || pendingKey.sig !== sig) {
+        pendingKey = { key: uuid(), sig };
+        store.set('pendingKey', pendingKey);
+      }
+      const rows = await rpc('place_order', {
+        p_table: tableToken,
+        p_items: lines().map((l) => ({ id: l.id, qty: l.n, price: l.d.price })),
+        p_note: note.trim() || null,
+        p_lang: lang,
+        p_client_key: pendingKey.key,
+      });
+      const o = Array.isArray(rows) ? rows[0] : rows;
+      if (!o?.id || !o.guest_token) throw new Error('bad_reply');
+      // 3) сервер подтвердил — только теперь говорим «отправлен»
+      myOrders = [{ id: o.id, token: o.guest_token, no: o.no, at: Date.now() }, ...myOrders.filter((x) => x.id !== o.id)].slice(0, 10);
+      tracked[o.id] = { ...o, updated_at: o.created_at };
+      store.set('myOrders', myOrders);
+      store.set('tracked', tracked);
+      order = {};
+      seen = {};
+      note = '';
+      priceChanges = [];
+      pendingKey = null;
+      ['order', 'seen', 'note', 'pendingKey'].forEach((k) => store.set(k, k === 'order' || k === 'seen' ? {} : k === 'note' ? '' : null));
+      refreshSlots();
+      justSent = o.id;
+      sheet = { type: 'track', id: o.id };
+      schedulePoll(true);
+    } catch (e) {
+      const m = String(e?.message || '');
+      if (e?.net) sendError = t('errNetwork');
+      else if (/price_changed|unavailable/.test(m)) { await refreshMenu(true); sendError = t('errChanged'); }
+      else if (/bad_table/.test(m)) { tableState = 'invalid'; table = ''; store.set('table', null); sendError = ''; }
+      else if (/closed|orders_off/.test(m)) { await refreshMenu(true); sendError = ''; }
+      else if (/too_many/.test(m)) sendError = t('errTooMany');
+      else sendError = t('errServer');
+    } finally {
+      sending = false;
+      renderHeader();
+      renderBar();
+      renderSheet();
+    }
+  }
+
+  // ---------- Статус своих заказов ----------
+  let pollTimer = null;
+  async function pollOrders() {
+    if (!ONLINE) return;
+    const recent = myOrders.filter((o) => Date.now() - o.at < 24 * 60 * 60 * 1000).slice(0, 5);
+    if (!recent.length) return;
+    let ok = true;
+    let changed = false;
+    await Promise.all(recent.map(async (o) => {
+      try {
+        const rows = await rpc('get_order', { p_id: o.id, p_token: o.token });
+        const row = Array.isArray(rows) ? rows[0] : rows;
+        if (!row) return;
+        if (JSON.stringify(tracked[o.id]) !== JSON.stringify(row)) { tracked[o.id] = row; changed = true; }
+      } catch { ok = false; }
+    }));
+    if (trackStale === ok) changed = true;
+    trackStale = !ok;
+    if (changed) {
+      store.set('tracked', tracked);
+      renderBar();
+      if (sheet?.type === 'track' || sheet?.type === 'order') renderSheet();
+    }
+  }
+  function schedulePoll(soon) {
+    clearTimeout(pollTimer);
+    if (!ONLINE || !myOrders.length) return;
+    const active = myOrders.some((o) => ['new', 'accepted', 'cooking'].includes(tracked[o.id]?.status));
+    pollTimer = setTimeout(async () => {
+      if (!document.hidden) await pollOrders();
+      schedulePoll();
+    }, soon ? 3000 : active ? 10000 : 60000);
+  }
+
+  async function checkTable() {
+    if (!ONLINE || !tableToken) { if (!tableToken && tableState !== 'invalid') tableState = 'none'; return; }
+    try {
+      const rows = await rpc('table_info', { p_token: tableToken });
+      const row = Array.isArray(rows) ? rows[0] : rows;
+      if (row?.label) {
+        table = row.label;
+        tableState = 'ok';
+        store.set('table', { token: tableToken, at: Date.now(), label: table });
+      } else {
+        table = '';
+        tableState = 'invalid';
+        store.set('table', null);
+      }
+    } catch {
+      tableState = 'unknown'; // нет связи: проверит сервер при отправке
+    }
+    renderHeader();
+    renderMenu();
+    if (sheet?.type === 'order') renderSheet();
   }
 
   // ---------- Шторка ----------
@@ -614,6 +944,7 @@
       return;
     }
 
+    if (sheet.type === 'track') { body.innerHTML = trackSheetHtml(sheet.id); return; }
     body.innerHTML = orderSheetHtml();
   }
 
@@ -633,16 +964,16 @@
     el.hidden = false;
     $('#backdrop').hidden = false;
     document.body.classList.add('locked');
-    requestAnimationFrame(() => requestAnimationFrame(() => {
-      el.classList.add('open');
-      $('#backdrop').classList.add('open');
-    }));
+    void el.offsetHeight; // зафиксировать начальное положение, чтобы анимация сработала
+    el.classList.add('open');
+    $('#backdrop').classList.add('open');
     $('#sheet-close').focus({ preventScroll: true });
   }
 
   function closeSheet() {
     if (!sheet) return;
     if (sheet.type === 'order') priceChanges = [];
+    if (sheet.type === 'track') justSent = null;
     sheet = null;
     const el = $('#sheet');
     const bd = $('#backdrop');
@@ -677,10 +1008,28 @@
     }
   }
 
+  async function rpc(name, body) {
+    const headers = { 'Content-Type': 'application/json', apikey: B.key };
+    if (String(B.key).startsWith('eyJ')) headers.Authorization = 'Bearer ' + B.key;
+    const ctl = new AbortController();
+    const timer = setTimeout(() => ctl.abort(), 20000);
+    let res;
+    try {
+      res = await fetch(`${String(B.url).replace(/\/+$/, '')}/rest/v1/rpc/${name}`, { method: 'POST', headers, body: JSON.stringify(body), signal: ctl.signal });
+    } catch {
+      throw Object.assign(new Error('network'), { net: true });
+    } finally {
+      clearTimeout(timer);
+    }
+    const data = await res.json().catch(() => null);
+    if (!res.ok) throw new Error(String(data?.message || `http_${res.status}`));
+    return data;
+  }
+
   let loading = null;
-  function refreshMenu() {
-    if (!ONLINE) return Promise.resolve();
-    if (loading) return loading;
+  function refreshMenu(force) {
+    if (!ONLINE) return Promise.resolve(false);
+    if (loading && !force) return loading;
     loading = (async () => {
       try {
         const [st, cats, dishes] = await Promise.all([
@@ -691,8 +1040,10 @@
         if (!st[0]) throw new Error('no_settings');
         stale = false;
         applyMenu(fromDb(st[0], cats, dishes));
+        return true;
       } catch {
         if (M) { if (!stale) { stale = true; renderMenu(); } } else { state = 'error'; renderAll(); }
+        return false;
       } finally {
         loading = null;
       }
@@ -755,6 +1106,13 @@
         refreshSlots();
         renderBar();
         renderSheet();
+      } else if (a === 'send') {
+        sendOrder();
+      } else if (a === 'track') {
+        openSheet({ type: 'track', id: act.dataset.id });
+        pollOrders();
+      } else if (a === 'more') {
+        closeSheet();
       } else if (a === 'retry') {
         state = 'loading';
         renderMenu();
@@ -815,7 +1173,16 @@
     }
   });
 
-  $('#order-bar').addEventListener('click', () => openSheet({ type: 'order' }));
+  $('#order-bar').addEventListener('click', () => {
+    const o = $('#order-bar').dataset.go || 'order';
+    if (o.startsWith('track:')) { openSheet({ type: 'track', id: o.slice(6) }); pollOrders(); } else openSheet({ type: 'order' });
+  });
+  document.addEventListener('input', (e) => {
+    if (e.target.id === 'note-input') {
+      note = e.target.value.slice(0, 300);
+      store.set('note', note);
+    }
+  });
   $('#backdrop').addEventListener('click', closeSheet);
   $('#sheet-close').addEventListener('click', closeSheet);
   $('#search').addEventListener('input', (e) => {
@@ -849,6 +1216,8 @@
   setInterval(() => { if (M) renderHeader(); }, 60 * 1000); // «Открыто / Закрыто» обновляется само
   if (ONLINE) {
     refreshMenu();
+    checkTable();
+    pollOrders().then(() => schedulePoll());
     setInterval(() => { if (!document.hidden) refreshMenu(); }, 60 * 1000);
     document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshMenu(); });
     window.addEventListener('online', () => refreshMenu());

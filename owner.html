@@ -10,8 +10,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Playfair+Display:wght@600;700&display=swap">
-  <link rel="stylesheet" href="styles.css?v=7">
-  <link rel="stylesheet" href="staff.css?v=7">
+  <link rel="stylesheet" href="styles.css?v=8">
+  <link rel="stylesheet" href="staff.css?v=8">
 </head>
 <body class="admin">
   <header class="a-top">
@@ -23,18 +23,22 @@
   </header>
   <nav class="a-nav" id="a-nav" hidden aria-label="Разделы">
     <div class="a-nav-in">
+      <a class="a-tab" href="#orders" data-tab="orders"><svg class="ic sm" aria-hidden="true"><use href="icons.svg#i-list"/></svg>Заказы<span class="tab-count" id="tab-count" hidden></span></a>
       <a class="a-tab" href="#menu" data-tab="menu"><svg class="ic sm" aria-hidden="true"><use href="icons.svg#i-menu"/></svg>Меню</a>
+      <a class="a-tab" href="#tables" data-tab="tables"><svg class="ic sm" aria-hidden="true"><use href="icons.svg#i-qr"/></svg>Столы и QR</a>
       <a class="a-tab" href="#restaurant" data-tab="restaurant"><svg class="ic sm" aria-hidden="true"><use href="icons.svg#i-store"/></svg>Ресторан</a>
       <a class="a-tab" href="#staff" data-tab="staff"><svg class="ic sm" aria-hidden="true"><use href="icons.svg#i-users"/></svg>Сотрудники</a>
-      <a class="a-tab" href="#qr" data-tab="qr"><svg class="ic sm" aria-hidden="true"><use href="icons.svg#i-qr"/></svg>QR-коды</a>
     </div>
   </nav>
+  <div class="a-banner" id="a-banner" hidden></div>
   <main class="a-main" id="a-main"></main>
+  <div id="print-area" aria-hidden="true"></div>
 
-  <script src="config.js?v=7"></script>
+  <script src="config.js?v=8"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
-  <script src="staff-api.js?v=7"></script>
-  <script src="staff-core.js?v=7"></script>
-  <script src="owner.js?v=7"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
+  <script src="staff-api.js?v=8"></script>
+  <script src="staff-core.js?v=8"></script>
+  <script src="owner.js?v=8"></script>
 </body>
 </html>
