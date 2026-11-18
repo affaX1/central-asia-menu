@@ -145,12 +145,12 @@
 
   // ---------- Состояние ----------
   const byId = Object.fromEntries(M.dishes.map((d) => [d.id, d]));
-  // Язык: что гость выбрал сам → язык его телефона → первый из списка.
+  // Язык: что гость выбрал сам → язык его телефона → defaultLanguage (английский).
   const LANGS = M.languages.filter((l) => T[l]);
   let lang = store.get('lang', null);
   if (!LANGS.includes(lang)) {
     const phone = (navigator.languages || [navigator.language || '']).map((l) => String(l).slice(0, 2).toLowerCase());
-    lang = phone.find((l) => LANGS.includes(l)) || LANGS[0];
+    lang = phone.find((l) => LANGS.includes(l)) || (LANGS.includes(M.defaultLanguage) ? M.defaultLanguage : LANGS[0]);
   }
   let order = store.get('order', {});
   if (!order || typeof order !== 'object') order = {};
