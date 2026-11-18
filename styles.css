@@ -466,7 +466,7 @@ button.badge.halal { cursor: pointer; }
 .track-card.is-accepted .track-icon { background: var(--ok); color: #fff; }
 .track-card.is-accepted b { color: var(--ok); }
 .track-card.is-cancelled .track-icon { background: var(--accent); color: var(--accent-ink); }
-.steps2 { list-style: none; display: flex; align-items: center; gap: 8px; margin: 12px 0 0; padding: 0; }
+.steps2 { list-style: none; display: flex; align-items: stretch; gap: 8px; margin: 12px 0 0; padding: 0; }
 .steps2 li { flex: 1; display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 12px; background: var(--surface-2); color: var(--muted); font-size: 13.5px; font-weight: 700; min-width: 0; }
 .steps2 li span { overflow-wrap: anywhere; }
 .steps2 li.done { background: var(--ok-soft); color: var(--ok); }
