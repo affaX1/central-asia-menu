@@ -15,14 +15,14 @@
 //    price       — цена числом в ринггитах: 28 или 28.90
 //    weight/unit — выход: число и 'g' (граммы), 'ml' (миллилитры) или 'pcs' (штуки)
 //    kcal        — калории (можно не писать)
-//    emoji       — картинка, пока нет фото
-//    photo       — путь к фото, например 'photos/plov.jpg' (тогда emoji не нужен)
+//    photo       — ссылка на фото блюда; пока нет — аккуратная заглушка
 //    tags        — 'hit' хит, 'new' новинка, 'spicy' острое, 'veg' без мяса
 //    ingredients — состав (можно не писать)
 //    allergens   — gluten, milk, eggs, fish, shellfish, nuts, soy, sesame
 //    hidden      — true, чтобы временно убрать блюдо из меню (стоп-лист)
 //
-//  ЦЕНЫ НИЖЕ — ПРИМЕРНЫЕ. Поменяй на свои.
+//  ВНИМАНИЕ: цены, вес и калории ниже — ПРИМЕРНЫЕ, их нужно заменить настоящими.
+//  Когда подключена база (config.js), меню берётся из базы, а этот файл — только запасной.
 // =====================================================================
 
 window.MENU = {
@@ -34,13 +34,24 @@ window.MENU = {
   restaurant: {
     name: 'Central Asia Restaurant',
     tagline: { ru: 'Узбекская кухня', uz: "O'zbek oshxonasi", en: 'Uzbek cuisine', ar: 'المطبخ الأوزبكي', ms: 'Masakan Uzbekistan' },
-    logo: '🍛',
-    currency: 'RM',        // малайзийский ринггит
-    currencyBefore: true,  // писать «RM 28», а не «28 RM»
-    open: '10:00',   // открытие, каждый день
-    close: '22:00',  // закрытие
-    address: { ru: 'ул. Примерная, 1', uz: "Namuna ko'chasi, 1", en: '1 Example St.', ar: '1 شارع المثال', ms: '1 Jalan Contoh' },
-    phone: '+60 12-000 0000',
+    logoUrl: null,            // ссылка на картинку логотипа; пока нет — показываем монограмму
+    currency: 'RM',           // малайзийский ринггит
+    currencyBefore: true,     // писать «RM 28», а не «28 RM»
+    timezone: 'Asia/Kuala_Lumpur',
+    // 7 дней с понедельника. close меньше open — работа после полуночи. closed: true — выходной.
+    schedule: [
+      { closed: false, open: '10:00', close: '22:00' },
+      { closed: false, open: '10:00', close: '22:00' },
+      { closed: false, open: '10:00', close: '22:00' },
+      { closed: false, open: '10:00', close: '22:00' },
+      { closed: false, open: '10:00', close: '22:00' },
+      { closed: false, open: '10:00', close: '22:00' },
+      { closed: false, open: '10:00', close: '22:00' },
+    ],
+    // Адрес и телефон ещё не получены от ресторана — пустые поля на сайте не показываются.
+    address: null,            // например { ru: '...', en: '...' }
+    mapUrl: null,             // точная ссылка на Google Maps; если нет — ищем по адресу
+    phone: '',
     footer: {
       ru: 'Цены и наличие блюд уточняйте у официанта.',
       uz: "Narxlar va taomlar mavjudligini ofitsiantdan so'rang.",
@@ -51,20 +62,20 @@ window.MENU = {
   },
 
   categories: [
-    { id: 'plov', emoji: '🍛', hue: 38, name: { ru: 'Плов', uz: 'Palov', en: 'Plov', ar: 'البلوف', ms: 'Plov' } },
-    { id: 'soups', emoji: '🍲', hue: 25, name: { ru: 'Супы', uz: "Sho'rvalar", en: 'Soups', ar: 'الشوربات', ms: 'Sup' } },
-    { id: 'mains', emoji: '🥟', hue: 15, name: { ru: 'Горячее', uz: 'Issiq taomlar', en: 'Mains', ar: 'الأطباق الرئيسية', ms: 'Hidangan Utama' } },
-    { id: 'grill', emoji: '🍢', hue: 5, name: { ru: 'Шашлык', uz: 'Shashlik', en: 'Grill', ar: 'المشويات', ms: 'Panggang' } },
-    { id: 'bakery', emoji: '🫓', hue: 45, name: { ru: 'Самса и лепёшки', uz: 'Somsa va non', en: 'Samsa & bread', ar: 'السمسة والخبز', ms: 'Samsa & Roti' } },
-    { id: 'salads', emoji: '🥗', hue: 100, name: { ru: 'Салаты', uz: 'Salatlar', en: 'Salads', ar: 'السلطات', ms: 'Salad' } },
-    { id: 'desserts', emoji: '🍯', hue: 330, name: { ru: 'Сладкое', uz: 'Shirinliklar', en: 'Desserts', ar: 'الحلويات', ms: 'Pencuci Mulut' } },
-    { id: 'drinks', emoji: '🍵', hue: 160, name: { ru: 'Чай и напитки', uz: 'Choy va ichimliklar', en: 'Tea & drinks', ar: 'الشاي والمشروبات', ms: 'Teh & Minuman' } },
+    { id: 'plov', name: { ru: 'Плов', uz: 'Palov', en: 'Plov', ar: 'البلوف', ms: 'Plov' } },
+    { id: 'soups', name: { ru: 'Супы', uz: "Sho'rvalar", en: 'Soups', ar: 'الشوربات', ms: 'Sup' } },
+    { id: 'mains', name: { ru: 'Горячее', uz: 'Issiq taomlar', en: 'Mains', ar: 'الأطباق الرئيسية', ms: 'Hidangan Utama' } },
+    { id: 'grill', name: { ru: 'Шашлык', uz: 'Shashlik', en: 'Grill', ar: 'المشويات', ms: 'Panggang' } },
+    { id: 'bakery', name: { ru: 'Самса и лепёшки', uz: 'Somsa va non', en: 'Samsa & bread', ar: 'السمسة والخبز', ms: 'Samsa & Roti' } },
+    { id: 'salads', name: { ru: 'Салаты', uz: 'Salatlar', en: 'Salads', ar: 'السلطات', ms: 'Salad' } },
+    { id: 'desserts', name: { ru: 'Сладкое', uz: 'Shirinliklar', en: 'Desserts', ar: 'الحلويات', ms: 'Pencuci Mulut' } },
+    { id: 'drinks', name: { ru: 'Чай и напитки', uz: 'Choy va ichimliklar', en: 'Tea & drinks', ar: 'الشاي والمشروبات', ms: 'Teh & Minuman' } },
   ],
 
   dishes: [
     // ---------- Плов ----------
     {
-      id: 'plov-tashkent', category: 'plov', price: 28, weight: 350, unit: 'g', kcal: 720, emoji: '🍛', tags: ['hit'],
+      id: 'plov-tashkent', category: 'plov', price: 28, weight: 350, unit: 'g', kcal: 720, tags: ['hit'],
       name: { ru: 'Ташкентский плов', uz: 'Toshkent palovi', en: 'Tashkent plov', ar: 'بلوف طشقند', ms: 'Plov Tashkent' },
       desc: {
         ru: 'Рис девзира, баранина, жёлтая морковь, нут и перепелиное яйцо',
@@ -83,7 +94,7 @@ window.MENU = {
       allergens: ['eggs'],
     },
     {
-      id: 'plov-samarkand', category: 'plov', price: 28, weight: 350, unit: 'g', kcal: 700, emoji: '🍚',
+      id: 'plov-samarkand', category: 'plov', price: 28, weight: 350, unit: 'g', kcal: 700,
       name: { ru: 'Самаркандский плов', uz: 'Samarqand palovi', en: 'Samarkand plov', ar: 'بلوف سمرقند', ms: 'Plov Samarkand' },
       desc: {
         ru: 'Готовится слоями: морковь и мясо сверху, рис не перемешивают',
@@ -94,7 +105,7 @@ window.MENU = {
       },
     },
     {
-      id: 'plov-wedding', category: 'plov', price: 35, weight: 380, unit: 'g', kcal: 790, emoji: '🍛', tags: ['new'],
+      id: 'plov-wedding', category: 'plov', price: 35, weight: 380, unit: 'g', kcal: 790, tags: ['new'],
       name: { ru: 'Свадебный плов с кази', uz: "Qazili to'y oshi", en: 'Wedding plov with kazy', ar: 'بلوف الأعراس مع القازي', ms: 'Plov Perkahwinan dengan Kazy' },
       desc: {
         ru: 'Праздничный плов с конской колбасой кази, изюмом и нутом',
@@ -107,7 +118,7 @@ window.MENU = {
 
     // ---------- Супы ----------
     {
-      id: 'lagman-soup', category: 'soups', price: 24, weight: 400, unit: 'g', kcal: 480, emoji: '🍜', tags: ['hit'],
+      id: 'lagman-soup', category: 'soups', price: 24, weight: 400, unit: 'g', kcal: 480, tags: ['hit'],
       name: { ru: 'Лагман', uz: "Lag'mon", en: 'Lagman', ar: 'لغمان', ms: 'Lagman' },
       desc: {
         ru: 'Тянутая вручную лапша, говядина, овощи и наваристый бульон',
@@ -119,7 +130,7 @@ window.MENU = {
       allergens: ['gluten'],
     },
     {
-      id: 'shurpa', category: 'soups', price: 24, weight: 400, unit: 'g', kcal: 390, emoji: '🍲',
+      id: 'shurpa', category: 'soups', price: 24, weight: 400, unit: 'g', kcal: 390,
       name: { ru: 'Шурпа', uz: "Sho'rva", en: 'Shurpa', ar: 'شوربا', ms: 'Shurpa' },
       desc: {
         ru: 'Прозрачный бульон из баранины с картофелем, морковью и зеленью',
@@ -130,7 +141,7 @@ window.MENU = {
       },
     },
     {
-      id: 'mastava', category: 'soups', price: 20, weight: 400, unit: 'g', kcal: 360, emoji: '🥣',
+      id: 'mastava', category: 'soups', price: 20, weight: 400, unit: 'g', kcal: 360,
       name: { ru: 'Мастава', uz: 'Mastava', en: 'Mastava', ar: 'ماستافا', ms: 'Mastava' },
       desc: {
         ru: 'Рисовый суп с мясом и овощами, подаётся с катыком',
@@ -144,7 +155,7 @@ window.MENU = {
 
     // ---------- Горячее ----------
     {
-      id: 'manty', category: 'mains', price: 24, weight: 4, unit: 'pcs', kcal: 640, emoji: '🥟', tags: ['hit'],
+      id: 'manty', category: 'mains', price: 24, weight: 4, unit: 'pcs', kcal: 640, tags: ['hit'],
       name: { ru: 'Манты с бараниной', uz: "Qo'y go'shtli manti", en: 'Manty with lamb', ar: 'مانتي بلحم الضأن', ms: 'Manty Kambing' },
       desc: {
         ru: 'На пару, с рубленой бараниной и луком. Подаются со сметаной',
@@ -156,7 +167,7 @@ window.MENU = {
       allergens: ['gluten', 'milk'],
     },
     {
-      id: 'manty-pumpkin', category: 'mains', price: 20, weight: 4, unit: 'pcs', kcal: 420, emoji: '🥟', tags: ['veg'],
+      id: 'manty-pumpkin', category: 'mains', price: 20, weight: 4, unit: 'pcs', kcal: 420, tags: ['veg'],
       name: { ru: 'Манты с тыквой', uz: 'Qovoqli manti', en: 'Manty with pumpkin', ar: 'مانتي باليقطين', ms: 'Manty Labu' },
       desc: {
         ru: 'Сладковатая тыква с луком, на пару',
@@ -168,7 +179,7 @@ window.MENU = {
       allergens: ['gluten'],
     },
     {
-      id: 'chuchvara', category: 'mains', price: 20, weight: 300, unit: 'g', kcal: 560, emoji: '🥟',
+      id: 'chuchvara', category: 'mains', price: 20, weight: 300, unit: 'g', kcal: 560,
       name: { ru: 'Чучвара', uz: 'Chuchvara', en: 'Chuchvara', ar: 'تشوتشفارا', ms: 'Chuchvara' },
       desc: {
         ru: 'Маленькие узбекские пельмени в бульоне или жареные',
@@ -180,7 +191,7 @@ window.MENU = {
       allergens: ['gluten', 'eggs'],
     },
     {
-      id: 'guiru-lagman', category: 'mains', price: 26, weight: 380, unit: 'g', kcal: 620, emoji: '🍝', tags: ['spicy'],
+      id: 'guiru-lagman', category: 'mains', price: 26, weight: 380, unit: 'g', kcal: 620, tags: ['spicy'],
       name: { ru: 'Гуйру лагман', uz: "Qovurma lag'mon", en: 'Guiru lagman', ar: 'لغمان مقلي', ms: 'Lagman Goreng' },
       desc: {
         ru: 'Жареная лапша с говядиной, перцем и овощами',
@@ -192,7 +203,7 @@ window.MENU = {
       allergens: ['gluten'],
     },
     {
-      id: 'dimlama', category: 'mains', price: 28, weight: 450, unit: 'g', kcal: 540, emoji: '🥘',
+      id: 'dimlama', category: 'mains', price: 28, weight: 450, unit: 'g', kcal: 540,
       name: { ru: 'Димляма', uz: 'Dimlama', en: 'Dimlama', ar: 'ديملاما', ms: 'Dimlama' },
       desc: {
         ru: 'Мясо, томлённое с картофелем, капустой и овощами',
@@ -203,7 +214,7 @@ window.MENU = {
       },
     },
     {
-      id: 'kazan-kebab', category: 'mains', price: 38, weight: 350, unit: 'g', kcal: 780, emoji: '🍖',
+      id: 'kazan-kebab', category: 'mains', price: 38, weight: 350, unit: 'g', kcal: 780,
       name: { ru: 'Казан-кебаб', uz: 'Qozon kabob', en: 'Kazan kebab', ar: 'كازان كباب', ms: 'Kazan Kebab' },
       desc: {
         ru: 'Баранина на косточке с картофелем, обжаренные в казане',
@@ -216,7 +227,7 @@ window.MENU = {
 
     // ---------- Шашлык ----------
     {
-      id: 'shashlik-lamb', category: 'grill', price: 30, weight: 200, unit: 'g', kcal: 520, emoji: '🍢', tags: ['hit'],
+      id: 'shashlik-lamb', category: 'grill', price: 30, weight: 200, unit: 'g', kcal: 520, tags: ['hit'],
       name: { ru: 'Шашлык из баранины', uz: "Qo'y go'shti shashlik", en: 'Lamb shashlik', ar: 'شاشليك لحم ضأن', ms: 'Shashlik Kambing' },
       desc: {
         ru: 'На углях, с маринованным луком и лепёшкой',
@@ -228,7 +239,7 @@ window.MENU = {
       allergens: ['gluten'],
     },
     {
-      id: 'lyulya', category: 'grill', price: 26, weight: 200, unit: 'g', kcal: 480, emoji: '🍢',
+      id: 'lyulya', category: 'grill', price: 26, weight: 200, unit: 'g', kcal: 480,
       name: { ru: 'Люля-кебаб', uz: 'Lula kabob', en: 'Lyulya kebab', ar: 'لوليا كباب', ms: 'Lyulya Kebab' },
       desc: {
         ru: 'Рубленая баранина с курдючным жиром и специями',
@@ -239,7 +250,7 @@ window.MENU = {
       },
     },
     {
-      id: 'shashlik-chicken', category: 'grill', price: 20, weight: 200, unit: 'g', kcal: 360, emoji: '🍗',
+      id: 'shashlik-chicken', category: 'grill', price: 20, weight: 200, unit: 'g', kcal: 360,
       name: { ru: 'Шашлык из курицы', uz: 'Tovuq shashlik', en: 'Chicken shashlik', ar: 'شاشليك دجاج', ms: 'Shashlik Ayam' },
       desc: {
         ru: 'Бедро в маринаде, на углях',
@@ -250,7 +261,7 @@ window.MENU = {
       },
     },
     {
-      id: 'jigar', category: 'grill', price: 22, weight: 200, unit: 'g', kcal: 330, emoji: '🍢',
+      id: 'jigar', category: 'grill', price: 22, weight: 200, unit: 'g', kcal: 330,
       name: { ru: 'Жигар (печень)', uz: 'Jigar kabob', en: 'Jigar (liver)', ar: 'جيغار (كبدة)', ms: 'Jigar (Hati)' },
       desc: {
         ru: 'Баранья печень на углях с курдюком',
@@ -263,7 +274,7 @@ window.MENU = {
 
     // ---------- Самса и лепёшки ----------
     {
-      id: 'samsa-meat', category: 'bakery', price: 9, weight: 1, unit: 'pcs', kcal: 380, emoji: '🥟', tags: ['hit'],
+      id: 'samsa-meat', category: 'bakery', price: 9, weight: 1, unit: 'pcs', kcal: 380, tags: ['hit'],
       name: { ru: 'Самса с бараниной', uz: "Qo'y go'shtli somsa", en: 'Lamb samsa', ar: 'سمسة بلحم الضأن', ms: 'Samsa Kambing' },
       desc: {
         ru: 'Из тандыра, слоёное тесто, сочная начинка',
@@ -275,7 +286,7 @@ window.MENU = {
       allergens: ['gluten', 'sesame'],
     },
     {
-      id: 'samsa-chicken', category: 'bakery', price: 8, weight: 1, unit: 'pcs', kcal: 340, emoji: '🥟',
+      id: 'samsa-chicken', category: 'bakery', price: 8, weight: 1, unit: 'pcs', kcal: 340,
       name: { ru: 'Самса с курицей', uz: "Tovuq go'shtli somsa", en: 'Chicken samsa', ar: 'سمسة بالدجاج', ms: 'Samsa Ayam' },
       desc: {
         ru: 'Из тандыра, с курицей и луком',
@@ -287,7 +298,7 @@ window.MENU = {
       allergens: ['gluten', 'sesame'],
     },
     {
-      id: 'samsa-pumpkin', category: 'bakery', price: 7, weight: 1, unit: 'pcs', kcal: 260, emoji: '🥟', tags: ['veg'],
+      id: 'samsa-pumpkin', category: 'bakery', price: 7, weight: 1, unit: 'pcs', kcal: 260, tags: ['veg'],
       name: { ru: 'Самса с тыквой', uz: 'Qovoqli somsa', en: 'Pumpkin samsa', ar: 'سمسة باليقطين', ms: 'Samsa Labu' },
       desc: {
         ru: 'Из тандыра, с тыквой и луком',
@@ -299,7 +310,7 @@ window.MENU = {
       allergens: ['gluten', 'sesame'],
     },
     {
-      id: 'non', category: 'bakery', price: 5, weight: 1, unit: 'pcs', emoji: '🫓', tags: ['veg'],
+      id: 'non', category: 'bakery', price: 5, weight: 1, unit: 'pcs', tags: ['veg'],
       name: { ru: 'Лепёшка тандырная', uz: 'Tandir non', en: 'Tandoor flatbread', ar: 'خبز التنور', ms: 'Roti Tandoor' },
       desc: {
         ru: 'Горячая, с кунжутом и чернушкой',
@@ -313,7 +324,7 @@ window.MENU = {
 
     // ---------- Салаты ----------
     {
-      id: 'achichuk', category: 'salads', price: 10, weight: 200, unit: 'g', kcal: 90, emoji: '🍅', tags: ['veg'],
+      id: 'achichuk', category: 'salads', price: 10, weight: 200, unit: 'g', kcal: 90, tags: ['veg'],
       name: { ru: 'Ачичук', uz: 'Achchiq-chuchuk', en: 'Achichuk', ar: 'أتشيتشوك', ms: 'Achichuk' },
       desc: {
         ru: 'Томаты, сладкий лук и острый перец — лучшая пара к плову',
@@ -324,7 +335,7 @@ window.MENU = {
       },
     },
     {
-      id: 'tashkent-salad', category: 'salads', price: 18, weight: 220, unit: 'g', kcal: 310, emoji: '🥗',
+      id: 'tashkent-salad', category: 'salads', price: 18, weight: 220, unit: 'g', kcal: 310,
       name: { ru: 'Салат «Ташкент»', uz: '«Toshkent» salati', en: 'Tashkent salad', ar: 'سلطة طشقند', ms: 'Salad Tashkent' },
       desc: {
         ru: 'Зелёная редька, отварная говядина, жареный лук и яйцо',
@@ -336,7 +347,7 @@ window.MENU = {
       allergens: ['eggs'],
     },
     {
-      id: 'fresh-veg', category: 'salads', price: 12, weight: 250, unit: 'g', kcal: 70, emoji: '🥒', tags: ['veg'],
+      id: 'fresh-veg', category: 'salads', price: 12, weight: 250, unit: 'g', kcal: 70, tags: ['veg'],
       name: { ru: 'Свежие овощи с зеленью', uz: "Ko'katli yangi sabzavotlar", en: 'Fresh vegetables & herbs', ar: 'خضار طازجة مع الأعشاب', ms: 'Sayur Segar & Herba' },
       desc: {
         ru: 'Огурцы, томаты, перец, редис, зелень',
@@ -349,7 +360,7 @@ window.MENU = {
 
     // ---------- Сладкое ----------
     {
-      id: 'chak-chak', category: 'desserts', price: 14, weight: 150, unit: 'g', kcal: 520, emoji: '🍯', tags: ['veg'],
+      id: 'chak-chak', category: 'desserts', price: 14, weight: 150, unit: 'g', kcal: 520, tags: ['veg'],
       name: { ru: 'Чак-чак', uz: 'Chak-chak', en: 'Chak-chak', ar: 'تشاك تشاك', ms: 'Chak-chak' },
       desc: {
         ru: 'Хрустящее тесто в медовом сиропе',
@@ -361,7 +372,7 @@ window.MENU = {
       allergens: ['gluten', 'eggs'],
     },
     {
-      id: 'pakhlava', category: 'desserts', price: 16, weight: 120, unit: 'g', kcal: 480, emoji: '🥮', tags: ['hit', 'veg'],
+      id: 'pakhlava', category: 'desserts', price: 16, weight: 120, unit: 'g', kcal: 480, tags: ['hit', 'veg'],
       name: { ru: 'Пахлава', uz: 'Pahlava', en: 'Pakhlava', ar: 'بقلاوة', ms: 'Baklava' },
       desc: {
         ru: 'Слоёная, с грецким орехом и мёдом',
@@ -373,7 +384,7 @@ window.MENU = {
       allergens: ['gluten', 'nuts', 'milk'],
     },
     {
-      id: 'nishalda', category: 'desserts', price: 12, weight: 120, unit: 'g', kcal: 280, emoji: '🍮', tags: ['veg'],
+      id: 'nishalda', category: 'desserts', price: 12, weight: 120, unit: 'g', kcal: 280, tags: ['veg'],
       name: { ru: 'Нишалда', uz: 'Nisholda', en: 'Nishalda', ar: 'نيشالدا', ms: 'Nishalda' },
       desc: {
         ru: 'Воздушная белая сладость из белков и сахара',
@@ -387,7 +398,7 @@ window.MENU = {
 
     // ---------- Чай и напитки ----------
     {
-      id: 'green-tea', category: 'drinks', price: 10, weight: 800, unit: 'ml', emoji: '🍵', tags: ['hit'],
+      id: 'green-tea', category: 'drinks', price: 10, weight: 800, unit: 'ml', tags: ['hit'],
       name: { ru: 'Зелёный чай (чайник)', uz: "Ko'k choy (choynak)", en: 'Green tea (pot)', ar: 'شاي أخضر (إبريق)', ms: 'Teh Hijau (seteko)' },
       desc: {
         ru: 'Классический кок-чой к плову',
@@ -398,7 +409,7 @@ window.MENU = {
       },
     },
     {
-      id: 'black-tea', category: 'drinks', price: 10, weight: 800, unit: 'ml', emoji: '🫖',
+      id: 'black-tea', category: 'drinks', price: 10, weight: 800, unit: 'ml',
       name: { ru: 'Чёрный чай с лимоном (чайник)', uz: 'Limonli qora choy (choynak)', en: 'Black tea with lemon (pot)', ar: 'شاي أسود بالليمون (إبريق)', ms: 'Teh Hitam dengan Lemon (seteko)' },
       desc: {
         ru: 'Подаётся с сахаром и лимоном',
@@ -409,7 +420,7 @@ window.MENU = {
       },
     },
     {
-      id: 'kompot', category: 'drinks', price: 9, weight: 400, unit: 'ml', kcal: 120, emoji: '🍹',
+      id: 'kompot', category: 'drinks', price: 9, weight: 400, unit: 'ml', kcal: 120,
       name: { ru: 'Компот из сухофруктов', uz: 'Quruq meva kompoti', en: 'Dried-fruit kompot', ar: 'كومبوت الفواكه المجففة', ms: 'Kompot Buah Kering' },
       desc: {
         ru: 'Курага, изюм, яблоко',
@@ -420,7 +431,7 @@ window.MENU = {
       },
     },
     {
-      id: 'ayran', category: 'drinks', price: 8, weight: 300, unit: 'ml', kcal: 100, emoji: '🥛',
+      id: 'ayran', category: 'drinks', price: 8, weight: 300, unit: 'ml', kcal: 100,
       name: { ru: 'Айран', uz: 'Ayron', en: 'Ayran', ar: 'عيران', ms: 'Ayran' },
       desc: {
         ru: 'Холодный, с зеленью',

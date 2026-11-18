@@ -1,0 +1,11 @@
+{
+  "name": "central-asia-menu",
+  "private": true,
+  "description": "Электронное меню ресторана: гости, официанты, владелец.",
+  "scripts": {
+    "test": "node --test tests/ && sh tools/test-db.sh",
+    "test:ui": "node --test tests/",
+    "test:db": "sh tools/test-db.sh",
+    "seed": "node tools/make-seed.js"
+  }
+}

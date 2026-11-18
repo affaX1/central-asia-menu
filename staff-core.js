@@ -1,0 +1,278 @@
+// =====================================================================
+//  Общее для панели официанта и панели владельца:
+//  вход, регистрация по приглашению, экраны «нет доступа», шапка, помощники.
+//  Это только интерфейс: права на чтение и изменение проверяет база.
+// =====================================================================
+(() => {
+  'use strict';
+
+  const $ = (s) => document.querySelector(s);
+  const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+  const icon = (id, cls = '') => `<svg class="ic ${cls}" aria-hidden="true"><use href="icons.svg#i-${id}"/></svg>`;
+
+  // тема как у меню гостя
+  try {
+    const th = JSON.parse(localStorage.getItem('menu:theme') || 'null');
+    document.documentElement.dataset.theme = th || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+  } catch { /* светлая */ }
+
+  const tr = (o) => (o == null ? '' : typeof o === 'string' ? o : o.ru || o.en || Object.values(o).find(Boolean) || '');
+  let settings = null;
+  const money = (n) => {
+    const v = Math.round(Number(n || 0) * 100) / 100;
+    const num = new Intl.NumberFormat('ru-RU', { minimumFractionDigits: Number.isInteger(v) ? 0 : 2, maximumFractionDigits: 2 }).format(v);
+    const c = settings?.currency || '';
+    return settings?.currency_before ? `${c} ${num}` : `${num} ${c}`;
+  };
+  const unitLabel = { g: 'г', ml: 'мл', pcs: 'шт.' };
+
+  // ---------- всплывашка ----------
+  let toastTimer = null;
+  function toast(msg, bad) {
+    let el = $('#toast');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'toast';
+      el.setAttribute('role', 'status');
+      el.setAttribute('aria-live', 'polite');
+      document.body.appendChild(el);
+    }
+    el.textContent = msg;
+    el.className = `toast ${bad ? 'bad' : 'good'} show`;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { el.className = el.className.replace(' show', ''); }, 3600);
+  }
+
+  // понятные тексты ошибок
+  function errText(e) {
+    const m = String(e?.message || e || '');
+    if (/invalid login|invalid credentials/i.test(m)) return 'Неверный email или пароль.';
+    if (/email not confirmed/i.test(m)) return 'Email ещё не подтверждён — откройте ссылку из письма.';
+    if (/already registered|already exists/i.test(m)) return 'Этот email уже зарегистрирован — войдите.';
+    if (/password/i.test(m) && /(least|short|weak|characters)/i.test(m)) return 'Пароль слишком простой: минимум 8 символов.';
+    if (/rate limit|too many/i.test(m)) return 'Слишком много попыток. Подождите минуту.';
+    if (/last_owner/.test(m)) return 'Нельзя: это единственный владелец.';
+    if (/\bself\b/.test(m)) return 'Себя отключить, понизить или удалить нельзя.';
+    if (/bad_email/.test(m)) return 'Проверьте email.';
+    if (/bad_timezone/.test(m)) return 'Неизвестный часовой пояс.';
+    if (/forbidden|row-level security|permission denied/i.test(m)) return 'Нет прав на это действие.';
+    if (/foreign key|violates foreign/i.test(m)) return 'Нельзя удалить категорию, пока в ней есть блюда.';
+    if (/duplicate key/i.test(m)) return 'Такой код уже занят.';
+    if (/check constraint/i.test(m)) return 'Проверьте поля: что-то заполнено неверно.';
+    if (/payload too large|exceeded the maximum|too large/i.test(m)) return 'Файл слишком большой.';
+    if (/mime|invalid.*type/i.test(m)) return 'Этот формат картинки не подходит: нужен JPG, PNG или WebP.';
+    if (/fetch|network|failed to|load failed/i.test(m)) return 'Нет связи. Проверьте интернет.';
+    return 'Не получилось: ' + m.slice(0, 140);
+  }
+
+  // ---------- вход ----------
+  const api = window.makeStaffApi?.() || null;
+  let me = null;
+  let opts = null;
+
+  function renderUser() {
+    const box = $('#a-user');
+    if (!box) return;
+    box.hidden = !me;
+    if (!me) return;
+    const role = me.role === 'owner' ? 'владелец' : me.role === 'waiter' ? 'официант' : 'без доступа';
+    box.innerHTML = `<span class="a-who"><b>${esc(me.name || me.email)}</b><small>${esc(role)}</small></span>
+      <button type="button" class="pill" id="logout-btn">${icon('logout', 'sm')}Выйти</button>`;
+  }
+
+  function screen(html) {
+    $('#a-nav')?.setAttribute('hidden', '');
+    $('#a-main').innerHTML = html;
+    renderUser();
+  }
+
+  function setupScreen() {
+    screen(`<div class="a-card">${icon('lock', 'lg')}
+      <h2>Сервер ещё не подключён</h2>
+      <p>Меню для гостей работает, но панели сотрудников без сервера не открываются: аккаунты и права хранятся на сервере.</p>
+      <p>Как подключить — по шагам в файле <b>SETUP.md</b>.</p>
+    </div>`);
+  }
+
+  function authScreen(mode = 'login', err = '', info = '') {
+    const reg = mode === 'register';
+    const reset = mode === 'reset';
+    screen(`<form class="a-card" id="auth-form" data-mode="${mode}" novalidate>
+      ${icon('lock', 'lg')}
+      <h2>${reg ? 'Регистрация сотрудника' : reset ? 'Восстановить пароль' : 'Вход для сотрудников'}</h2>
+      <p>${reg ? 'Регистрируйтесь на тот email, который пригласил владелец. После регистрации подтвердите email по ссылке из письма.'
+        : reset ? 'Пришлём письмо со ссылкой для нового пароля.'
+          : 'Гостям вход не нужен — меню открывается по QR-коду на столе.'}</p>
+      ${reg ? '<label class="field"><span>Ваше имя</span><input name="name" type="text" maxlength="60" autocomplete="name" required></label>' : ''}
+      <label class="field"><span>Email</span><input name="email" type="email" autocomplete="username" inputmode="email" required></label>
+      ${reset ? '' : `<label class="field"><span>Пароль${reg ? ' (минимум 8 символов)' : ''}</span>
+        <input name="password" type="password" minlength="${reg ? 8 : 1}" autocomplete="${reg ? 'new-password' : 'current-password'}" required></label>`}
+      ${err ? `<p class="notice bad" role="alert">${icon('alert')}<span>${esc(err)}</span></p>` : ''}
+      ${info ? `<p class="notice info" role="status">${icon('mail')}<span>${esc(info)}</span></p>` : ''}
+      <button class="btn block" type="submit">${reg ? 'Зарегистрироваться' : reset ? 'Отправить письмо' : 'Войти'}</button>
+      <div class="a-links">
+        ${mode !== 'login' ? '<button class="link-btn" type="button" data-auth="login">Уже есть аккаунт — войти</button>' : ''}
+        ${mode !== 'register' ? '<button class="link-btn" type="button" data-auth="register">Меня пригласили — зарегистрироваться</button>' : ''}
+        ${mode === 'login' ? '<button class="link-btn" type="button" data-auth="reset">Забыли пароль?</button>' : ''}
+      </div>
+    </form>`);
+  }
+
+  function noAccessScreen(kind) {
+    const text = {
+      unconfirmed: ['Подтвердите email', 'Мы отправили письмо со ссылкой. Откройте её, потом нажмите «Проверить ещё раз».'],
+      uninvited: ['Нет приглашения', 'Этот email не приглашён. Попросите владельца пригласить именно этот адрес в разделе «Сотрудники», затем нажмите «Проверить ещё раз».'],
+      disabled: ['Доступ отключён', 'Владелец отключил доступ этому аккаунту. Если это ошибка — обратитесь к владельцу.'],
+      owner: ['Только для владельца', 'Вы вошли как официант. Эта страница — для владельца ресторана.'],
+    }[kind];
+    screen(`<div class="a-card">${icon('lock', 'lg')}
+      <h2>${esc(text[0])}</h2><p>${esc(me?.email || '')}</p><p>${esc(text[1])}</p>
+      ${kind === 'owner' ? '<a class="btn block" href="waiter.html">Открыть меню для официанта</a>'
+        : '<button class="btn block" type="button" data-auth="recheck">Проверить ещё раз</button>'}
+    </div>`);
+  }
+
+  async function route() {
+    if (!api) { setupScreen(); return; }
+    screen('<p class="a-empty">Загрузка…</p>');
+    try {
+      const s = await api.session();
+      if (!s) { me = null; authScreen(); return; }
+      const w = await api.whoami();
+      if (!w) { me = null; authScreen(); return; }
+      me = { id: w.user_id, email: w.email, name: w.name, role: w.role, active: w.active };
+      if (!w.email_confirmed) { noAccessScreen('unconfirmed'); return; }
+      if (!w.role) { noAccessScreen('uninvited'); return; }
+      if (!w.active) { noAccessScreen('disabled'); return; }
+      if (opts.need === 'owner' && w.role !== 'owner') { noAccessScreen('owner'); return; }
+      settings = await api.settings();
+      renderUser();
+      $('#a-nav')?.removeAttribute('hidden');
+      $('#a-main').innerHTML = '';
+      await opts.onReady({ api, me, settings });
+    } catch (e) {
+      authScreen('login', errText(e));
+    }
+  }
+
+  document.addEventListener('submit', async (e) => {
+    if (e.target.id !== 'auth-form') return;
+    e.preventDefault();
+    const f = new FormData(e.target);
+    const mode = e.target.dataset.mode;
+    const email = String(f.get('email') || '').trim().toLowerCase();
+    const password = String(f.get('password') || '');
+    const name = String(f.get('name') || '').trim();
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { authScreen(mode, 'Проверьте email.'); return; }
+    if (mode === 'register' && name.length < 2) { authScreen(mode, 'Напишите ваше имя.'); return; }
+    if (mode === 'register' && password.length < 8) { authScreen(mode, 'Пароль — минимум 8 символов.'); return; }
+    if (mode === 'login' && !password) { authScreen(mode, 'Введите пароль.'); return; }
+    const btn = e.target.querySelector('[type="submit"]');
+    btn.disabled = true;
+    btn.textContent = 'Подождите…';
+    try {
+      if (mode === 'reset') {
+        await api.resetPassword(email);
+        authScreen('login', '', 'Если такой аккаунт есть, письмо уже отправлено. Откройте ссылку из письма.');
+        return;
+      }
+      if (mode === 'register') {
+        const r = await api.signUp(email, password, name);
+        if (r.needsEmailConfirm) {
+          authScreen('login', '', `Письмо отправлено на ${email}. Откройте ссылку из письма, потом войдите здесь.`);
+          return;
+        }
+      } else {
+        await api.signIn(email, password);
+      }
+      route();
+    } catch (err) {
+      authScreen(mode, errText(err));
+    }
+  });
+
+  document.addEventListener('click', async (e) => {
+    const a = e.target.closest('[data-auth]');
+    if (a) {
+      if (a.dataset.auth === 'recheck') route(); else authScreen(a.dataset.auth);
+      return;
+    }
+    if (e.target.closest('#logout-btn')) {
+      opts?.onLogout?.();
+      try { await api.signOut(); } catch { /* всё равно выходим */ }
+      me = null;
+      settings = null;
+      authScreen();
+    }
+  });
+
+  // ---------- всплывающее окно-форма ----------
+  let modalClose = null;
+  function modal(html, { onClose } = {}) {
+    closeModal();
+    const back = document.createElement('div');
+    back.className = 'modal-back';
+    back.innerHTML = `<div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <button type="button" class="sheet-close" data-modal-close aria-label="Закрыть">${icon('x')}</button>${html}</div>`;
+    document.body.appendChild(back);
+    document.body.classList.add('locked');
+    const last = document.activeElement;
+    back.querySelector('input, select, textarea, button:not([data-modal-close])')?.focus({ preventScroll: true });
+    const onKey = (ev) => { if (ev.key === 'Escape') closeModal(); };
+    document.addEventListener('keydown', onKey);
+    back.addEventListener('click', (ev) => { if (ev.target === back || ev.target.closest('[data-modal-close]')) closeModal(); });
+    modalClose = () => {
+      document.removeEventListener('keydown', onKey);
+      back.remove();
+      document.body.classList.remove('locked');
+      onClose?.();
+      if (last && document.contains(last)) last.focus({ preventScroll: true });
+    };
+    return back.querySelector('.modal');
+  }
+  function closeModal() { const f = modalClose; modalClose = null; f?.(); }
+
+  // ---------- картинки: проверка, обрезка, сжатие ----------
+  // Возвращает JPEG ровно w×h (обрезка по центру), до ~3 МБ. Принимает JPG, PNG, WebP.
+  async function processImage(file, w, h) {
+    if (!file) throw new Error('Файл не выбран.');
+    if (!/^image\/(jpeg|png|webp)$/.test(file.type)) throw new Error('Нужен JPG, PNG или WebP. Фото с iPhone в формате HEIC сначала сохраните как JPG.');
+    if (file.size > 20 * 1024 * 1024) throw new Error('Файл больше 20 МБ — выберите поменьше.');
+    let src;
+    try {
+      src = await createImageBitmap(file);
+    } catch {
+      src = await new Promise((res, rej) => {
+        const img = new Image();
+        img.onload = () => res(img);
+        img.onerror = () => rej(new Error('Не получилось открыть картинку — возможно, файл повреждён.'));
+        img.src = URL.createObjectURL(file);
+      });
+    }
+    const sw = src.width;
+    const sh = src.height;
+    if (sw < 300 || sh < 300) throw new Error('Картинка слишком маленькая: нужно хотя бы 300×300 точек.');
+    const scale = Math.max(w / sw, h / sh);
+    const cw = w / scale;
+    const ch = h / scale;
+    const canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(src, (sw - cw) / 2, (sh - ch) / 2, cw, ch, 0, 0, w, h);
+    for (const q of [0.84, 0.74, 0.62]) {
+      const blob = await new Promise((res) => canvas.toBlob(res, 'image/jpeg', q));
+      if (blob && blob.size <= 2.8 * 1024 * 1024) return blob;
+    }
+    throw new Error('Не получилось сжать картинку.');
+  }
+
+  window.Staff = {
+    $, esc, icon, tr, money, unitLabel, toast, errText, modal, closeModal, processImage,
+    get settings() { return settings; },
+    set settings(v) { settings = v; },
+    get me() { return me; },
+    start(o) { opts = o; route(); },
+  };
+})();

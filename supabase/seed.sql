@@ -1,0 +1,116 @@
+-- Сгенерировано tools/make-seed.js из data.js. Стартовое меню и настройки.
+-- Запускать после schema.sql. Повторный запуск ничего не перезапишет.
+-- ВНИМАНИЕ: цены, вес и калории — примерные. Владелец меняет их в своей панели.
+
+update public.settings set
+  name = 'Central Asia Restaurant',
+  tagline = '{"ru":"Узбекская кухня","uz":"O''zbek oshxonasi","en":"Uzbek cuisine","ar":"المطبخ الأوزبكي","ms":"Masakan Uzbekistan"}'::jsonb,
+  currency = 'RM',
+  currency_before = true,
+  timezone = 'Asia/Kuala_Lumpur',
+  schedule = '[{"closed":false,"open":"10:00","close":"22:00"},{"closed":false,"open":"10:00","close":"22:00"},{"closed":false,"open":"10:00","close":"22:00"},{"closed":false,"open":"10:00","close":"22:00"},{"closed":false,"open":"10:00","close":"22:00"},{"closed":false,"open":"10:00","close":"22:00"},{"closed":false,"open":"10:00","close":"22:00"}]'::jsonb,
+  address = '{}'::jsonb,
+  phone = '',
+  footer = '{"ru":"Цены и наличие блюд уточняйте у официанта.","uz":"Narxlar va taomlar mavjudligini ofitsiantdan so''rang.","en":"Please ask your waiter about prices and availability.","ar":"يرجى سؤال النادل عن الأسعار وتوفر الأطباق.","ms":"Sila tanya pelayan tentang harga dan ketersediaan hidangan."}'::jsonb,
+  default_language = 'en'
+where id = 1 and name = 'Restaurant';  -- только если настройки ещё не трогали
+
+insert into public.categories (id, name, sort) values ('plov', '{"ru":"Плов","uz":"Palov","en":"Plov","ar":"البلوف","ms":"Plov"}'::jsonb, 10) on conflict (id) do nothing;
+insert into public.categories (id, name, sort) values ('soups', '{"ru":"Супы","uz":"Sho''rvalar","en":"Soups","ar":"الشوربات","ms":"Sup"}'::jsonb, 20) on conflict (id) do nothing;
+insert into public.categories (id, name, sort) values ('mains', '{"ru":"Горячее","uz":"Issiq taomlar","en":"Mains","ar":"الأطباق الرئيسية","ms":"Hidangan Utama"}'::jsonb, 30) on conflict (id) do nothing;
+insert into public.categories (id, name, sort) values ('grill', '{"ru":"Шашлык","uz":"Shashlik","en":"Grill","ar":"المشويات","ms":"Panggang"}'::jsonb, 40) on conflict (id) do nothing;
+insert into public.categories (id, name, sort) values ('bakery', '{"ru":"Самса и лепёшки","uz":"Somsa va non","en":"Samsa & bread","ar":"السمسة والخبز","ms":"Samsa & Roti"}'::jsonb, 50) on conflict (id) do nothing;
+insert into public.categories (id, name, sort) values ('salads', '{"ru":"Салаты","uz":"Salatlar","en":"Salads","ar":"السلطات","ms":"Salad"}'::jsonb, 60) on conflict (id) do nothing;
+insert into public.categories (id, name, sort) values ('desserts', '{"ru":"Сладкое","uz":"Shirinliklar","en":"Desserts","ar":"الحلويات","ms":"Pencuci Mulut"}'::jsonb, 70) on conflict (id) do nothing;
+insert into public.categories (id, name, sort) values ('drinks', '{"ru":"Чай и напитки","uz":"Choy va ichimliklar","en":"Tea & drinks","ar":"الشاي والمشروبات","ms":"Teh & Minuman"}'::jsonb, 80) on conflict (id) do nothing;
+
+insert into public.dishes (id, category_id, name, "desc", ingredients, price, weight, unit, kcal, tags, allergens, sort, hidden)
+values ('plov-tashkent', 'plov', '{"ru":"Ташкентский плов","uz":"Toshkent palovi","en":"Tashkent plov","ar":"بلوف طشقند","ms":"Plov Tashkent"}'::jsonb, '{"ru":"Рис девзира, баранина, жёлтая морковь, нут и перепелиное яйцо","uz":"Devzira guruch, qo''y go''shti, sariq sabzi, no''xat va bedana tuxumi","en":"Devzira rice, lamb, yellow carrots, chickpeas and a quail egg","ar":"أرز ديفزيرا، لحم ضأن، جزر أصفر، حمص وبيضة سمان","ms":"Beras devzira, daging kambing, lobak kuning, kacang kuda dan telur puyuh"}'::jsonb, '{"ru":"рис, баранина, морковь, нут, лук, чеснок, зира, перепелиное яйцо","uz":"guruch, qo''y go''shti, sabzi, no''xat, piyoz, sarimsoq, zira, bedana tuxumi","en":"rice, lamb, carrots, chickpeas, onion, garlic, cumin, quail egg","ar":"أرز، لحم ضأن، جزر، حمص، بصل، ثوم، كمون، بيض سمان","ms":"beras, daging kambing, lobak merah, kacang kuda, bawang, bawang putih, jintan putih, telur puyuh"}'::jsonb, 28, 350, 'g', 720, array['hit']::text[], array['eggs']::text[], 10, false)
+on conflict (id) do nothing;
+insert into public.dishes (id, category_id, name, "desc", ingredients, price, weight, unit, kcal, tags, allergens, sort, hidden)
+values ('plov-samarkand', 'plov', '{"ru":"Самаркандский плов","uz":"Samarqand palovi","en":"Samarkand plov","ar":"بلوف سمرقند","ms":"Plov Samarkand"}'::jsonb, '{"ru":"Готовится слоями: морковь и мясо сверху, рис не перемешивают","uz":"Qatlam-qatlam pishiriladi: sabzi va go''sht ustida, guruch aralashtirilmaydi","en":"Cooked in layers, with carrots and meat on top of the rice","ar":"يُطهى على طبقات: الجزر واللحم في الأعلى دون تقليب الأرز","ms":"Dimasak berlapis: lobak dan daging di atas, nasi tidak dikacau"}'::jsonb, '{}'::jsonb, 28, 350, 'g', 700, array[]::text[], array[]::text[], 20, false)
+on conflict (id) do nothing;
+insert into public.dishes (id, category_id, name, "desc", ingredients, price, weight, unit, kcal, tags, allergens, sort, hidden)
+values ('plov-wedding', 'plov', '{"ru":"Свадебный плов с кази","uz":"Qazili to''y oshi","en":"Wedding plov with kazy","ar":"بلوف الأعراس مع القازي","ms":"Plov Perkahwinan dengan Kazy"}'::jsonb, '{"ru":"Праздничный плов с конской колбасой кази, изюмом и нутом","uz":"Qazi, mayiz va no''xat bilan bayram palovi","en":"Festive plov with kazy horse sausage, raisins and chickpeas","ar":"بلوف احتفالي مع نقانق القازي من لحم الخيل والزبيب والحمص","ms":"Plov perayaan dengan sosej daging kuda kazy, kismis dan kacang kuda"}'::jsonb, '{}'::jsonb, 35, 380, 'g', 790, array['new']::text[], array[]::text[], 30, false)
+on conflict (id) do nothing;
+insert into public.dishes (id, category_id, name, "desc", ingredients, price, weight, unit, kcal, tags, allergens, sort, hidden)
+values ('lagman-soup', 'soups', '{"ru":"Лагман","uz":"Lag''mon","en":"Lagman","ar":"لغمان","ms":"Lagman"}'::jsonb, '{"ru":"Тянутая вручную лапша, говядина, овощи и наваристый бульон","uz":"Qo''lda cho''zilgan ugra, mol go''shti, sabzavotlar va quyuq sho''rva","en":"Hand-pulled noodles, beef, vegetables and rich broth","ar":"معكرونة مسحوبة يدويًا، لحم بقري، خضار ومرق غني","ms":"Mi tarik tangan, daging lembu, sayur-sayuran dan kuah pekat"}'::jsonb, '{}'::jsonb, 24, 400, 'g', 480, array['hit']::text[], array['gluten']::text[], 10, false)
+on conflict (id) do nothing;
+insert into public.dishes (id, category_id, name, "desc", ingredients, price, weight, unit, kcal, tags, allergens, sort, hidden)
+values ('shurpa', 'soups', '{"ru":"Шурпа","uz":"Sho''rva","en":"Shurpa","ar":"شوربا","ms":"Shurpa"}'::jsonb, '{"ru":"Прозрачный бульон из баранины с картофелем, морковью и зеленью","uz":"Kartoshka, sabzi va ko''katlar bilan tiniq qo''y go''shti sho''rvasi","en":"Clear lamb broth with potatoes, carrots and herbs","ar":"مرق ضأن صافٍ مع البطاطس والجزر والأعشاب","ms":"Sup kambing jernih dengan kentang, lobak merah dan herba"}'::jsonb, '{}'::jsonb, 24, 400, 'g', 390, array[]::text[], array[]::text[], 20, false)
+on conflict (id) do nothing;
+insert into public.dishes (id, category_id, name, "desc", ingredients, price, weight, unit, kcal, tags, allergens, sort, hidden)
+values ('mastava', 'soups', '{"ru":"Мастава","uz":"Mastava","en":"Mastava","ar":"ماستافا","ms":"Mastava"}'::jsonb, '{"ru":"Рисовый суп с мясом и овощами, подаётся с катыком","uz":"Go''sht va sabzavotli guruchli sho''rva, qatiq bilan tortiladi","en":"Rice soup with meat and vegetables, served with katyk yoghurt","ar":"شوربة أرز باللحم والخضار تُقدَّم مع لبن القاتيق","ms":"Sup nasi dengan daging dan sayur, dihidang bersama yogurt katyk"}'::jsonb, '{}'::jsonb, 20, 400, 'g', 360, array[]::text[], array['milk']::text[], 30, false)
+on conflict (id) do nothing;
+insert into public.dishes (id, category_id, name, "desc", ingredients, price, weight, unit, kcal, tags, allergens, sort, hidden)
+values ('manty', 'mains', '{"ru":"Манты с бараниной","uz":"Qo''y go''shtli manti","en":"Manty with lamb","ar":"مانتي بلحم الضأن","ms":"Manty Kambing"}'::jsonb, '{"ru":"На пару, с рубленой бараниной и луком. Подаются со сметаной","uz":"Bug''da pishirilgan, maydalangan qo''y go''shti va piyoz bilan. Smetana bilan tortiladi","en":"Steamed dumplings with chopped lamb and onion, served with sour cream","ar":"فطائر على البخار محشوة بلحم الضأن المفروم والبصل، تُقدَّم مع القشدة الحامضة","ms":"Ladu kukus berinti daging kambing cincang dan bawang, dihidang dengan krim masam"}'::jsonb, '{}'::jsonb, 24, 4, 'pcs', 640, array['hit']::text[], array['gluten', 'milk']::text[], 10, false)
+on conflict (id) do nothing;
+insert into public.dishes (id, category_id, name, "desc", ingredients, price, weight, unit, kcal, tags, allergens, sort, hidden)
+values ('manty-pumpkin', 'mains', '{"ru":"Манты с тыквой","uz":"Qovoqli manti","en":"Manty with pumpkin","ar":"مانتي باليقطين","ms":"Manty Labu"}'::jsonb, '{"ru":"Сладковатая тыква с луком, на пару","uz":"Shirin qovoq va piyoz bilan, bug''da pishirilgan","en":"Steamed dumplings with sweet pumpkin and onion","ar":"فطائر على البخار محشوة باليقطين الحلو والبصل","ms":"Ladu kukus berinti labu manis dan bawang"}'::jsonb, '{}'::jsonb, 20, 4, 'pcs', 420, array['veg']::text[], array['gluten']::text[], 20, false)
+on conflict (id) do nothing;
+insert into public.dishes (id, category_id, name, "desc", ingredients, price, weight, unit, kcal, tags, allergens, sort, hidden)
+values ('chuchvara', 'mains', '{"ru":"Чучвара","uz":"Chuchvara","en":"Chuchvara","ar":"تشوتشفارا","ms":"Chuchvara"}'::jsonb, '{"ru":"Маленькие узбекские пельмени в бульоне или жареные","uz":"Kichik o''zbek chuchvarasi, sho''rvada yoki qovurilgan","en":"Small Uzbek dumplings, in broth or fried","ar":"زلابية أوزبكية صغيرة في المرق أو مقلية","ms":"Ladu kecil Uzbekistan, dalam sup atau digoreng"}'::jsonb, '{}'::jsonb, 20, 300, 'g', 560, array[]::text[], array['gluten', 'eggs']::text[], 30, false)
+on conflict (id) do nothing;
+insert into public.dishes (id, category_id, name, "desc", ingredients, price, weight, unit, kcal, tags, allergens, sort, hidden)
+values ('guiru-lagman', 'mains', '{"ru":"Гуйру лагман","uz":"Qovurma lag''mon","en":"Guiru lagman","ar":"لغمان مقلي","ms":"Lagman Goreng"}'::jsonb, '{"ru":"Жареная лапша с говядиной, перцем и овощами","uz":"Mol go''shti, qalampir va sabzavotlar bilan qovurilgan ugra","en":"Stir-fried noodles with beef, peppers and vegetables","ar":"معكرونة مقلية مع لحم بقري وفلفل وخضار","ms":"Mi goreng dengan daging lembu, lada dan sayur-sayuran"}'::jsonb, '{}'::jsonb, 26, 380, 'g', 620, array['spicy']::text[], array['gluten']::text[], 40, false)
+on conflict (id) do nothing;
+insert into public.dishes (id, category_id, name, "desc", ingredients, price, weight, unit, kcal, tags, allergens, sort, hidden)
+values ('dimlama', 'mains', '{"ru":"Димляма","uz":"Dimlama","en":"Dimlama","ar":"ديملاما","ms":"Dimlama"}'::jsonb, '{"ru":"Мясо, томлённое с картофелем, капустой и овощами","uz":"Kartoshka, karam va sabzavotlar bilan dimlangan go''sht","en":"Meat slow-braised with potatoes, cabbage and vegetables","ar":"لحم مطهو ببطء مع البطاطس والملفوف والخضار","ms":"Daging direneh perlahan dengan kentang, kubis dan sayur-sayuran"}'::jsonb, '{}'::jsonb, 28, 450, 'g', 540, array[]::text[], array[]::text[], 50, false)
+on conflict (id) do nothing;
+insert into public.dishes (id, category_id, name, "desc", ingredients, price, weight, unit, kcal, tags, allergens, sort, hidden)
+values ('kazan-kebab', 'mains', '{"ru":"Казан-кебаб","uz":"Qozon kabob","en":"Kazan kebab","ar":"كازان كباب","ms":"Kazan Kebab"}'::jsonb, '{"ru":"Баранина на косточке с картофелем, обжаренные в казане","uz":"Qozonda qovurilgan suyakli qo''y go''shti va kartoshka","en":"Lamb on the bone with potatoes, fried in a kazan","ar":"لحم ضأن بالعظم مع البطاطس مقلي في القدر","ms":"Daging kambing bertulang dengan kentang, digoreng dalam kazan"}'::jsonb, '{}'::jsonb, 38, 350, 'g', 780, array[]::text[], array[]::text[], 60, false)
+on conflict (id) do nothing;
+insert into public.dishes (id, category_id, name, "desc", ingredients, price, weight, unit, kcal, tags, allergens, sort, hidden)
+values ('shashlik-lamb', 'grill', '{"ru":"Шашлык из баранины","uz":"Qo''y go''shti shashlik","en":"Lamb shashlik","ar":"شاشليك لحم ضأن","ms":"Shashlik Kambing"}'::jsonb, '{"ru":"На углях, с маринованным луком и лепёшкой","uz":"Cho''g''da pishirilgan, tuzlangan piyoz va non bilan","en":"Charcoal-grilled, with pickled onion and flatbread","ar":"مشوي على الفحم، مع بصل مخلل وخبز","ms":"Dibakar atas arang, dengan bawang jeruk dan roti leper"}'::jsonb, '{}'::jsonb, 30, 200, 'g', 520, array['hit']::text[], array['gluten']::text[], 10, false)
+on conflict (id) do nothing;
+insert into public.dishes (id, category_id, name, "desc", ingredients, price, weight, unit, kcal, tags, allergens, sort, hidden)
+values ('lyulya', 'grill', '{"ru":"Люля-кебаб","uz":"Lula kabob","en":"Lyulya kebab","ar":"لوليا كباب","ms":"Lyulya Kebab"}'::jsonb, '{"ru":"Рубленая баранина с курдючным жиром и специями","uz":"Dumba yog''i va ziravorlar bilan qiyma qo''y go''shti","en":"Minced lamb with tail fat and spices","ar":"لحم ضأن مفروم مع دهن الإلية والبهارات","ms":"Daging kambing kisar dengan lemak ekor dan rempah"}'::jsonb, '{}'::jsonb, 26, 200, 'g', 480, array[]::text[], array[]::text[], 20, false)
+on conflict (id) do nothing;
+insert into public.dishes (id, category_id, name, "desc", ingredients, price, weight, unit, kcal, tags, allergens, sort, hidden)
+values ('shashlik-chicken', 'grill', '{"ru":"Шашлык из курицы","uz":"Tovuq shashlik","en":"Chicken shashlik","ar":"شاشليك دجاج","ms":"Shashlik Ayam"}'::jsonb, '{"ru":"Бедро в маринаде, на углях","uz":"Marinadlangan tovuq soni, cho''g''da","en":"Marinated chicken thigh, charcoal-grilled","ar":"أفخاذ دجاج متبّلة مشوية على الفحم","ms":"Peha ayam diperap, dibakar atas arang"}'::jsonb, '{}'::jsonb, 20, 200, 'g', 360, array[]::text[], array[]::text[], 30, false)
+on conflict (id) do nothing;
+insert into public.dishes (id, category_id, name, "desc", ingredients, price, weight, unit, kcal, tags, allergens, sort, hidden)
+values ('jigar', 'grill', '{"ru":"Жигар (печень)","uz":"Jigar kabob","en":"Jigar (liver)","ar":"جيغار (كبدة)","ms":"Jigar (Hati)"}'::jsonb, '{"ru":"Баранья печень на углях с курдюком","uz":"Dumba bilan cho''g''da pishirilgan qo''y jigari","en":"Lamb liver grilled with tail fat","ar":"كبدة ضأن مشوية مع دهن الإلية","ms":"Hati kambing dibakar bersama lemak ekor"}'::jsonb, '{}'::jsonb, 22, 200, 'g', 330, array[]::text[], array[]::text[], 40, false)
+on conflict (id) do nothing;
+insert into public.dishes (id, category_id, name, "desc", ingredients, price, weight, unit, kcal, tags, allergens, sort, hidden)
+values ('samsa-meat', 'bakery', '{"ru":"Самса с бараниной","uz":"Qo''y go''shtli somsa","en":"Lamb samsa","ar":"سمسة بلحم الضأن","ms":"Samsa Kambing"}'::jsonb, '{"ru":"Из тандыра, слоёное тесто, сочная начинка","uz":"Tandirda, qatlamli xamir, suvli go''sht","en":"Tandoor-baked puff pastry with juicy lamb filling","ar":"مخبوزة في التنور، عجينة مورّقة وحشوة غنية","ms":"Dibakar dalam tandoor, pastri berlapis dengan inti daging kambing"}'::jsonb, '{}'::jsonb, 9, 1, 'pcs', 380, array['hit']::text[], array['gluten', 'sesame']::text[], 10, false)
+on conflict (id) do nothing;
+insert into public.dishes (id, category_id, name, "desc", ingredients, price, weight, unit, kcal, tags, allergens, sort, hidden)
+values ('samsa-chicken', 'bakery', '{"ru":"Самса с курицей","uz":"Tovuq go''shtli somsa","en":"Chicken samsa","ar":"سمسة بالدجاج","ms":"Samsa Ayam"}'::jsonb, '{"ru":"Из тандыра, с курицей и луком","uz":"Tandirda, tovuq va piyoz bilan","en":"Tandoor-baked, with chicken and onion","ar":"مخبوزة في التنور، بالدجاج والبصل","ms":"Dibakar dalam tandoor, dengan ayam dan bawang"}'::jsonb, '{}'::jsonb, 8, 1, 'pcs', 340, array[]::text[], array['gluten', 'sesame']::text[], 20, false)
+on conflict (id) do nothing;
+insert into public.dishes (id, category_id, name, "desc", ingredients, price, weight, unit, kcal, tags, allergens, sort, hidden)
+values ('samsa-pumpkin', 'bakery', '{"ru":"Самса с тыквой","uz":"Qovoqli somsa","en":"Pumpkin samsa","ar":"سمسة باليقطين","ms":"Samsa Labu"}'::jsonb, '{"ru":"Из тандыра, с тыквой и луком","uz":"Tandirda, qovoq va piyoz bilan","en":"Tandoor-baked, with pumpkin and onion","ar":"مخبوزة في التنور، باليقطين والبصل","ms":"Dibakar dalam tandoor, dengan labu dan bawang"}'::jsonb, '{}'::jsonb, 7, 1, 'pcs', 260, array['veg']::text[], array['gluten', 'sesame']::text[], 30, false)
+on conflict (id) do nothing;
+insert into public.dishes (id, category_id, name, "desc", ingredients, price, weight, unit, kcal, tags, allergens, sort, hidden)
+values ('non', 'bakery', '{"ru":"Лепёшка тандырная","uz":"Tandir non","en":"Tandoor flatbread","ar":"خبز التنور","ms":"Roti Tandoor"}'::jsonb, '{"ru":"Горячая, с кунжутом и чернушкой","uz":"Issiq, kunjut va sedana bilan","en":"Hot, with sesame and nigella seeds","ar":"ساخن، بالسمسم وحبة البركة","ms":"Panas, dengan bijan dan jintan hitam"}'::jsonb, '{}'::jsonb, 5, 1, 'pcs', null, array['veg']::text[], array['gluten', 'sesame']::text[], 40, false)
+on conflict (id) do nothing;
+insert into public.dishes (id, category_id, name, "desc", ingredients, price, weight, unit, kcal, tags, allergens, sort, hidden)
+values ('achichuk', 'salads', '{"ru":"Ачичук","uz":"Achchiq-chuchuk","en":"Achichuk","ar":"أتشيتشوك","ms":"Achichuk"}'::jsonb, '{"ru":"Томаты, сладкий лук и острый перец — лучшая пара к плову","uz":"Pomidor, shirin piyoz va achchiq qalampir — palovga eng yaxshi hamroh","en":"Tomatoes, sweet onion and hot pepper, best with plov","ar":"طماطم وبصل حلو وفلفل حار، أفضل رفيق للبلوف","ms":"Tomato, bawang manis dan cili, paling sesuai dengan plov"}'::jsonb, '{}'::jsonb, 10, 200, 'g', 90, array['veg']::text[], array[]::text[], 10, false)
+on conflict (id) do nothing;
+insert into public.dishes (id, category_id, name, "desc", ingredients, price, weight, unit, kcal, tags, allergens, sort, hidden)
+values ('tashkent-salad', 'salads', '{"ru":"Салат «Ташкент»","uz":"«Toshkent» salati","en":"Tashkent salad","ar":"سلطة طشقند","ms":"Salad Tashkent"}'::jsonb, '{"ru":"Зелёная редька, отварная говядина, жареный лук и яйцо","uz":"Ko''k turp, qaynatilgan mol go''shti, qovurilgan piyoz va tuxum","en":"Green radish, boiled beef, fried onion and egg","ar":"فجل أخضر، لحم بقري مسلوق، بصل مقلي وبيض","ms":"Lobak hijau, daging lembu rebus, bawang goreng dan telur"}'::jsonb, '{}'::jsonb, 18, 220, 'g', 310, array[]::text[], array['eggs']::text[], 20, false)
+on conflict (id) do nothing;
+insert into public.dishes (id, category_id, name, "desc", ingredients, price, weight, unit, kcal, tags, allergens, sort, hidden)
+values ('fresh-veg', 'salads', '{"ru":"Свежие овощи с зеленью","uz":"Ko''katli yangi sabzavotlar","en":"Fresh vegetables & herbs","ar":"خضار طازجة مع الأعشاب","ms":"Sayur Segar & Herba"}'::jsonb, '{"ru":"Огурцы, томаты, перец, редис, зелень","uz":"Bodring, pomidor, qalampir, rediska, ko''katlar","en":"Cucumbers, tomatoes, peppers, radish, herbs","ar":"خيار، طماطم، فلفل، فجل، أعشاب","ms":"Timun, tomato, lada, radis dan herba"}'::jsonb, '{}'::jsonb, 12, 250, 'g', 70, array['veg']::text[], array[]::text[], 30, false)
+on conflict (id) do nothing;
+insert into public.dishes (id, category_id, name, "desc", ingredients, price, weight, unit, kcal, tags, allergens, sort, hidden)
+values ('chak-chak', 'desserts', '{"ru":"Чак-чак","uz":"Chak-chak","en":"Chak-chak","ar":"تشاك تشاك","ms":"Chak-chak"}'::jsonb, '{"ru":"Хрустящее тесто в медовом сиропе","uz":"Asal siropidagi qarsildoq xamir","en":"Crispy dough in honey syrup","ar":"عجينة مقرمشة بشراب العسل","ms":"Doh rangup dalam sirap madu"}'::jsonb, '{}'::jsonb, 14, 150, 'g', 520, array['veg']::text[], array['gluten', 'eggs']::text[], 10, false)
+on conflict (id) do nothing;
+insert into public.dishes (id, category_id, name, "desc", ingredients, price, weight, unit, kcal, tags, allergens, sort, hidden)
+values ('pakhlava', 'desserts', '{"ru":"Пахлава","uz":"Pahlava","en":"Pakhlava","ar":"بقلاوة","ms":"Baklava"}'::jsonb, '{"ru":"Слоёная, с грецким орехом и мёдом","uz":"Yong''oq va asal bilan qatlamli","en":"Layered pastry with walnuts and honey","ar":"رقائق عجين بالجوز والعسل","ms":"Pastri berlapis dengan walnut dan madu"}'::jsonb, '{}'::jsonb, 16, 120, 'g', 480, array['hit', 'veg']::text[], array['gluten', 'nuts', 'milk']::text[], 20, false)
+on conflict (id) do nothing;
+insert into public.dishes (id, category_id, name, "desc", ingredients, price, weight, unit, kcal, tags, allergens, sort, hidden)
+values ('nishalda', 'desserts', '{"ru":"Нишалда","uz":"Nisholda","en":"Nishalda","ar":"نيشالدا","ms":"Nishalda"}'::jsonb, '{"ru":"Воздушная белая сладость из белков и сахара","uz":"Tuxum oqi va shakardan tayyorlangan havodor oq shirinlik","en":"Airy white sweet made of egg whites and sugar","ar":"حلوى بيضاء هشة من بياض البيض والسكر","ms":"Manisan putih gebu daripada putih telur dan gula"}'::jsonb, '{}'::jsonb, 12, 120, 'g', 280, array['veg']::text[], array['eggs']::text[], 30, false)
+on conflict (id) do nothing;
+insert into public.dishes (id, category_id, name, "desc", ingredients, price, weight, unit, kcal, tags, allergens, sort, hidden)
+values ('green-tea', 'drinks', '{"ru":"Зелёный чай (чайник)","uz":"Ko''k choy (choynak)","en":"Green tea (pot)","ar":"شاي أخضر (إبريق)","ms":"Teh Hijau (seteko)"}'::jsonb, '{"ru":"Классический кок-чой к плову","uz":"Palovga klassik ko''k choy","en":"Classic kok-choy to go with plov","ar":"الشاي الأخضر التقليدي مع البلوف","ms":"Teh hijau klasik untuk dinikmati bersama plov"}'::jsonb, '{}'::jsonb, 10, 800, 'ml', null, array['hit']::text[], array[]::text[], 10, false)
+on conflict (id) do nothing;
+insert into public.dishes (id, category_id, name, "desc", ingredients, price, weight, unit, kcal, tags, allergens, sort, hidden)
+values ('black-tea', 'drinks', '{"ru":"Чёрный чай с лимоном (чайник)","uz":"Limonli qora choy (choynak)","en":"Black tea with lemon (pot)","ar":"شاي أسود بالليمون (إبريق)","ms":"Teh Hitam dengan Lemon (seteko)"}'::jsonb, '{"ru":"Подаётся с сахаром и лимоном","uz":"Shakar va limon bilan tortiladi","en":"Served with sugar and lemon","ar":"يُقدَّم مع السكر والليمون","ms":"Dihidang dengan gula dan lemon"}'::jsonb, '{}'::jsonb, 10, 800, 'ml', null, array[]::text[], array[]::text[], 20, false)
+on conflict (id) do nothing;
+insert into public.dishes (id, category_id, name, "desc", ingredients, price, weight, unit, kcal, tags, allergens, sort, hidden)
+values ('kompot', 'drinks', '{"ru":"Компот из сухофруктов","uz":"Quruq meva kompoti","en":"Dried-fruit kompot","ar":"كومبوت الفواكه المجففة","ms":"Kompot Buah Kering"}'::jsonb, '{"ru":"Курага, изюм, яблоко","uz":"O''rik qoqi, mayiz, olma","en":"Apricot, raisin and apple","ar":"مشمش مجفف، زبيب، تفاح","ms":"Aprikot, kismis dan epal"}'::jsonb, '{}'::jsonb, 9, 400, 'ml', 120, array[]::text[], array[]::text[], 30, false)
+on conflict (id) do nothing;
+insert into public.dishes (id, category_id, name, "desc", ingredients, price, weight, unit, kcal, tags, allergens, sort, hidden)
+values ('ayran', 'drinks', '{"ru":"Айран","uz":"Ayron","en":"Ayran","ar":"عيران","ms":"Ayran"}'::jsonb, '{"ru":"Холодный, с зеленью","uz":"Sovuq, ko''katlar bilan","en":"Chilled, with herbs","ar":"بارد، مع الأعشاب","ms":"Sejuk, dengan herba"}'::jsonb, '{}'::jsonb, 8, 300, 'ml', 100, array[]::text[], array['milk']::text[], 40, false)
+on conflict (id) do nothing;

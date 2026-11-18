@@ -1,59 +1,73 @@
-# Как включить приём заказов (Supabase)
+# Запуск сервера (Supabase): аккаунты, права, хранение меню и фото
 
-Один раз, минут 10. После этого гости отправляют заказ с телефона,
-а вы видите его в админке со звуком.
-
-Пока это не сделано, меню работает как раньше: гость собирает список и показывает официанту.
+Без сервера сайт работает как обычное меню из файла `data.js`, а панели сотрудников не открываются.
+С сервером владелец меняет меню, фото, наличие, расписание и сотрудников сам, без кода,
+а права проверяет сервер. Занимает около 15 минут, тариф Free.
 
 ## 1. Создать проект
 
-1. Зайти на **supabase.com** → Start your project → войти (можно через GitHub).
-2. **New project**:
-   - Name: `central-asia-menu`
-   - Database Password: придумать и **сохранить у себя** (мне не присылать)
-   - Region: **Southeast Asia (Singapore)** — ближе всего к Малайзии
-3. Нажать **Create new project** и подождать 1–2 минуты.
+1. **supabase.com** → Start your project → войти (можно через GitHub).
+2. **New project**: имя `central-asia-menu`, регион **Southeast Asia (Singapore)**.
+   Пароль базы сохраните у себя — он нигде в сайте не нужен и никому не передаётся.
 
-## 2. Создать таблицы
+## 2. Создать таблицы и права
 
-1. Слева **SQL Editor** → **New query**.
-2. Открыть файл `supabase/schema.sql`, скопировать **всё** и вставить.
-3. Нажать **Run**. Должно быть `Success. No rows returned`.
+**SQL Editor → New query** → вставить весь файл `supabase/schema.sql` → **Run**.
+Потом новый запрос → весь файл `supabase/seed.sql` → **Run** (стартовое меню).
 
-## 3. Закрыть свободную регистрацию
+> В `seed.sql` цены, вес и калории **примерные**. Замените их в панели владельца на настоящие.
 
-**Authentication → Sign In / Providers** → выключить **Allow new users to sign up** → Save.
-Так никто посторонний не сможет создать себе аккаунт.
+## 3. Настроить вход
 
-## 4. Добавить сотрудника
+**Authentication → URL Configuration**
+- Site URL: `https://affax1.github.io/central-asia-menu/`
+- Redirect URLs → Add: `https://affax1.github.io/central-asia-menu/admin.html`
 
-1. **Authentication → Users → Add user → Create new user**.
-2. Email и пароль сотрудника, поставить галочку **Auto Confirm User** → Create.
-3. **SQL Editor → New query**, вставить (email поменять на свой) и **Run**:
+**Authentication → Sign In / Providers → Email**: «Confirm email» оставить **включённым**.
+Это важно: доступ получают только приглашённые email, и только после подтверждения письмом.
+
+> На бесплатном тарифе встроенная почта Supabase отправляет мало писем в час.
+> Для пары сотрудников этого хватит; если писем не приходит — подождите час или подключите свою почту
+> (Authentication → Emails → SMTP Settings).
+
+## 4. Назначить владельца (один раз)
+
+SQL Editor → новый запрос (email — ваш):
 
 ```sql
-insert into public.staff (user_id, name)
-select id, 'Администратор' from auth.users where email = 'admin@example.com'
-on conflict do nothing;
+select public.bootstrap_owner('you@example.com', 'Ваше имя');
 ```
 
-Для каждого нового сотрудника повторить шаг 4.
-Убрать сотрудника: `delete from public.staff where user_id = (select id from auth.users where email = '...');`
+Затем откройте `https://affax1.github.io/central-asia-menu/admin.html` → «Владелец» →
+«Меня пригласили — зарегистрироваться» на этот же email → подтвердите письмо → войдите.
+Повторно назначить владельца этой командой нельзя: дальше владелец приглашает людей в своей панели.
 
-## 5. Прислать мне две строчки
+## 5. Подключить сайт к серверу
 
-Кнопка **Connect** вверху (или **Project Settings → API Keys**):
+**Project Settings → API Keys** (или кнопка **Connect**):
+- Project URL — `https://xxxx.supabase.co`
+- Publishable key (`sb_publishable_...`) или anon public key
 
-- **Project URL** — вида `https://abcdefgh.supabase.co`
-- **Publishable key** (`sb_publishable_...`) или **anon public** key
+Впишите их в `config.js` (пример — `config.example.js`) и выложите сайт.
+Эти два значения **публичные**: они видны в браузере любого гостя и дают только то, что разрешает база
+(гость — читать опубликованное меню). Никогда не вставляйте в сайт `service_role` / `secret` ключ
+и пароль базы.
 
-Эти две строчки публичные, их можно присылать. Я впишу их в `config.js` и выложу.
+## 6. Сотрудники
 
-**Не присылать никому:** пароль базы, `service_role` / `secret` ключ.
+Панель владельца → **Сотрудники** → email + роль → «Пригласить».
+Сотрудник открывает `admin.html`, регистрируется на этот email и подтверждает письмо — доступ появится сам.
+Там же: сменить роль, отключить доступ, удалить, отменить приглашение.
 
-## 6. Готово
+- **Официант** — только смотрит меню, цены и наличие (`waiter.html`).
+- **Владелец** — меняет всё (`owner.html`).
 
-- Гости: QR-код на столе → меню → «Отправить заказ».
-- Сотрудники: **https://affax1.github.io/central-asia-menu/admin.html** → войти email + пароль.
-  Держать открытой на планшете или телефоне на кассе/кухне.
-  Первый раз нажать жёлтую полоску «включить звук» — браузер без нажатия звук не даёт.
+## Проверки
+
+```bash
+npm test
+```
+
+- `tests/*.test.js` — расписание и «Открыто/Закрыто», переводы, отсутствие эмодзи и секретов.
+- `tools/test-db.sh` — права всех ролей на временной локальной базе Postgres
+  (гость и официант не могут ничего изменить даже прямым запросом). Нужен установленный `psql`.

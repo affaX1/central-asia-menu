@@ -4,7 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>QR на столы</title>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍛</text></svg>">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&family=Playfair+Display:wght@700&display=swap">
   <style>
     :root { --accent: #C8553D; --text: #2B2118; --muted: #7A6A5A; --line: #EADFCF; --bg: #FBF6EE; color-scheme: light; }
     * { box-sizing: border-box; }
@@ -31,7 +32,9 @@
       padding: 22px 18px; border: 1.5px dashed #D9C9B3; border-radius: 18px; background: #fff;
       break-inside: avoid; page-break-inside: avoid;
     }
-    .card .logo { font-size: 34px; line-height: 1; }
+    .card .logo { width: 56px; height: 56px; border-radius: 16px; display: grid; place-items: center; overflow: hidden; background: var(--accent); color: #fff; font: 700 21px 'Playfair Display', Georgia, serif; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .card .logo img { width: 100%; height: 100%; object-fit: cover; }
+    .card .name { font-family: 'Playfair Display', Georgia, serif; }
     .card .name { margin: 6px 0 2px; font-size: 20px; font-weight: 800; }
     .card .sub { color: var(--muted); font-size: 13px; }
     .card .qr { width: 190px; margin: 14px 0 10px; }
@@ -70,14 +73,20 @@
 
   <main class="sheet" id="sheet"></main>
 
-  <script src="data.js?v=6"></script>
+  <script src="config.js?v=7"></script>
+  <script src="data.js?v=7"></script>
   <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
   <script>
     (() => {
       const R = window.MENU.restaurant;
-      const name = typeof R.name === 'string' ? R.name : R.name.ru;
-      const sub = typeof R.tagline === 'string' ? R.tagline : (R.tagline?.ru || '');
+      let name = typeof R.name === 'string' ? R.name : R.name.ru;
+      let sub = typeof R.tagline === 'string' ? R.tagline : (R.tagline?.ru || '');
+      let logoUrl = R.logoUrl || null;
       const $ = (s) => document.querySelector(s);
+      const initials = (n) => (String(n || '').split(/\s+/).filter((w) => /\p{L}/u.test(w)).slice(0, 2).map((w) => w.match(/\p{L}/u)[0]).join('') || 'R').toUpperCase();
+      // ?count=12 — сколько столов (ссылка из панели владельца)
+      const qCount = parseInt(new URLSearchParams(location.search).get('count'), 10);
+      if (qCount >= 1 && qCount <= 200) $('#count').value = qCount;
       const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
       // По умолчанию — адрес, с которого открыта эта страница.
@@ -131,7 +140,7 @@
 
         sheet.innerHTML = tables.map((n) => `
           <div class="card">
-            <div class="logo">${esc(R.logo || '🍽️')}</div>
+            <div class="logo">${logoUrl ? `<img src="${esc(logoUrl)}" alt="">` : esc(initials(name))}</div>
             <div class="name">${esc(name)}</div>
             <div class="sub">${esc(sub)}</div>
             <div class="qr">${qrSvg(linkFor(base, n))}</div>
@@ -149,6 +158,24 @@
       });
       $('#print').addEventListener('click', () => window.print());
       render();
+
+      // если подключена база — название и логотип берём оттуда
+      const B = window.MENU_BACKEND || {};
+      if (B.url && B.key) {
+        const headers = { apikey: B.key };
+        if (String(B.key).startsWith('eyJ')) headers.Authorization = 'Bearer ' + B.key;
+        fetch(`${String(B.url).replace(/\/+$/, '')}/rest/v1/settings?select=name,tagline,logo_url,tables_count&id=eq.1`, { headers })
+          .then((r) => (r.ok ? r.json() : []))
+          .then(([st]) => {
+            if (!st) return;
+            name = st.name;
+            sub = st.tagline?.ru || st.tagline?.en || '';
+            logoUrl = st.logo_url || null;
+            if (!(qCount >= 1)) $('#count').value = st.tables_count;
+            render();
+          })
+          .catch(() => {});
+      }
     })();
   </script>
 </body>
