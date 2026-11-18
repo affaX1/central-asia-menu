@@ -60,6 +60,12 @@
       statusHint: { new: 'Заказ сохранён. Ждём, когда официант его примет.', accepted: 'Официант принял ваш заказ.', cancelled: 'Заказ отменён. Пожалуйста, обратитесь к официанту.' },
       statusStale: 'Не удалось обновить статус — проверим ещё раз через несколько секунд.',
       myOrders: 'Мои заказы', orderMore: 'Заказать ещё', note: 'Комментарий',
+      callWaiter: 'Позвать официанта', askBill: 'Попросить счёт', waiterComing: 'Официант уже идёт', billComing: 'Счёт уже несут',
+      callSent: 'Официант получил сигнал и скоро подойдёт.', billSent: 'Официант принесёт счёт.', callErr: 'Не получилось отправить сигнал. Позовите официанта рукой или попробуйте ещё раз.',
+      payHow: 'Как будете платить?', payCash: 'Наличными', payCard: 'Картой', payQr: 'По QR-коду',
+      subtotal: 'Блюда', service: (p) => `Сервисный сбор${p ? ` ${p}%` : ''}`, paid: 'Оплачено',
+      required: 'обязательно', optional: 'по желанию', addFor: (s) => `Добавить · ${s}`, chooseOptions: 'Выбрать вариант',
+      edited: (x) => `Ресторан изменил заказ в ${x}`,
     },
     uz: {
       langName: "O'zbekcha", locale: 'uz-Latn-UZ', dir: 'ltr',
@@ -113,6 +119,12 @@
       statusHint: { new: 'Buyurtma saqlandi. Ofitsiant qabul qilishini kutmoqdamiz.', accepted: 'Ofitsiant buyurtmangizni qabul qildi.', cancelled: 'Buyurtma bekor qilindi. Iltimos, ofitsiantga murojaat qiling.' },
       statusStale: "Holatni yangilab bo'lmadi — bir necha soniyadan keyin yana tekshiramiz.",
       myOrders: 'Buyurtmalarim', orderMore: 'Yana buyurtma berish', note: 'Izoh',
+      callWaiter: 'Ofitsiantni chaqirish', askBill: "Hisobni so'rash", waiterComing: 'Ofitsiant kelmoqda', billComing: 'Hisob olib kelinmoqda',
+      callSent: 'Ofitsiant signalni oldi va tez orada keladi.', billSent: 'Ofitsiant hisobni olib keladi.', callErr: "Signal yuborilmadi. Ofitsiantni qo'l bilan chaqiring yoki qayta urinib ko'ring.",
+      payHow: "Qanday to'laysiz?", payCash: 'Naqd pul', payCard: 'Karta', payQr: 'QR-kod orqali',
+      subtotal: 'Taomlar', service: (p) => `Xizmat haqi${p ? ` ${p}%` : ''}`, paid: "To'langan",
+      required: 'majburiy', optional: 'ixtiyoriy', addFor: (s) => `Qo'shish · ${s}`, chooseOptions: 'Variantni tanlash',
+      edited: (x) => `Restoran buyurtmani ${x} da o'zgartirdi`,
     },
     en: {
       langName: 'English', locale: 'en-US', dir: 'ltr',
@@ -166,6 +178,12 @@
       statusHint: { new: 'Your order is saved and waiting for a waiter to accept it.', accepted: 'A waiter has accepted your order.', cancelled: 'The order was cancelled. Please talk to your waiter.' },
       statusStale: "Couldn't refresh the status — we'll check again in a few seconds.",
       myOrders: 'My orders', orderMore: 'Order more', note: 'Note',
+      callWaiter: 'Call waiter', askBill: 'Ask for the bill', waiterComing: 'Waiter is coming', billComing: 'Bill is on its way',
+      callSent: 'The waiter got your call and will be with you shortly.', billSent: 'The waiter will bring your bill.', callErr: "Couldn't send the call. Please wave to a waiter or try again.",
+      payHow: 'How would you like to pay?', payCash: 'Cash', payCard: 'Card', payQr: 'QR code',
+      subtotal: 'Items', service: (p) => `Service charge${p ? ` ${p}%` : ''}`, paid: 'Paid',
+      required: 'required', optional: 'optional', addFor: (s) => `Add · ${s}`, chooseOptions: 'Choose options',
+      edited: (x) => `The restaurant updated your order at ${x}`,
     },
     ar: {
       // цифры привычные (0–9), как на ценниках и в часах работы
@@ -220,6 +238,12 @@
       statusHint: { new: 'تم حفظ طلبك وننتظر أن يقبله النادل.', accepted: 'قبل النادل طلبك.', cancelled: 'أُلغي الطلب. يرجى التحدث إلى النادل.' },
       statusStale: 'تعذّر تحديث الحالة — سنحاول مجددًا بعد ثوانٍ.',
       myOrders: 'طلباتي', orderMore: 'اطلب المزيد', note: 'ملاحظة',
+      callWaiter: 'استدعاء النادل', askBill: 'طلب الفاتورة', waiterComing: 'النادل في الطريق', billComing: 'الفاتورة في الطريق',
+      callSent: 'وصل طلبك إلى النادل وسيأتي قريبًا.', billSent: 'سيُحضر النادل الفاتورة.', callErr: 'تعذّر إرسال الطلب. يرجى الإشارة إلى النادل أو المحاولة مجددًا.',
+      payHow: 'كيف تودّ الدفع؟', payCash: 'نقدًا', payCard: 'بالبطاقة', payQr: 'رمز QR',
+      subtotal: 'الأطباق', service: (p) => `رسوم الخدمة${p ? ` ${p}%` : ''}`, paid: 'مدفوع',
+      required: 'إلزامي', optional: 'اختياري', addFor: (s) => `إضافة · ${s}`, chooseOptions: 'اختيار الخيارات',
+      edited: (x) => `عدّل المطعم طلبك في ${x}`,
     },
     ms: {
       langName: 'Bahasa Melayu', locale: 'ms-MY', dir: 'ltr',
@@ -273,6 +297,12 @@
       statusHint: { new: 'Pesanan anda disimpan dan menunggu pelayan menerimanya.', accepted: 'Pelayan telah menerima pesanan anda.', cancelled: 'Pesanan dibatalkan. Sila berjumpa pelayan.' },
       statusStale: 'Status gagal dikemas kini — kami akan cuba lagi sebentar lagi.',
       myOrders: 'Pesanan saya', orderMore: 'Pesan lagi', note: 'Nota',
+      callWaiter: 'Panggil pelayan', askBill: 'Minta bil', waiterComing: 'Pelayan sedang datang', billComing: 'Bil sedang dibawa',
+      callSent: 'Pelayan telah menerima panggilan anda dan akan datang sebentar lagi.', billSent: 'Pelayan akan membawa bil anda.', callErr: 'Panggilan tidak dapat dihantar. Sila lambai pelayan atau cuba lagi.',
+      payHow: 'Bagaimana anda mahu membayar?', payCash: 'Tunai', payCard: 'Kad', payQr: 'Kod QR',
+      subtotal: 'Hidangan', service: (p) => `Caj perkhidmatan${p ? ` ${p}%` : ''}`, paid: 'Dibayar',
+      required: 'wajib', optional: 'pilihan', addFor: (s) => `Tambah · ${s}`, chooseOptions: 'Pilih pilihan',
+      edited: (x) => `Restoran telah mengemas kini pesanan anda pada ${x}`,
     },
   };
 
@@ -303,6 +333,7 @@
         currency: r.currency, currencyBefore: !!r.currencyBefore, timezone: r.timezone, schedule: r.schedule,
         address: nonEmpty(r.address), mapUrl: r.mapUrl || null, phone: r.phone || '', footer: nonEmpty(r.footer),
         ordersEnabled: false, ordersWhenClosed: false,
+        servicePct: 0, taxPct: 0, taxName: 'SST', taxOnService: true,
         halal: !!r.halal, halalNote: nonEmpty(r.halalNote),
         defaultLanguage: b.defaultLanguage,
       },
@@ -311,6 +342,7 @@
         id: d.id, category: d.category, name: d.name, desc: nonEmpty(d.desc), ingredients: nonEmpty(d.ingredients),
         price: Number(d.price), weight: d.weight ?? null, unit: d.unit || 'g', kcal: d.kcal ?? null, photo: d.photo || null,
         tags: d.tags || [], allergens: d.allergens || [], meat: d.meat || [], available: d.available !== false,
+        options: Array.isArray(d.options) ? d.options : [],
       })),
     };
   }
@@ -324,6 +356,7 @@
         currency: st.currency, currencyBefore: st.currency_before, timezone: st.timezone, schedule: st.schedule,
         address: nonEmpty(st.address), mapUrl: st.map_url || null, phone: st.phone || '', footer: nonEmpty(st.footer),
         ordersEnabled: !!st.orders_enabled, ordersWhenClosed: !!st.orders_when_closed,
+        servicePct: Number(st.service_pct) || 0, taxPct: Number(st.tax_pct) || 0, taxName: st.tax_name || 'SST', taxOnService: st.tax_on_service !== false,
         halal: !!st.halal, halalNote: nonEmpty(st.halal_note),
         defaultLanguage: st.default_language,
       },
@@ -334,6 +367,7 @@
           id: d.id, category: d.category_id, name: d.name, desc: nonEmpty(d.desc), ingredients: nonEmpty(d.ingredients),
           price: Number(d.price), weight: d.weight, unit: d.unit, kcal: d.kcal, photo: d.photo_url || null,
           tags: d.tags || [], allergens: d.allergens || [], meat: d.meat || [], available: d.available,
+          options: Array.isArray(d.options) ? d.options : [],
         })),
     };
   }
@@ -431,7 +465,54 @@
   };
   const orderable = (d) => !!d && d.available;
   const smooth = () => (matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth');
-  const itemName = (id) => L(byId[id]?.name) || L(seen[id]?.name) || '…';
+  const itemName = (id) => L(byId[id]?.name) || L((seen[id] || Object.entries(seen).find(([k]) => parseKey(k).id === id)?.[1])?.name) || '…';
+
+  // Строка списка: ключ «блюдо» или «блюдо|группа:вариант,…» — одно блюдо с разными вариантами = разные строки
+  const makeKey = (id, opts) => (opts && opts.length ? `${id}|${[...opts].sort().join(',')}` : id);
+  const parseKey = (key) => { const [id, rest] = String(key).split('|'); return { id, opts: rest ? rest.split(',').filter(Boolean) : [] }; };
+  const hasOptions = (d) => Array.isArray(d?.options) && d.options.length > 0;
+  // выбранные варианты по ТЕКУЩЕМУ меню: подходят ли, цена за штуку, подписи
+  function optInfo(d, opts) {
+    if (!d) return { ok: false, unit: 0, names: [] };
+    let unit = Number(d.price);
+    let found = 0;
+    let ok = true;
+    const names = [];
+    for (const g of d.options || []) {
+      let n = 0;
+      for (const c of g.choices || []) {
+        if (opts.includes(`${g.id}:${c.id}`)) { n += 1; found += 1; unit += Number(c.price) || 0; names.push(L(c.name)); }
+      }
+      if ((g.required && !n) || (!g.multi && n > 1)) ok = false;
+    }
+    if (found !== opts.length) ok = false;
+    return { ok, unit: Math.max(0, Math.round(unit * 100) / 100), names };
+  }
+  const lineName = (key) => {
+    const { id, opts } = parseKey(key);
+    const names = optInfo(byId[id], opts).names;
+    return names.length ? `${itemName(id)} (${names.join(', ')})` : itemName(id);
+  };
+  const dishCount = (id) => Object.entries(order).reduce((n, [k, q]) => n + (parseKey(k).id === id ? q : 0), 0);
+  // сервисный сбор и налог — та же формула, что на сервере (сервер всё равно пересчитает)
+  function charges(sum) {
+    const r = R();
+    const r2 = (x) => Math.round(x * 100) / 100;
+    const service = r2(sum * (r.servicePct || 0) / 100);
+    const tax = r2((sum + (r.taxOnService ? service : 0)) * (r.taxPct || 0) / 100);
+    return { sub: r2(sum), service, tax, total: r2(sum + service + tax) };
+  }
+  const pct = (x) => String(Math.round(Number(x) * 100) / 100);
+  function chargesHtml(c, withPct) {
+    const r = R();
+    const total = `<div class="order-total"><span>${esc(t('total'))}</span><strong>${money(c.total)}</strong></div>`;
+    if (!Number(c.service) && !Number(c.tax)) return total;
+    return `<dl class="charges">
+      <div><dt>${esc(t('subtotal'))}</dt><dd>${money(c.sub)}</dd></div>
+      ${Number(c.service) ? `<div><dt>${esc(t('service')(withPct ? pct(r.servicePct) : ''))}</dt><dd>${money(c.service)}</dd></div>` : ''}
+      ${Number(c.tax) ? `<div><dt>${esc(withPct ? `${r.taxName} ${pct(r.taxPct)}%` : r.taxName)}</dt><dd>${money(c.tax)}</dd></div>` : ''}
+    </dl>${total}`;
+  }
 
   function matches(d) {
     if (!query) return true;
@@ -540,10 +621,20 @@
 
   function control(id) {
     if (!orderable(byId[id])) return `<span class="sold">${esc(t('soldOut'))}</span>`;
+    if (hasOptions(byId[id])) {
+      const c = dishCount(id);
+      return `<button type="button" class="add${c ? ' has-n' : ''}" data-act="pick" data-id="${esc(id)}" aria-label="${esc(`${t('chooseOptions')}: ${itemName(id)}`)}">${c ? `<span class="add-n">${c}</span>` : ''}${icon('plus')}</button>`;
+    }
     const n = order[id] || 0;
     const plus = `<button type="button" data-act="inc" data-id="${esc(id)}" aria-label="${esc(`${t('add')}: ${itemName(id)}`)}">${icon('plus')}</button>`;
     if (!n) return plus.replace('<button', '<button class="add"');
     return `<div class="stepper"><button type="button" data-act="dec" data-id="${esc(id)}" aria-label="${esc(`${t('remove')}: ${itemName(id)}`)}">${icon('minus')}</button><span aria-live="polite">${n}</span>${plus}</div>`;
+  }
+
+  // кнопки количества у строки списка (строка = блюдо + варианты)
+  function lineControl(key) {
+    const n = order[key] || 0;
+    return `<div class="stepper"><button type="button" data-act="dec" data-key="${esc(key)}" aria-label="${esc(`${t('remove')}: ${lineName(key)}`)}">${icon('minus')}</button><span aria-live="polite">${n}</span><button type="button" data-act="inc" data-key="${esc(key)}" aria-label="${esc(`${t('add')}: ${lineName(key)}`)}">${icon('plus')}</button></div>`;
   }
 
   // «Конина · рис, морковь, казы» — только из данных ресторана
@@ -644,14 +735,19 @@
   }, { passive: true });
 
   // ---------- Список гостя ----------
-  const lines = () => Object.entries(order).map(([id, n]) => ({ id, n, d: byId[id], ok: orderable(byId[id]) }));
+  const lines = () => Object.entries(order).map(([key, n]) => {
+    const { id, opts } = parseKey(key);
+    const d = byId[id];
+    const oi = optInfo(d, opts);
+    return { key, id, opts, n, d, ok: orderable(d) && oi.ok, unit: oi.unit, names: oi.names };
+  });
   function totals() {
     let count = 0;
     let sum = 0;
     let gone = 0;
     for (const l of lines()) {
       count += l.n;
-      if (l.ok) sum += l.d.price * l.n; else gone += 1;
+      if (l.ok) sum += l.unit * l.n; else gone += 1;
     }
     return { count, sum, gone };
   }
@@ -668,8 +764,9 @@
     bar.classList.toggle('status-bar', !!last);
     if (count) {
       bar.dataset.go = 'order';
-      bar.innerHTML = `<span class="bar-left"><span class="count">${count}</span>${esc(t('order'))}${attention ? '<span class="warn-dot" aria-hidden="true"></span>' : ''}</span><span class="bar-sum">${money(sum)}</span>`;
-      bar.setAttribute('aria-label', `${t('order')}: ${count}, ${t('total')} ${money(sum)}`);
+      const tot = charges(sum).total;
+      bar.innerHTML = `<span class="bar-left"><span class="count">${count}</span>${esc(t('order'))}${attention ? '<span class="warn-dot" aria-hidden="true"></span>' : ''}</span><span class="bar-sum">${money(tot)}</span>`;
+      bar.setAttribute('aria-label', `${t('order')}: ${count}, ${t('total')} ${money(tot)}`);
     } else if (last) {
       bar.dataset.go = 'track:' + last.id;
       const st = guestStatus(last.data.status);
@@ -680,9 +777,10 @@
     document.body.classList.toggle('has-bar', !bar.hidden);
   }
 
-  function remember(id) {
+  function remember(key) {
+    const { id, opts } = parseKey(key);
     const d = byId[id];
-    if (d) seen[id] = { price: d.price, name: d.name };
+    if (d) seen[key] = { price: optInfo(d, opts).unit, name: d.name };
     store.set('seen', seen);
   }
 
@@ -690,11 +788,11 @@
     document.querySelectorAll('[data-slot]').forEach((el) => { el.innerHTML = control(el.dataset.slot); });
   }
 
-  function change(id, delta) {
-    if (delta > 0 && !orderable(byId[id])) return;
-    const n = Math.min(99, Math.max(0, (order[id] || 0) + delta));
-    if (n) { order[id] = n; remember(id); } else { delete order[id]; delete seen[id]; store.set('seen', seen); }
-    priceChanges = priceChanges.filter((p) => order[p.id]);
+  function change(key, delta) {
+    if (delta > 0 && !orderable(byId[parseKey(key).id])) return;
+    const n = Math.min(99, Math.max(0, (order[key] || 0) + delta));
+    if (n) { order[key] = n; remember(key); } else { delete order[key]; delete seen[key]; store.set('seen', seen); }
+    priceChanges = priceChanges.filter((p) => order[p.key]);
     store.set('order', order);
     refreshSlots();
     renderBar();
@@ -724,24 +822,24 @@
       return out.join('');
     }
     const gone = ls.filter((l) => !l.ok);
-    if (gone.length) out.push(`<p class="notice bad" role="alert">${icon('alert')}<span>${esc(t('unavailableNotice')(gone.map((l) => itemName(l.id)).join(', ')))}</span></p>`);
+    if (gone.length) out.push(`<p class="notice bad" role="alert">${icon('alert')}<span>${esc(t('unavailableNotice')(gone.map((l) => lineName(l.key)).join(', ')))}</span></p>`);
     if (priceChanges.length) {
-      const txt = priceChanges.map((p) => `${itemName(p.id)} ${money(p.from)} → ${money(p.to)}`).join('; ');
+      const txt = priceChanges.map((p) => `${lineName(p.key)} ${money(p.from)} → ${money(p.to)}`).join('; ');
       out.push(`<p class="notice" role="status">${icon('alert')}<span>${esc(t('priceNotice')(txt))}</span></p>`);
     }
-    out.push(`<ul class="order-list">${ls.map(({ id, n, d, ok }) => `
+    out.push(`<ul class="order-list">${ls.map(({ key, id, n, d, ok, unit, names }) => `
       <li class="${ok ? '' : 'gone'}">
         ${photo(d)}
-        <span class="o-name"><b>${esc(itemName(id))}</b><small>${ok ? `${money(d.price)} × ${n}` : esc(t('soldOutRow'))}</small></span>
-        <span class="o-sum">${ok ? money(d.price * n) : ''}</span>
-        <div class="o-ctl">${ok ? control(id) : '<span></span>'}
-          <button type="button" class="o-remove" data-act="del" data-id="${esc(id)}">${icon('trash', 'sm')}${esc(t('removeItem'))}</button></div>
+        <span class="o-name"><b>${esc(itemName(id))}</b>${names.length ? `<em class="o-opts">${esc(names.join(', '))}</em>` : ''}<small>${ok ? `${money(unit)} × ${n}` : esc(t('soldOutRow'))}</small></span>
+        <span class="o-sum">${ok ? money(unit * n) : ''}</span>
+        <div class="o-ctl">${ok ? lineControl(key) : '<span></span>'}
+          <button type="button" class="o-remove" data-act="del" data-key="${esc(key)}">${icon('trash', 'sm')}${esc(t('removeItem'))}</button></div>
       </li>`).join('')}</ul>`);
     if (ONLINE) {
       out.push(`<label class="note-field"><span>${esc(t('noteLabel'))}</span>
         <textarea id="note-input" rows="2" maxlength="300" placeholder="${esc(t('notePh'))}">${esc(note)}</textarea></label>`);
     }
-    out.push(`<div class="order-total"><span>${esc(t('total'))}</span><strong>${money(totals().sum)}</strong></div>`);
+    out.push(chargesHtml(charges(totals().sum), true));
     out.push(`<button type="button" class="link-clear" data-act="clear">${icon('trash', 'sm')}${esc(t('clear'))}</button>`);
 
     // закреплённый низ: причина, ошибка, кнопка отправки
@@ -752,7 +850,7 @@
     if (sendError) foot.push(`<p class="notice bad" role="alert">${icon('alert')}<span>${esc(sendError)}</span></p>`);
     if (ONLINE) {
       foot.push(`<button type="button" class="btn block send-btn" data-act="send"${block || sending ? ' disabled' : ''}>
-        ${sending ? `<span class="spinner" aria-hidden="true"></span><span>${esc(t('sending'))}</span>` : `<span>${esc(t('sendOrder'))}</span><span class="send-sum"><bdi dir="ltr">${money(totals().sum)}</bdi></span>`}</button>`);
+        ${sending ? `<span class="spinner" aria-hidden="true"></span><span>${esc(t('sending'))}</span>` : `<span>${esc(t('sendOrder'))}</span><span class="send-sum"><bdi dir="ltr">${money(charges(totals().sum).total)}</bdi></span>`}</button>`);
     }
     out.push(`<div class="sheet-actions">${foot.join('')}</div>`);
     out.push(myOrdersHtml());
@@ -783,7 +881,7 @@
     return `
       ${justSent === id && gs === 'new' ? `<p class="sent-ok" role="status">${icon('check')}<span>${esc(t('sentTitle')(o.no))}</span></p>` : ''}
       <h2 class="sheet-title" id="sheet-title">${esc(t('orderNo')(o.no))}</h2>
-      <p class="track-meta"><span class="table-tag">${icon('table')}${esc(t('table'))} ${esc(o.table_label)}</span><span>${esc(t('sentAt')(timeOf(o.created_at)))}</span></p>
+      <p class="track-meta"><span class="table-tag">${icon('table')}${esc(t('table'))} ${esc(o.table_label)}</span><span>${esc(t('sentAt')(timeOf(o.created_at)))}</span>${o.paid_at ? `<span class="badge ok paid-tag">${icon('check', 'sm')}${esc(t('paid'))}</span>` : ''}</p>
       <div class="track-card is-${gs}" aria-live="polite">
         <span class="track-icon">${icon(ic)}</span>
         <div><b>${esc(t('statuses')[gs])}</b><span>${esc(t('statusHint')[gs])}</span></div>
@@ -793,11 +891,97 @@
         <li class="${gs === 'accepted' ? 'done' : 'wait'}">${gs === 'accepted' ? icon('check', 'sm') : '<i></i>'}<span>${esc(t('statuses').accepted)}</span></li>
       </ol>`}
       ${trackStale ? `<p class="notice info">${icon('alert')}<span>${esc(t('statusStale'))}</span></p>` : ''}
-      <ul class="order-list track-list">${(o.items || []).map((i) => `
-        <li><span class="o-name"><b>${esc(L(i.name) || i.id)}</b><small>${money(i.price)} × ${i.qty}</small></span><span class="o-sum">${money(i.price * i.qty)}</span></li>`).join('')}</ul>
+      ${o.edited_at ? `<p class="notice info">${icon('refresh')}<span>${esc(t('edited')(timeOf(o.edited_at)))}</span></p>` : ''}
+      <ul class="order-list track-list">${(o.items || []).map((i) => {
+        const on = (i.opts || []).map((x) => L(x.name)).filter(Boolean);
+        return `
+        <li><span class="o-name"><b>${esc(L(i.name) || i.id)}</b>${on.length ? `<em class="o-opts">${esc(on.join(', '))}</em>` : ''}<small>${money(i.price)} × ${i.qty}</small></span><span class="o-sum">${money(i.price * i.qty)}</span></li>`;
+      }).join('')}</ul>
       ${o.note ? `<p class="notice info">${icon('list')}<span><b>${esc(t('note'))}:</b> ${esc(o.note)}</span></p>` : ''}
-      <div class="order-total"><span>${esc(t('total'))}</span><strong>${money(o.total)}</strong></div>
+      ${chargesHtml({ sub: o.subtotal ?? o.total, service: o.service || 0, tax: o.tax || 0, total: o.total }, false)}
       <button type="button" class="btn ghost block" data-act="more">${esc(t('orderMore'))}</button>`;
+  }
+
+  // ---------- Выбор вариантов блюда ----------
+  const pickedOpts = () => [...document.querySelectorAll('#sheet-body input[data-g]:checked')].map((i) => `${i.dataset.g}:${i.value}`);
+  function updatePick() {
+    const d = byId[sheet?.id];
+    if (!d || !sheet.pick) return;
+    sheet.pick.sel = pickedOpts();
+    const oi = optInfo(d, sheet.pick.sel);
+    const q = $('#pick-qty');
+    if (q) q.textContent = sheet.pick.qty;
+    const b = $('#pick-add');
+    if (b) { b.disabled = !oi.ok; b.innerHTML = `<span>${esc(t('addFor')(money(oi.unit * sheet.pick.qty)))}</span>`; }
+  }
+  function addPicked() {
+    const d = byId[sheet?.id];
+    if (!d || !sheet.pick || !orderable(d)) return;
+    const opts = pickedOpts();
+    if (!optInfo(d, opts).ok) { updatePick(); return; }
+    const key = makeKey(d.id, opts);
+    order[key] = Math.min(99, (order[key] || 0) + sheet.pick.qty);
+    remember(key);
+    store.set('order', order);
+    refreshSlots();
+    renderBar();
+    closeSheet();
+  }
+  document.addEventListener('change', (e) => {
+    const inp = e.target.closest?.('#sheet-body input[data-g]');
+    if (!inp) return;
+    // одиночная группа (необязательная): галочка ведёт себя как переключатель
+    if (inp.type === 'checkbox' && inp.dataset.single && inp.checked) {
+      document.querySelectorAll(`#sheet-body input[data-g="${CSS.escape(inp.dataset.g)}"]`).forEach((x) => { if (x !== inp) x.checked = false; });
+    }
+    updatePick();
+  });
+
+  // ---------- Позвать официанта / попросить счёт ----------
+  let openCalls = { waiter: false, bill: false };
+  let calling = false;
+  let callsTimer = null;
+  function renderTableActions() {
+    const el = $('#table-actions');
+    if (!el) return;
+    const show = ONLINE && !!tableToken && tableState !== 'invalid' && tableState !== 'none';
+    el.hidden = !show;
+    if (!show) { el.innerHTML = ''; return; }
+    el.innerHTML = `<button type="button" class="call-btn${openCalls.waiter ? ' on' : ''}" data-act="call-waiter"${calling ? ' disabled' : ''}>${icon(openCalls.waiter ? 'check' : 'bell')}<span>${esc(openCalls.waiter ? t('waiterComing') : t('callWaiter'))}</span></button>
+      <button type="button" class="call-btn${openCalls.bill ? ' on' : ''}" data-act="call-bill"${calling ? ' disabled' : ''}>${icon(openCalls.bill ? 'check' : 'list')}<span>${esc(openCalls.bill ? t('billComing') : t('askBill'))}</span></button>`;
+  }
+  async function callStaff(kind, method) {
+    if (calling || !ONLINE || !tableToken) return;
+    calling = true;
+    renderTableActions();
+    try {
+      await rpc('call_staff', { p_table: tableToken, p_kind: kind, p_method: method || null });
+      openCalls[kind] = true;
+      if (sheet?.type === 'bill') closeSheet();
+      toast(t(kind === 'bill' ? 'billSent' : 'callSent'), 'good');
+      scheduleCalls();
+    } catch (e) {
+      const m = String(e?.message || '');
+      if (/bad_table/.test(m)) { tableState = 'invalid'; table = ''; store.set('table', null); renderHeader(); renderMenu(); }
+      toast(/too_many/.test(m) ? t('errTooMany') : t('callErr'), 'bad');
+    } finally {
+      calling = false;
+      renderTableActions();
+    }
+  }
+  async function pollCalls() {
+    if (!ONLINE || !tableToken || tableState === 'invalid') return;
+    try {
+      const rows = await rpc('table_calls', { p_table: tableToken });
+      const list = Array.isArray(rows) ? rows : [];
+      openCalls = { waiter: list.some((c) => c.kind === 'waiter'), bill: list.some((c) => c.kind === 'bill') };
+      renderTableActions();
+    } catch { /* нет связи — оставляем как было */ }
+  }
+  function scheduleCalls() {
+    clearTimeout(callsTimer);
+    if (!openCalls.waiter && !openCalls.bill) return;
+    callsTimer = setTimeout(async () => { if (!document.hidden) await pollCalls(); scheduleCalls(); }, 15000);
   }
 
   // ---------- Отправка заказа ----------
@@ -808,7 +992,7 @@
     const h = [...b].map((x) => x.toString(16).padStart(2, '0')).join('');
     return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
   }
-  const cartSig = () => JSON.stringify([tableToken, note.trim(), lines().map((l) => [l.id, l.n, l.d?.price]).sort()]);
+  const cartSig = () => JSON.stringify([tableToken, note.trim(), lines().map((l) => [l.key, l.n, l.unit]).sort()]);
 
   async function sendOrder() {
     if (sending || !lines().length || orderBlocker()) { renderSheet(); return; }
@@ -817,10 +1001,10 @@
     renderSheet();
     try {
       // 1) свежие цены и наличие: если что-то изменилось — показываем гостю и НЕ отправляем
-      const before = JSON.stringify(lines().map((l) => [l.id, l.ok, l.d?.price]));
+      const before = JSON.stringify(lines().map((l) => [l.key, l.ok, l.unit]));
       const fresh = await refreshMenu(true);
       if (!fresh) throw Object.assign(new Error('network'), { net: true });
-      if (JSON.stringify(lines().map((l) => [l.id, l.ok, l.d?.price])) !== before) { sendError = t('errChanged'); return; }
+      if (JSON.stringify(lines().map((l) => [l.key, l.ok, l.unit])) !== before) { sendError = t('errChanged'); return; }
       if (orderBlocker()) return;
       // 2) один ключ на одну попытку: повторное нажатие и плохой интернет не создадут второй заказ
       const sig = cartSig();
@@ -830,7 +1014,7 @@
       }
       const rows = await rpc('place_order', {
         p_table: tableToken,
-        p_items: lines().map((l) => ({ id: l.id, qty: l.n, price: l.d.price })),
+        p_items: lines().map((l) => (l.opts.length ? { id: l.id, qty: l.n, price: l.unit, opts: l.opts } : { id: l.id, qty: l.n, price: l.unit })),
         p_note: note.trim() || null,
         p_lang: lang,
         p_client_key: pendingKey.key,
@@ -855,7 +1039,7 @@
     } catch (e) {
       const m = String(e?.message || '');
       if (e?.net) sendError = t('errNetwork');
-      else if (/price_changed|unavailable/.test(m)) { await refreshMenu(true); sendError = t('errChanged'); }
+      else if (/price_changed|unavailable|options/.test(m)) { await refreshMenu(true); sendError = t('errChanged'); }
       else if (/bad_table/.test(m)) { tableState = 'invalid'; table = ''; store.set('table', null); sendError = ''; }
       else if (/closed|orders_off/.test(m)) { await refreshMenu(true); sendError = ''; }
       else if (/too_many/.test(m)) sendError = t('errTooMany');
@@ -919,6 +1103,7 @@
         table = row.label;
         tableState = 'ok';
         store.set('table', { token: tableToken, at: Date.now(), label: table });
+        pollCalls().then(scheduleCalls);
       } else {
         table = '';
         tableState = 'invalid';
@@ -928,6 +1113,7 @@
       tableState = 'unknown'; // нет связи: проверит сервер при отправке
     }
     renderHeader();
+    renderTableActions();
     renderMenu();
     if (sheet?.type === 'order') renderSheet();
   }
@@ -968,6 +1154,22 @@
       if (!d) { closeSheet(); return; }
       const meta = [amount(d), d.kcal ? `${d.kcal} ${t('kcal')}` : ''].filter(Boolean).join(' · ');
       const allergens = (d.allergens || []).map((a) => t('allergenNames')[a] || a).join(', ');
+      const pick = hasOptions(d) && orderable(d);
+      if (pick && !sheet.pick) {
+        // обязательный одиночный выбор: сразу отмечаем первый вариант (например, «целая порция»)
+        const sel = [];
+        for (const g of d.options) if (g.required && !g.multi && g.choices?.length) sel.push(`${g.id}:${g.choices[0].id}`);
+        sheet.pick = { qty: 1, sel };
+      }
+      const oi = pick ? optInfo(d, sheet.pick.sel) : null;
+      const optsHtml = pick ? `<div class="opt-groups">${d.options.map((g) => `
+          <fieldset class="opt-group" data-group="${esc(g.id)}"><legend><b>${esc(L(g.name))}</b><small>${esc(g.required ? t('required') : t('optional'))}</small></legend>
+          ${(g.choices || []).map((c) => {
+            const pr = Number(c.price) || 0;
+            const on = sheet.pick.sel.includes(`${g.id}:${c.id}`);
+            return `<label class="opt"><input type="${g.required && !g.multi ? 'radio' : 'checkbox'}" name="opt-${esc(g.id)}" value="${esc(c.id)}" data-g="${esc(g.id)}"${g.multi ? '' : ' data-single="1"'}${on ? ' checked' : ''}>
+              <span class="opt-name">${esc(L(c.name))}</span>${pr ? `<span class="opt-price"><bdi dir="ltr">${pr > 0 ? '+' : '−'}${money(Math.abs(pr))}</bdi></span>` : ''}</label>`;
+          }).join('')}</fieldset>`).join('')}</div>` : '';
       body.innerHTML = `
         ${photo(d, 'big', true)}
         ${tagsHtml(d)}
@@ -977,10 +1179,23 @@
         ${meatText(d) ? `<h4>${esc(t('meatLabel'))}</h4><p class="meat-line">${esc(meatText(d))}</p>` : ''}
         ${L(d.ingredients) ? `<h4>${esc(t('ingredients'))}</h4><p>${esc(L(d.ingredients))}</p>` : ''}
         ${allergens ? `<h4>${esc(t('allergens'))}</h4><p>${esc(allergens)}</p>` : ''}
+        ${pick ? `<p class="pick-price"><span class="price big">${money(d.price)}</span><span class="amount">${esc(meta)}</span></p>${optsHtml}
+        <div class="sheet-foot pick-foot">
+          <div class="stepper"><button type="button" data-act="pick-dec" aria-label="${esc(t('remove'))}">${icon('minus')}</button><span id="pick-qty" aria-live="polite">${sheet.pick.qty}</span><button type="button" data-act="pick-inc" aria-label="${esc(t('add'))}">${icon('plus')}</button></div>
+          <button type="button" class="btn pick-add" id="pick-add" data-act="pick-add"${oi.ok ? '' : ' disabled'}><span>${esc(t('addFor')(money(oi.unit * sheet.pick.qty)))}</span></button>
+        </div>` : `
         <div class="sheet-foot">
           <div class="price-wrap"><span class="price big">${money(d.price)}</span><span class="amount">${esc(meta)}</span></div>
           <div class="slot" data-slot="${esc(d.id)}">${control(d.id)}</div>
-        </div>`;
+        </div>`}`;
+      return;
+    }
+
+    if (sheet.type === 'bill') {
+      body.innerHTML = `<h2 class="sheet-title" id="sheet-title">${esc(t('askBill'))}</h2>
+        <p class="sheet-desc">${esc(t('payHow'))}</p>
+        <div class="pay-list">${[['cash', t('payCash')], ['card', t('payCard')], ['qr', t('payQr')]].map(([m, n]) => `
+          <button type="button" class="pay-opt" data-act="pay" data-method="${m}"><span>${esc(n)}</span>${icon('chevron', 'chev')}</button>`).join('')}</div>`;
       return;
     }
 
@@ -1094,7 +1309,7 @@
   // Новое меню: сравниваем со списком гостя — что пропало, что подорожало.
   function applyMenu(next) {
     const first = !M;
-    const goneBefore = new Set(lines().filter((l) => !l.ok).map((l) => l.id));
+    const goneBefore = new Set(lines().filter((l) => !l.ok).map((l) => l.key));
     const sameMenu = JSON.stringify(M) === JSON.stringify(next);
     M = next;
     state = 'ready';
@@ -1102,13 +1317,13 @@
     store.set('cache', M);
 
     let changed = false;
-    for (const { id, d, ok } of lines()) {
-      if (!ok && !goneBefore.has(id)) changed = true;
-      if (ok && seen[id] && Number(seen[id].price) !== d.price) {
-        priceChanges = priceChanges.filter((p) => p.id !== id).concat({ id, from: Number(seen[id].price), to: d.price });
+    for (const { key, d, ok, unit } of lines()) {
+      if (!ok && !goneBefore.has(key)) changed = true;
+      if (ok && seen[key] && Number(seen[key].price) !== unit) {
+        priceChanges = priceChanges.filter((p) => p.key !== key).concat({ key, from: Number(seen[key].price), to: unit });
         changed = true;
       }
-      if (d) seen[id] = { price: d.price, name: d.name };
+      if (d && ok) seen[key] = { price: unit, name: d.name };
     }
     store.set('seen', seen);
     if (changed && !first) {
@@ -1134,9 +1349,16 @@
     const act = e.target.closest('[data-act]');
     if (act) {
       const a = act.dataset.act;
-      if (a === 'inc') change(act.dataset.id, 1);
-      else if (a === 'dec') change(act.dataset.id, -1);
-      else if (a === 'del') change(act.dataset.id, -(order[act.dataset.id] || 0));
+      const k = act.dataset.key || act.dataset.id;
+      if (a === 'inc') change(k, 1);
+      else if (a === 'dec') change(k, -1);
+      else if (a === 'del') change(k, -(order[k] || 0));
+      else if (a === 'pick') openSheet({ type: 'dish', id: act.dataset.id });
+      else if (a === 'pick-inc' || a === 'pick-dec') { if (sheet?.pick) { sheet.pick.qty = Math.min(99, Math.max(1, sheet.pick.qty + (a === 'pick-inc' ? 1 : -1))); updatePick(); } }
+      else if (a === 'pick-add') addPicked();
+      else if (a === 'call-waiter') callStaff('waiter');
+      else if (a === 'call-bill') openSheet({ type: 'bill' });
+      else if (a === 'pay') callStaff('bill', act.dataset.method);
       else if (a === 'clear') {
         order = {};
         seen = {};
@@ -1246,6 +1468,7 @@
 
   function renderAll() {
     renderHeader();
+    renderTableActions();
     renderMenu();
     renderBar();
     renderSheet();

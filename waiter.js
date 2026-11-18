@@ -2,9 +2,10 @@
   'use strict';
 
   // =====================================================================
-  //  Страница официанта: новые заказы (принять), принятые сегодня,
-  //  меню с ценами и наличием (только просмотр).
-  //  Права проверяет база: официант может только принять новый заказ.
+  //  Страница официанта: зал (столы, вызовы гостей, счёт и оплата),
+  //  новые заказы (принять), принятые сегодня, меню с ценами и наличием (только просмотр).
+  //  Права проверяет база: официант принимает заказы, закрывает вызовы и счета;
+  //  меню, цены, столы и состав заказа менять не может.
   // =====================================================================
 
   const S = window.Staff;
@@ -17,7 +18,9 @@
   const ST = { new: 'Новый', accepted: 'Принят', cooking: 'Готовится', ready: 'Готов', cancelled: 'Отменён' };
 
   let api = null;
+  let floor = null;
   let tab = 'orders';
+  let lastStatus = new Map();    // id → статус: чтобы сказать «заказ готов», когда кухня отметит
   let cats = [];
   let dishes = [];
   let q = '';
@@ -80,6 +83,18 @@
     el.hidden = !parts.length;
     el.innerHTML = parts.join('');
   }
+  function announceCalls(fresh) {
+    const c = fresh[fresh.length - 1];
+    bannerMsg = fresh.length > 1 ? `Вызовов: ${fresh.length}` : `Стол ${c.table_label}: ${c.kind === 'bill' ? 'просят счёт' : 'зовут официанта'}`;
+    renderBanner();
+    ding();
+    try { navigator.vibrate?.([200, 100, 200]); } catch { /* нет вибрации */ }
+    try {
+      if ('Notification' in window && Notification.permission === 'granted' && document.hidden) new Notification(bannerMsg, { tag: 'call-' + c.id, icon: 'icon.svg' });
+    } catch { /* без системных уведомлений */ }
+    updateCount();
+    if (tab === 'floor') renderFloor();
+  }
   function announce(fresh) {
     const o = fresh[fresh.length - 1];
     bannerMsg = fresh.length > 1 ? `Новых заказов: ${fresh.length}` : `Новый заказ №${o.no} — стол ${o.table_label}`;
@@ -92,14 +107,17 @@
       }
     } catch { /* без системных уведомлений */ }
   }
-  setInterval(() => { if (api && orders.some((o) => o.status === 'new')) ding(); }, 30000);
+  setInterval(() => { if (api && (orders.some((o) => o.status === 'new') || floor?.openCalls().length)) ding(); }, 30000);
 
   function updateCount() {
     const n = orders.filter((o) => o.status === 'new').length;
     const el = $('#tab-count');
     if (el) { el.hidden = !n; el.textContent = n; }
-    document.title = n ? `(${n}) Новый заказ — официант` : 'Официант';
-    if (!n && bannerMsg) { bannerMsg = ''; renderBanner(); }
+    const c = floor ? floor.openCalls().length : 0;
+    const ce = $('#calls-count');
+    if (ce) { ce.hidden = !c; ce.textContent = c; }
+    document.title = n ? `(${n}) Новый заказ — официант` : c ? `(${c}) Вызов — официант` : 'Официант';
+    if (!n && !c && bannerMsg) { bannerMsg = ''; renderBanner(); }
   }
 
   // ---------- заказы ----------
@@ -108,9 +126,12 @@
       const rows = await api.orders(dayStart().toISOString());
       const fresh = seen ? rows.filter((o) => o.status === 'new' && !seen.has(o.id)) : [];
       seen = new Set([...(seen || []), ...rows.map((o) => o.id)]);
+      const ready = rows.filter((o) => o.status === 'ready' && lastStatus.has(o.id) && lastStatus.get(o.id) !== 'ready');
+      lastStatus = new Map(rows.map((o) => [o.id, o.status]));
       orders = rows;
       ordersState = 'ready';
       if (fresh.length) announce(fresh);
+      else if (ready.length) { ding(); S.toast(ready.length > 1 ? `Готово заказов: ${ready.length} — можно подавать` : `Заказ №${ready[0].no} готов — стол ${ready[0].table_label}`); }
     } catch {
       if (ordersState !== 'ready') ordersState = 'error';
       else ordersState = 'stale';
@@ -125,9 +146,11 @@
       <div class="o-head"><b class="o-table">Стол ${esc(o.table_label)}</b>
         <span class="st st-${esc(o.status)}">${o.status !== 'new' && o.status !== 'cancelled' ? icon('check', 'sm') : ''}${esc(ST[o.status] || o.status)}</span></div>
       <div class="o-meta">Заказ №${esc(o.no)} · ${esc(hhmm(o.created_at))} · ${esc(ago(o.created_at))}</div>
-      <ul class="o-items">${(o.items || []).map((i) => `<li><span><b>${esc(i.qty)}×</b> ${esc(tr(i.name) || i.id)}</span><span>${money(i.price * i.qty)}</span></li>`).join('')}</ul>
+      <ul class="o-items">${(o.items || []).map((i) => `<li><span><b>${esc(i.qty)}×</b> ${esc(tr(i.name) || i.id)}${window.Floor.optNames(i).length ? `<em class="o-opt">${esc(window.Floor.optNames(i).join(', '))}</em>` : ''}</span><span>${money(i.price * i.qty)}</span></li>`).join('')}</ul>
       ${o.note ? `<div class="o-note"><b>Комментарий:</b> ${esc(o.note)}</div>` : ''}
-      <div class="o-total"><span>Итого</span><b>${money(o.total)}</b></div>
+      ${o.edited_at ? `<div class="o-meta">Владелец изменил заказ в ${esc(hhmm(o.edited_at))}</div>` : ''}
+      <div class="o-total"><span>Итого${o.paid_at ? ' · <span class="state-badge ok">оплачено</span>' : ''}</span><b>${money(o.total)}</b></div>
+      ${o.status !== 'cancelled' ? `<div class="o-actions"><button type="button" class="btn small ghost" data-fl-ticket="${esc(o.id)}">${icon('printer', 'sm')}Печать на кухню</button>${o.table_id && !o.paid_at && !isNew ? `<button type="button" class="btn small ghost" data-fl-table="${esc(o.table_id)}">Счёт стола</button>` : ''}</div>` : ''}
       ${isNew ? `<button type="button" class="btn block accept-btn" data-accept="${esc(o.id)}"${b ? ' disabled' : ''}>
           ${b ? '<span class="spinner" aria-hidden="true"></span>Принимаем…' : `${icon('check')}Принять заказ`}</button>`
         : `<div class="o-meta">${o.status === 'cancelled' ? 'Заказ отменён' : `Принял${o.accepted_by_name ? `: ${esc(o.accepted_by_name)}` : ''}${o.accepted_at ? ` в ${esc(hhmm(o.accepted_at))}` : ''}`}</div>`}
@@ -259,17 +282,22 @@
   }
 
   // ---------- разделы ----------
+  function renderFloor() {
+    if (!floor) { $('#a-main').innerHTML = '<p class="a-empty">Загрузка…</p>'; return; }
+    floor.render($('#a-main'));
+  }
   function setTab(next) {
-    tab = next === 'menu' ? 'menu' : 'orders';
+    tab = ['menu', 'floor'].includes(next) ? next : 'orders';
     document.querySelectorAll('.a-tab').forEach((a) => a.setAttribute('aria-current', a.dataset.tab === tab ? 'page' : 'false'));
     render();
   }
-  function render() { if (tab === 'orders') renderOrders(); else renderMenu(); }
+  function render() { if (tab === 'orders') renderOrders(); else if (tab === 'floor') renderFloor(); else renderMenu(); }
   window.addEventListener('hashchange', () => { if (api) setTab(location.hash.slice(1)); });
 
   // ---------- события ----------
   document.addEventListener('input', (e) => { if (e.target.id === 'w-search') { q = e.target.value; renderMenu(); } });
   document.addEventListener('click', (e) => {
+    if (floor?.handleClick(e)) return;
     const ac = e.target.closest('[data-accept]');
     if (ac) { accept(ac.dataset.accept); return; }
     if (e.target.closest('[data-retry]')) { ordersState = 'loading'; renderOrders(); loadOrders().then(render); return; }
@@ -284,7 +312,10 @@
     if (e.target.closest('[data-notify]')) { Notification.requestPermission().then(() => renderOrders()); return; }
     const bn = e.target.closest('[data-banner]');
     if (bn) {
-      if (bn.dataset.banner === 'sound') { unlockAudio(); ding(); } else { bannerMsg = ''; renderBanner(); location.hash = '#orders'; setTab('orders'); }
+      if (bn.dataset.banner === 'sound') { unlockAudio(); ding(); } else {
+        const toFloor = /Стол|Вызов/.test(bannerMsg);
+        bannerMsg = ''; renderBanner(); location.hash = toFloor ? '#floor' : '#orders'; setTab(toFloor ? 'floor' : 'orders');
+      }
       return;
     }
     const f = e.target.closest('[data-f]');
@@ -304,20 +335,30 @@
       api = ctx.api;
       paintBrand();
       setTab(location.hash.slice(1) || 'orders');
-      await Promise.all([loadOrders(), loadMenu().catch((ex) => S.toast(S.errText(ex), true))]);
+      floor = window.Floor.create({
+        api, isOwner: false,
+        getOrders: () => orders, getDishes: () => dishes,
+        reloadOrders: loadOrders, onCalls: announceCalls,
+        rerender: () => { updateCount(); if (tab === 'floor') renderFloor(); else if (tab === 'orders') renderOrders(); },
+      });
+      await Promise.all([loadOrders(), loadMenu().catch((ex) => S.toast(S.errText(ex), true)), floor.load().catch(() => {})]);
+      updateCount();
       render();
       renderBanner();
       stop?.();
-      stop = api.subscribe(['orders', 'dishes', 'categories', 'settings'], async (table) => {
-        if (table === 'orders') { await loadOrders(); if (tab === 'orders') renderOrders(); return; }
+      stop = api.subscribe(['orders', 'dishes', 'categories', 'settings', 'calls', 'bills'], async (table) => {
+        if (table === 'calls' || table === 'bills') { try { await floor.load(); updateCount(); if (tab === 'floor' && !document.querySelector('.modal')) renderFloor(); } catch { /* позже */ } return; }
+        if (table === 'orders') { await loadOrders(); if (tab === 'orders') renderOrders(); else if (tab === 'floor' && !document.querySelector('.modal')) renderFloor(); return; }
         if (document.querySelector('.modal')) return;
         try { await loadMenu(); if (tab === 'menu') renderMenu(); } catch { /* позже */ }
       }, (ok) => { live = ok; if (tab === 'orders') renderOrders(); });
       clearInterval(timer);
       timer = setInterval(async () => {
         if (document.hidden && live) return;
-        await loadOrders();
-        if (tab === 'orders' && !document.querySelector('.modal')) renderOrders();
+        await Promise.all([loadOrders(), floor.load().catch(() => {})]);
+        updateCount();
+        if (document.querySelector('.modal')) return;
+        if (tab === 'orders') renderOrders(); else if (tab === 'floor') renderFloor();
       }, 10000);
     },
     onLogout() { stop?.(); stop = null; clearInterval(timer); bannerMsg = ''; renderBanner(); },

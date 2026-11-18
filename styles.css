@@ -477,3 +477,58 @@ button.badge.halal { cursor: pointer; }
 .st-accepted { background: var(--ok-soft); color: var(--ok); }
 .my-order { min-height: 60px; }
 .my-orders { margin-bottom: 4px; }
+
+/* ---------- позвать официанта / попросить счёт ---------- */
+.table-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 12px 0 0; }
+.table-actions[hidden] { display: none; }
+.call-btn {
+  display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; padding: 8px 12px;
+  border: 1.5px solid var(--line); border-radius: var(--radius-sm); background: var(--surface); color: var(--text);
+  font: 700 14.5px var(--font-body); line-height: 1.2; text-align: center; cursor: pointer;
+}
+.call-btn .ic { flex: none; width: 20px; height: 20px; color: var(--accent); }
+.call-btn:hover { background: var(--surface-2); }
+.call-btn.on { background: var(--ok-soft); border-color: transparent; color: var(--ok); }
+.call-btn.on .ic { color: var(--ok); }
+.call-btn:disabled { opacity: .6; cursor: default; }
+.pay-list { display: grid; gap: 8px; margin-top: 14px; }
+.pay-opt {
+  display: flex; align-items: center; justify-content: space-between; min-height: 56px; padding: 0 16px;
+  border: 1.5px solid var(--line); border-radius: var(--radius-sm); background: var(--surface); color: var(--text);
+  font: 700 17px var(--font-body); cursor: pointer;
+}
+.pay-opt:hover { background: var(--accent-soft); border-color: transparent; color: var(--accent); }
+.pay-opt .chev { width: 18px; height: 18px; color: var(--muted); }
+:root[dir="rtl"] .pay-opt .chev { transform: scaleX(-1); }
+
+/* ---------- сервисный сбор и налог в итоге ---------- */
+.charges { margin: 16px 0 0; padding: 0; display: grid; gap: 6px; font-size: 15px; color: var(--muted); }
+.charges div { display: flex; justify-content: space-between; gap: 12px; }
+.charges dt, .charges dd { margin: 0; }
+.charges dd { font-weight: 700; color: var(--text); unicode-bidi: isolate; }
+.charges + .order-total { margin-top: 8px; padding-top: 10px; border-top: 1px dashed var(--line); }
+.o-opts { display: block; font-style: normal; font-size: 13px; color: var(--accent); font-weight: 600; margin-top: 1px; }
+.paid-tag { gap: 4px; }
+
+/* ---------- варианты блюда ---------- */
+.add.has-n { position: relative; }
+.add .add-n {
+  position: absolute; top: -7px; inset-inline-end: -7px; display: grid; place-items: center; min-width: 22px; height: 22px; padding: 0 6px;
+  border-radius: 999px; background: var(--surface); color: var(--accent); border: 1.5px solid var(--accent); font: 800 12px var(--font-body);
+}
+.pick-price { display: flex; align-items: baseline; gap: 10px; margin: 16px 0 0; }
+.opt-groups { display: grid; gap: 14px; margin-top: 14px; }
+.opt-group { margin: 0; padding: 0; border: 0; min-width: 0; }
+.opt-group legend { display: flex; align-items: baseline; gap: 8px; padding: 0; margin-bottom: 8px; font-size: 16px; }
+.opt-group legend small { color: var(--muted); font-weight: 600; font-size: 13px; }
+.opt {
+  display: flex; align-items: center; gap: 12px; min-height: 50px; padding: 8px 14px; margin-top: 6px;
+  border: 1.5px solid var(--line); border-radius: var(--radius-sm); background: var(--surface); cursor: pointer;
+}
+.opt:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); }
+.opt input { flex: none; width: 20px; height: 20px; margin: 0; accent-color: var(--accent); }
+.opt-name { flex: 1; min-width: 0; font-weight: 700; }
+.opt-price { flex: none; color: var(--muted); font-weight: 700; font-size: 14px; }
+.pick-foot { gap: 10px; }
+.pick-foot .stepper { flex: none; }
+.pick-add { flex: 1; min-height: 52px; }

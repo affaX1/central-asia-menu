@@ -107,6 +107,52 @@
         fail(error); return data;
       },
 
+      // ---------- зал: столы без кодов, вызовы, счета ----------
+      async floorTables() {
+        const { data, error } = await sb.rpc('floor_tables'); fail(error); return data || [];
+      },
+      // открытые вызовы + закрытые за последние fromIso
+      async calls(fromIso) {
+        const { data, error } = await sb.from('calls').select('*').or(`done_at.is.null,created_at.gte.${fromIso}`)
+          .order('created_at', { ascending: true }).limit(500);
+        fail(error); return data || [];
+      },
+      async doneCall(id) { const { error } = await sb.rpc('done_call', { p_id: id }); fail(error); },
+      async bills(fromIso, toIso) {
+        let q = sb.from('bills').select('*').gte('paid_at', fromIso);
+        if (toIso) q = q.lt('paid_at', toIso);
+        const { data, error } = await q.order('paid_at', { ascending: false }).limit(5000);
+        fail(error); return data || [];
+      },
+      async closeBill(tableId, method, orderIds) {
+        const { data, error } = await sb.rpc('close_bill', { p_table: tableId, p_method: method, p_orders: orderIds || null });
+        fail(error); return Array.isArray(data) ? data[0] : data;
+      },
+      // ---------- владелец: изменить состав заказа; кухня ----------
+      async editOrder(id, items) {
+        const { data, error } = await sb.rpc('edit_order', { p_id: id, p_items: items });
+        fail(error); return Array.isArray(data) ? data[0] : data;
+      },
+      async kitchenSet(id, status) {
+        const { data, error } = await sb.rpc('kitchen_set', { p_id: id, p_status: status });
+        fail(error); return Array.isArray(data) ? data[0] : data;
+      },
+      // ---------- журнал изменений (только владелец) ----------
+      async audit(fromIso, toIso) {
+        const { data, error } = await sb.from('audit_log').select('*').gte('at', fromIso).lt('at', toIso)
+          .order('at', { ascending: false }).limit(1000);
+        fail(error); return data || [];
+      },
+      // ---------- Telegram (только владелец; токен наружу не отдаётся) ----------
+      async telegramStatus() {
+        const { data, error } = await sb.rpc('telegram_status'); fail(error); return Array.isArray(data) ? data[0] : data;
+      },
+      async setTelegram(token, chats, orders, calls, bills) {
+        const { error } = await sb.rpc('set_telegram', { p_token: token, p_chats: chats, p_orders: orders, p_calls: calls, p_bills: bills }); fail(error);
+      },
+      async clearTelegram() { const { error } = await sb.rpc('clear_telegram'); fail(error); },
+      async telegramTest() { const { data, error } = await sb.rpc('telegram_test'); fail(error); return data; },
+
       // ---------- столы и QR ----------
       async tables() {
         const { data, error } = await sb.from('tables').select('*').order('sort').order('label');

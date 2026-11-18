@@ -75,7 +75,7 @@
     if (!box) return;
     box.hidden = !me;
     if (!me) return;
-    const role = me.role === 'owner' ? 'владелец' : me.role === 'waiter' ? 'официант' : 'без доступа';
+    const role = { owner: 'владелец', waiter: 'официант', cook: 'повар' }[me.role] || 'без доступа';
     box.innerHTML = `<span class="a-who"><b>${esc(me.name || me.email)}</b><small>${esc(role)}</small></span>
       <button type="button" class="pill" id="logout-btn">${icon('logout', 'sm')}Выйти</button>`;
   }
@@ -124,11 +124,14 @@
       unconfirmed: ['Подтвердите email', 'Мы отправили письмо со ссылкой. Откройте её, потом нажмите «Проверить ещё раз».'],
       uninvited: ['Нет приглашения', 'Этот email не приглашён. Попросите владельца пригласить именно этот адрес в разделе «Сотрудники», затем нажмите «Проверить ещё раз».'],
       disabled: ['Доступ отключён', 'Владелец отключил доступ этому аккаунту. Если это ошибка — обратитесь к владельцу.'],
-      owner: ['Только для владельца', 'Вы вошли как официант. Эта страница — для владельца ресторана.'],
+      owner: ['Только для владельца', 'Эта страница — для владельца ресторана.'],
+      floor: ['Это страница зала', 'Вы вошли как повар. Ваша страница — «Кухня».'],
+      kitchen: ['Это страница кухни', 'Вы вошли как официант. Ваша страница — «Зал и заказы».'],
     }[kind];
+    const home = me?.role === 'cook' ? ['kitchen.html', 'Открыть кухню'] : ['waiter.html', 'Открыть страницу официанта'];
     screen(`<div class="a-card">${icon('lock', 'lg')}
       <h2>${esc(text[0])}</h2><p>${esc(me?.email || '')}</p><p>${esc(text[1])}</p>
-      ${kind === 'owner' ? '<a class="btn block" href="waiter.html">Открыть меню для официанта</a>'
+      ${['owner', 'floor', 'kitchen'].includes(kind) ? `<a class="btn block" href="${home[0]}">${esc(home[1])}</a>`
         : '<button class="btn block" type="button" data-auth="recheck">Проверить ещё раз</button>'}
     </div>`);
   }
@@ -146,6 +149,8 @@
       if (!w.role) { noAccessScreen('uninvited'); return; }
       if (!w.active) { noAccessScreen('disabled'); return; }
       if (opts.need === 'owner' && w.role !== 'owner') { noAccessScreen('owner'); return; }
+      if ((opts.need === 'waiter' || opts.need === 'floor') && !['waiter', 'owner'].includes(w.role)) { noAccessScreen('floor'); return; }
+      if (opts.need === 'kitchen' && !['cook', 'owner'].includes(w.role)) { noAccessScreen('kitchen'); return; }
       settings = await api.settings();
       renderUser();
       $('#a-nav')?.removeAttribute('hidden');

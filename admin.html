@@ -10,11 +10,12 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Playfair+Display:wght@600;700&display=swap">
-  <link rel="stylesheet" href="styles.css?v=17">
-  <link rel="stylesheet" href="staff.css?v=17">
+  <link rel="stylesheet" href="styles.css?v=18">
+  <link rel="stylesheet" href="staff.css?v=18">
   <style>
     .doors { max-width: 720px; margin: 24px auto; display: grid; gap: 14px; grid-template-columns: 1fr; }
     @media (min-width: 640px) { .doors { grid-template-columns: 1fr 1fr; } }
+    @media (min-width: 900px) { .doors { max-width: 1000px; grid-template-columns: 1fr 1fr 1fr; } }
     .door { display: flex; flex-direction: column; gap: 8px; padding: 22px; border-radius: var(--radius); border: 1px solid var(--line); background: var(--surface); box-shadow: var(--shadow); text-decoration: none; color: var(--text); }
     .door:hover { border-color: var(--accent); }
     .door .ic { width: 32px; height: 32px; color: var(--accent); }
@@ -35,13 +36,19 @@
       <a class="door" href="waiter.html">
         <svg class="ic" aria-hidden="true"><use href="icons.svg#i-menu"/></svg>
         <h2>Официант</h2>
-        <p>Новые заказы со столов — принять одним нажатием. Меню, цены и наличие — для ответов гостям.</p>
+        <p>Зал: новые заказы, вызовы гостей, счёт стола и оплата, печать. Меню и наличие — для ответов гостям.</p>
+        <span>Открыть</span>
+      </a>
+      <a class="door" href="kitchen.html">
+        <svg class="ic" aria-hidden="true"><use href="icons.svg#i-flame"/></svg>
+        <h2>Кухня</h2>
+        <p>Принятые заказы для поваров: «Готовлю» и «Готово» — официант сразу видит готовый заказ.</p>
         <span>Открыть</span>
       </a>
       <a class="door" href="owner.html">
         <svg class="ic" aria-hidden="true"><use href="icons.svg#i-store"/></svg>
         <h2>Владелец</h2>
-        <p>Входящие заказы со столов, меню, фото, наличие, столы и QR-коды, данные ресторана, сотрудники.</p>
+        <p>Всё: зал, заказы, меню и цены, столы и QR, отчёты, журнал изменений, налог, Telegram, сотрудники.</p>
         <span>Открыть</span>
       </a>
     </div>

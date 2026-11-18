@@ -20,6 +20,7 @@
     'Europe/London', 'Europe/Berlin', 'America/New_York'];
 
   let api = null;
+  let floor = null;
   let me = null;
   let cats = [];
   let dishes = [];
@@ -47,14 +48,17 @@
 
   // ---------- переключение разделов ----------
   function setTab(next) {
-    tab = ['orders', 'menu', 'tables', 'restaurant', 'staff'].includes(next) ? next : 'orders';
+    tab = ['floor', 'orders', 'menu', 'tables', 'reports', 'audit', 'restaurant', 'staff'].includes(next) ? next : 'orders';
     document.querySelectorAll('.a-tab').forEach((a) => a.setAttribute('aria-current', a.dataset.tab === tab ? 'page' : 'false'));
     render();
   }
   window.addEventListener('hashchange', () => { if (api) setTab(location.hash.slice(1)); });
 
   function render() {
-    if (tab === 'orders') renderOrders();
+    if (tab === 'floor') { if (floor) floor.render($('#a-main')); else $('#a-main').innerHTML = '<p class="a-empty">Загрузка…</p>'; }
+    else if (tab === 'reports') window.OwnerReports.reports($('#a-main'), { api });
+    else if (tab === 'audit') window.OwnerReports.audit($('#a-main'), { api, dishes, cats });
+    else if (tab === 'orders') renderOrders();
     else if (tab === 'menu') renderMenu();
     else if (tab === 'tables') renderTables();
     else if (tab === 'restaurant') renderRestaurant();
@@ -158,6 +162,10 @@
         <div class="checks">${TAGS.map(([v, n]) => `<label><input type="checkbox" name="tags" value="${v}"${d.tags?.includes(v) ? ' checked' : ''}>${n}</label>`).join('')}</div>
         <p class="section-label">Аллергены</p>
         <div class="checks">${ALLERGENS.map(([v, n]) => `<label><input type="checkbox" name="allergens" value="${v}"${d.allergens?.includes(v) ? ' checked' : ''}>${n}</label>`).join('')}</div>
+        <p class="section-label">Варианты блюда (необязательно)</p>
+        <p class="help" style="margin:0 0 8px">Например: «Порция: целая / половина (−10)», «Острота: без / средне / остро», «Добавки: яйцо (+3)». Гость выберет их при заказе, цена посчитается сама. Названия — по-русски и по-английски (на других языках гость увидит английское).</p>
+        <div id="opt-editor"></div>
+        <button type="button" class="btn small soft" id="opt-add-group">${icon('plus', 'sm')}Добавить группу вариантов</button>
         <div class="form-grid" style="margin-top:14px">
           <div>${sw('name="available"', d.available, 'В наличии')}</div>
           <div>${sw('name="shown"', !d.hidden, 'Показывать гостям')}</div>
@@ -172,6 +180,80 @@
       </form>`);
 
     const err = (msg) => { const e = m.querySelector('#dish-err'); e.hidden = !msg; e.innerHTML = msg ? `${icon('alert')}<span>${esc(msg)}</span>` : ''; if (msg) e.scrollIntoView({ block: 'nearest' }); };
+
+    // ---------- редактор вариантов ----------
+    let groups = JSON.parse(JSON.stringify(d.options || []));
+    const ed = m.querySelector('#opt-editor');
+    const paintOpts = () => {
+      ed.innerHTML = groups.map((g, gi) => `<fieldset class="opt-ed" data-gi="${gi}">
+        <div class="form-grid">
+          <label class="field"><span>Группа (рус.)</span><input data-o="g-ru" value="${esc(g.name?.ru || '')}" maxlength="40" placeholder="Порция"></label>
+          <label class="field"><span>Группа (англ.)</span><input data-o="g-en" value="${esc(g.name?.en || '')}" maxlength="40" placeholder="Portion"></label>
+        </div>
+        <div class="checks"><label><input type="checkbox" data-o="g-req"${g.required ? ' checked' : ''}>Обязательно выбрать</label><label><input type="checkbox" data-o="g-multi"${g.multi ? ' checked' : ''}>Можно несколько</label></div>
+        <ul class="opt-ed-list">${(g.choices || []).map((c, ci) => `<li data-ci="${ci}">
+          <input data-o="c-ru" value="${esc(c.name?.ru || '')}" maxlength="40" placeholder="Вариант" aria-label="Вариант (рус.)">
+          <input data-o="c-en" value="${esc(c.name?.en || '')}" maxlength="40" placeholder="English" aria-label="Вариант (англ.)">
+          <input data-o="c-price" type="number" step="0.5" value="${esc(c.price ?? 0)}" aria-label="Доплата" title="Доплата к цене (минус — скидка)">
+          <button type="button" class="btn small danger" data-o="c-del" aria-label="Убрать вариант">${icon('trash', 'sm')}</button></li>`).join('')}</ul>
+        <div class="opt-ed-foot"><button type="button" class="btn small ghost" data-o="c-add">${icon('plus', 'sm')}Вариант</button><button type="button" class="btn small danger" data-o="g-del">Убрать группу</button></div>
+      </fieldset>`).join('');
+    };
+    paintOpts();
+    ed.addEventListener('input', (e) => {
+      const o = e.target.dataset.o;
+      const gi = e.target.closest('[data-gi]')?.dataset.gi;
+      if (o == null || gi == null) return;
+      const g = groups[gi];
+      const ci = e.target.closest('[data-ci]')?.dataset.ci;
+      if (o === 'g-ru') g.name = { ...g.name, ru: e.target.value };
+      else if (o === 'g-en') g.name = { ...g.name, en: e.target.value };
+      else if (o === 'c-ru') g.choices[ci].name = { ...g.choices[ci].name, ru: e.target.value };
+      else if (o === 'c-en') g.choices[ci].name = { ...g.choices[ci].name, en: e.target.value };
+      else if (o === 'c-price') g.choices[ci].price = e.target.value;
+    });
+    ed.addEventListener('change', (e) => {
+      const o = e.target.dataset.o;
+      const g = groups[e.target.closest('[data-gi]')?.dataset.gi];
+      if (o === 'g-req') g.required = e.target.checked;
+      else if (o === 'g-multi') g.multi = e.target.checked;
+    });
+    ed.addEventListener('click', (e) => {
+      const b = e.target.closest('[data-o]');
+      if (!b || b.tagName !== 'BUTTON') return;
+      const gi = b.closest('[data-gi]').dataset.gi;
+      if (b.dataset.o === 'c-add') { if (groups[gi].choices.length < 12) groups[gi].choices.push({ name: {}, price: 0 }); }
+      else if (b.dataset.o === 'c-del') groups[gi].choices.splice(Number(b.closest('[data-ci]').dataset.ci), 1);
+      else if (b.dataset.o === 'g-del') groups.splice(Number(gi), 1);
+      paintOpts();
+    });
+    m.querySelector('#opt-add-group').addEventListener('click', () => {
+      if (groups.length >= 6) return;
+      groups.push({ name: {}, required: false, multi: false, choices: [{ name: {}, price: 0 }, { name: {}, price: 0 }] });
+      paintOpts();
+    });
+    // проверка и стабильные коды: старые коды вариантов не меняются (на них ссылаются заказы)
+    const readOptions = () => {
+      const gIds = new Set(groups.map((g) => g.id).filter(Boolean));
+      const out = [];
+      for (const g of groups) {
+        const gname = { ...(g.name || {}), ru: String(g.name?.ru || '').trim(), en: String(g.name?.en || '').trim() };
+        const choices = (g.choices || []).filter((c) => String(c.name?.ru || c.name?.en || '').trim());
+        if (!gname.ru && !gname.en && !choices.length) continue;
+        if (!gname.ru && !gname.en) throw new Error('У группы вариантов нет названия.');
+        if (!choices.length) throw new Error(`В группе «${gname.ru || gname.en}» нет ни одного варианта.`);
+        const gid = g.id || slug(gname.en || gname.ru, gIds); gIds.add(gid);
+        const cIds = new Set(choices.map((c) => c.id).filter(Boolean));
+        out.push({ id: gid.slice(0, 30), name: gname, required: !!g.required, multi: !!g.multi,
+          choices: choices.map((c) => {
+            const price = Number(String(c.price ?? 0).replace(',', '.')) || 0;
+            if (Math.abs(price) > 10000) throw new Error('Доплата варианта слишком большая.');
+            const cid = c.id || slug(c.name?.en || c.name?.ru, cIds); cIds.add(cid);
+            return { id: cid.slice(0, 30), name: { ...(c.name || {}), ru: String(c.name?.ru || '').trim(), en: String(c.name?.en || '').trim() }, price: Math.round(price * 100) / 100 };
+          }) });
+      }
+      return out;
+    };
 
     m.querySelector('#photo-file').addEventListener('change', async (e) => {
       const file = e.target.files[0];
@@ -218,6 +300,8 @@
       if (weight !== null && !(Number.isInteger(weight) && weight >= 1 && weight <= 100000)) return err('Выход — целое число больше нуля.');
       if (kcal !== null && !(Number.isInteger(kcal) && kcal >= 0 && kcal <= 20000)) return err('Калории — целое число.');
       if (!f.get('category_id')) return err('Сначала создайте категорию.');
+      let options;
+      try { options = readOptions(); } catch (ex) { return err(ex.message); }
 
       const btn = e.target.querySelector('[type="submit"]');
       btn.disabled = true;
@@ -233,7 +317,7 @@
           ingredients: readLang(f, 'ingr'),
           price: Math.round(price * 100) / 100,
           weight, unit: f.get('unit'), kcal,
-          tags: f.getAll('tags'), allergens: f.getAll('allergens'), meat: f.getAll('meat'),
+          tags: f.getAll('tags'), allergens: f.getAll('allergens'), meat: f.getAll('meat'), options,
           available: !!f.get('available'), hidden: !f.get('shown'),
           sort: Number(f.get('sort')) || 0,
           photo_url: uploaded || (removePhoto ? null : d.photo_url || null),
@@ -400,11 +484,23 @@
           ${langFields('footer', st.footer, { label: 'Подпись внизу меню (необязательно)' })}
         </div></section>
 
+        <section class="panel"><div class="panel-head"><h3>Сервисный сбор и налог</h3></div><div class="panel-body">
+          <p class="help">Сумма считается на сервере и видна гостю в корзине, на экране заказа и в чеке. Оставьте 0, если не берёте. Новые проценты действуют для новых заказов.</p>
+          <div class="form-grid">
+            <label class="field"><span>Сервисный сбор, %</span><input name="service_pct" type="number" min="0" max="30" step="0.5" value="${esc(Number(st.service_pct) || 0)}"></label>
+            <label class="field"><span>Налог, %</span><input name="tax_pct" type="number" min="0" max="30" step="0.5" value="${esc(Number(st.tax_pct) || 0)}"></label>
+            <label class="field"><span>Название налога</span><input name="tax_name" type="text" maxlength="20" value="${esc(st.tax_name || 'SST')}"></label>
+            <div class="field"><span>Налог на сервисный сбор</span>${sw('name="tax_on_service"', st.tax_on_service !== false, 'Считать налог и на сбор')}</div>
+          </div>
+        </div></section>
+
         <p class="notice bad" id="set-err" role="alert" hidden></p>
         <div style="position:sticky;bottom:calc(12px + env(safe-area-inset-bottom));display:flex;gap:8px;z-index:5">
           <button type="submit" class="btn" style="flex:1;box-shadow:var(--shadow-lg)">${icon('check', 'sm')}Сохранить изменения</button>
         </div>
-      </form>`;
+      </form>
+      <section class="panel" id="tg-panel" style="margin-top:18px"><div class="panel-head"><h3>Уведомления в Telegram</h3></div><div class="panel-body"><p class="a-empty">Загрузка…</p></div></section>`;
+    renderTelegram();
 
     const form = $('#settings-form');
     const err = (msg) => { const e = $('#set-err'); e.hidden = !msg; e.innerHTML = msg ? `${icon('alert')}<span>${esc(msg)}</span>` : ''; if (msg) e.scrollIntoView({ block: 'center' }); };
@@ -458,6 +554,10 @@
       if (!name) return err('Впишите название ресторана.');
       if (phone && !/^[+0-9 ()-]{5,30}$/.test(phone)) return err('Телефон: только цифры, пробелы, +, -, скобки.');
       if (mapUrl && !/^https:\/\/\S+$/.test(mapUrl)) return err('Ссылка на карту должна начинаться с https://');
+      const servicePct = Number(String(f.get('service_pct') || 0).replace(',', '.'));
+      const taxPct = Number(String(f.get('tax_pct') || 0).replace(',', '.'));
+      if (!(servicePct >= 0 && servicePct <= 30) || !(taxPct >= 0 && taxPct <= 30)) return err('Сбор и налог — от 0 до 30%.');
+      const taxName = String(f.get('tax_name') || '').trim() || 'SST';
       const schedule = [];
       for (let i = 0; i < 7; i++) {
         const open = f.get(`open_${i}`);
@@ -490,6 +590,7 @@
           halal_note: readLang(f, 'halal_note'),
           footer: readLang(f, 'footer'),
           logo_url: uploaded || (removeLogo ? null : st.logo_url || null),
+          service_pct: servicePct, tax_pct: taxPct, tax_name: taxName.slice(0, 20), tax_on_service: !!f.get('tax_on_service'),
         };
         const saved = await api.saveSettings(patch);
         if ((uploaded || removeLogo) && st.logo_url) api.deleteImage(st.logo_url);
@@ -503,6 +604,80 @@
         btn.disabled = false;
         btn.innerHTML = `${icon('check', 'sm')}Сохранить изменения`;
       }
+    });
+  }
+
+  // ---------- Telegram ----------
+  async function renderTelegram() {
+    const box = $('#tg-panel .panel-body');
+    if (!box) return;
+    let st;
+    try { st = await api.telegramStatus(); } catch (ex) { box.innerHTML = `<p class="notice bad">${icon('alert')}<span>${esc(S.errText(ex))}</span></p>`; return; }
+    st = st || {};
+    box.innerHTML = `
+      <p class="${st.connected ? 'notice ok' : 'help'}">${st.connected ? `${icon('check')}<span>Подключено: бот ${esc(st.bot_hint || '')}, чатов: ${st.chats}. Новые заказы и вызовы приходят в Telegram, даже если панель закрыта.</span>` : 'Не подключено. Новые заказы и вызовы будут приходить вам в Telegram, даже когда панель закрыта.'}</p>
+      ${st.net_ok === false ? `<p class="notice bad">${icon('alert')}<span>На сервере выключено расширение pg_net — сообщения не уйдут. Запустите schema.sql ещё раз.</span></p>` : ''}
+      <ol class="tg-steps">
+        <li>В Telegram откройте <b>@BotFather</b>, отправьте <b>/newbot</b>, придумайте имя — он пришлёт <b>токен</b>.</li>
+        <li>Вставьте токен ниже.</li>
+        <li>Откройте своего нового бота и напишите ему любое сообщение, например «привет».</li>
+        <li>Нажмите «Найти мой чат», затем «Сохранить» и «Проверить».</li>
+      </ol>
+      <form id="tg-form" novalidate>
+        <div class="form-grid">
+          <label class="field full"><span>Токен бота${st.bot_hint ? ` (сейчас ${esc(st.bot_hint)} — оставьте пустым, чтобы не менять)` : ''}</span><input name="token" type="password" autocomplete="off" spellcheck="false" placeholder="123456789:AA…"></label>
+          <label class="field full"><span>Чаты (через запятую, до 5)</span><input name="chats" type="text" inputmode="numeric" autocomplete="off" value="" placeholder="например 123456789"></label>
+        </div>
+        <div class="checks" style="margin-top:10px">
+          <label><input type="checkbox" name="orders"${st.notify_orders !== false ? ' checked' : ''}>Новые заказы</label>
+          <label><input type="checkbox" name="calls"${st.notify_calls !== false ? ' checked' : ''}>Вызовы гостей и просьбы счёта</label>
+          <label><input type="checkbox" name="bills"${st.notify_bills ? ' checked' : ''}>Оплаченные счета</label>
+        </div>
+        <p class="notice bad" id="tg-err" hidden></p>
+        <div class="btn-row">
+          <button type="button" class="btn ghost" id="tg-find">${icon('search', 'sm')}Найти мой чат</button>
+          <button type="submit" class="btn">${icon('check', 'sm')}Сохранить</button>
+          ${st.connected ? `<button type="button" class="btn ghost" id="tg-test">${icon('send', 'sm')}Проверить</button><button type="button" class="btn danger" id="tg-off">Отключить</button>` : ''}
+        </div>
+      </form>`;
+    const form = $('#tg-form');
+    const err = (m) => { const e = $('#tg-err'); e.hidden = !m; e.textContent = m || ''; };
+    if (st.chats) form.chats.placeholder = `сейчас подключено чатов: ${st.chats} — впишите заново, чтобы изменить`;
+    $('#tg-find').addEventListener('click', async () => {
+      err('');
+      const token = form.token.value.trim();
+      if (!token) { err('Сначала вставьте токен бота.'); return; }
+      try {
+        const r = await fetch(`https://api.telegram.org/bot${encodeURIComponent(token).replace('%3A', ':')}/getUpdates`).then((x) => x.json());
+        if (!r.ok) { err('Telegram не принял токен. Проверьте, что скопировали его целиком.'); return; }
+        const ids = [...new Set((r.result || []).map((u) => (u.message || u.my_chat_member || u.channel_post)?.chat?.id).filter(Boolean).map(String))];
+        if (!ids.length) { err('Сообщений боту пока нет. Откройте бота в Telegram, напишите ему «привет» и нажмите ещё раз.'); return; }
+        form.chats.value = ids.slice(0, 5).join(', ');
+        S.toast('Чат найден. Теперь нажмите «Сохранить».');
+      } catch { err('Не получилось связаться с Telegram. Проверьте интернет.'); }
+    });
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      err('');
+      const token = form.token.value.trim() || null;
+      const chats = form.chats.value.split(/[\s,;]+/).map((x) => x.trim()).filter(Boolean);
+      if (!st.bot_hint && !token) { err('Вставьте токен бота.'); return; }
+      if (!chats.length) { err('Нажмите «Найти мой чат» или впишите номер чата.'); return; }
+      try {
+        await api.setTelegram(token, chats, form.orders.checked, form.calls.checked, form.bills.checked);
+        S.toast('Telegram подключён. Нажмите «Проверить».');
+        renderTelegram();
+      } catch (ex) {
+        const m = String(ex?.message || '');
+        err(/bad_token/.test(m) ? 'Токен не похож на токен бота: цифры, двоеточие, потом длинный код.' : /bad_chat/.test(m) ? 'Номер чата — только цифры (у групп с минусом впереди).' : S.errText(ex));
+      }
+    });
+    $('#tg-test')?.addEventListener('click', async () => {
+      try { const n = await api.telegramTest(); S.toast(n ? 'Проверочное сообщение отправлено — посмотрите Telegram.' : 'Не отправлено: проверьте токен и чат.', !n); } catch (ex) { S.toast(S.errText(ex), true); }
+    });
+    $('#tg-off')?.addEventListener('click', async () => {
+      if (!await S.ask('Отключить уведомления в Telegram?', { ok: 'Отключить' })) return;
+      try { await api.clearTelegram(); S.toast('Telegram отключён'); renderTelegram(); } catch (ex) { S.toast(S.errText(ex), true); }
     });
   }
 
@@ -534,7 +709,7 @@
         <form id="invite-form" class="form-grid" novalidate>
           <label class="field"><span>Email сотрудника</span><input name="email" type="email" inputmode="email" required autocomplete="off"></label>
           <label class="field"><span>Имя (необязательно)</span><input name="name" type="text" maxlength="60"></label>
-          <label class="field"><span>Роль</span><select name="role"><option value="waiter">Официант — только смотрит меню и наличие</option><option value="owner">Владелец — полный доступ</option></select></label>
+          <label class="field"><span>Роль</span><select name="role"><option value="waiter">Официант — зал: заказы, вызовы, счета</option><option value="cook">Повар — экран кухни</option><option value="owner">Владелец — полный доступ</option></select></label>
           <div class="field" style="justify-content:flex-end"><button class="btn" type="submit">${icon('mail', 'sm')}Пригласить</button></div>
         </form>
         <p class="help" style="margin:12px 0 0">Как это работает: вы приглашаете email → сотрудник открывает <b>${esc(staffLink)}</b>, выбирает «Меня пригласили — зарегистрироваться» и подтверждает email из письма. Доступ появится сам.</p>
@@ -543,7 +718,7 @@
 
       ${invites.length ? `<section class="panel"><div class="panel-head"><h3>Ждут регистрации<small>${invites.length}</small></h3></div>
         <ul class="rows">${invites.map((i) => `<li>
-          <div class="grow"><b>${esc(i.email)}</b><small>${esc([i.name, i.role === 'owner' ? 'владелец' : 'официант'].filter(Boolean).join(' · '))}</small></div>
+          <div class="grow"><b>${esc(i.email)}</b><small>${esc([i.name, ({ owner: 'владелец', waiter: 'официант', cook: 'повар' })[i.role] || i.role].filter(Boolean).join(' · '))}</small></div>
           <div class="row-btns"><button type="button" class="btn small danger" data-revoke="${esc(i.email)}">Отменить приглашение</button></div>
         </li>`).join('')}</ul></section>` : ''}
 
@@ -555,6 +730,7 @@
             <div class="row-btns">
               <label class="field" style="margin:0"><select data-role="${esc(s.user_id)}" aria-label="Роль"${self ? ' disabled' : ''}>
                 <option value="waiter"${s.role === 'waiter' ? ' selected' : ''}>Официант</option>
+                <option value="cook"${s.role === 'cook' ? ' selected' : ''}>Повар</option>
                 <option value="owner"${s.role === 'owner' ? ' selected' : ''}>Владелец</option></select></label>
               ${sw(`data-active="${esc(s.user_id)}" aria-label="Доступ: ${esc(s.email)}"`, s.active, 'Доступ', self)}
               ${self ? '' : `<button type="button" class="btn small danger" data-remove="${esc(s.user_id)}" aria-label="Удалить ${esc(s.email)}">${icon('trash', 'sm')}</button>`}
@@ -662,7 +838,18 @@
     const n = orders.filter((o) => o.status === 'new').length;
     const el = $('#tab-count');
     if (el) { el.hidden = !n; el.textContent = n; }
-    document.title = n ? `(${n}) Новый заказ — панель владельца` : 'Панель владельца';
+    const c = floor ? floor.openCalls().length : 0;
+    const ce = $('#calls-count');
+    if (ce) { ce.hidden = !c; ce.textContent = c; }
+    document.title = n ? `(${n}) Новый заказ — панель владельца` : c ? `(${c}) Вызов — панель владельца` : 'Панель владельца';
+  }
+  function announceCalls(fresh) {
+    const c = fresh[fresh.length - 1];
+    bannerMsg = fresh.length > 1 ? `Вызовов: ${fresh.length}` : `Стол ${c.table_label}: ${c.kind === 'bill' ? 'просят счёт' : 'зовут официанта'}`;
+    renderBanner();
+    ding();
+    updateCount();
+    if (tab === 'floor' && !document.querySelector('.modal')) render();
   }
   setInterval(() => { if (api && orders.some((o) => o.status === 'new')) ding(); }, 30000); // напоминание, пока не приняли
 
@@ -686,15 +873,22 @@
     return `<article class="o-card${o.status === 'new' ? ' is-new' : ''}">
       <div class="o-head"><b class="o-table">${icon('qr', 'sm')}Стол ${esc(o.table_label)}</b><span class="st st-${esc(o.status)}">${esc(ST[o.status] || o.status)}</span></div>
       <div class="o-meta">Заказ №${esc(o.no)} · ${esc(hhmm(o.created_at))} · ${esc(ago(o.created_at))}${o.lang ? ` · язык гостя ${esc(String(o.lang).toUpperCase())}` : ''}${o.accepted_by_name ? ` · принял: ${esc(o.accepted_by_name)}` : ''}</div>
-      <ul class="o-items">${(o.items || []).map((i) => `<li><span><b>${esc(i.qty)}×</b> ${esc(tr(i.name) || i.id)}</span><span>${money(i.price * i.qty)}</span></li>`).join('')}</ul>
+      <ul class="o-items">${(o.items || []).map((i) => `<li><span><b>${esc(i.qty)}×</b> ${esc(tr(i.name) || i.id)}${window.Floor.optNames(i).length ? `<em class="o-opt">${esc(window.Floor.optNames(i).join(', '))}</em>` : ''}</span><span>${money(i.price * i.qty)}</span></li>`).join('')}</ul>
       ${o.note ? `<div class="o-note"><b>Комментарий гостя:</b> ${esc(o.note)}</div>` : ''}
-      <div class="o-total"><span>Итого</span><b>${money(o.total)}</b></div>
+      ${o.edited_at ? `<div class="o-meta">Изменён${o.edited_by_name ? `: ${esc(o.edited_by_name)}` : ''} в ${esc(hhmm(o.edited_at))}</div>` : ''}
+      ${Number(o.service) || Number(o.tax) ? `<div class="o-meta">Блюда ${money(o.subtotal ?? o.total)}${Number(o.service) ? ` · сбор ${money(o.service)}` : ''}${Number(o.tax) ? ` · налог ${money(o.tax)}` : ''}</div>` : ''}
+      <div class="o-total"><span>Итого${o.paid_at ? ' · <span class="state-badge ok">оплачено</span>' : ''}</span><b>${money(o.total)}</b></div>
       <div class="o-actions">
         ${next ? `<button type="button" class="btn" data-order-next="${esc(o.id)}" data-to="${next[0]}"${busy ? ' disabled' : ''}>${esc(next[1])}</button>` : ''}
         <label class="field o-select"><span class="sr-only">Статус</span><select data-order-status="${esc(o.id)}"${busy ? ' disabled' : ''}>
           ${Object.entries(ST).map(([k, v]) => `<option value="${k}"${k === o.status ? ' selected' : ''}>${v}</option>`).join('')}</select></label>
         ${o.status !== 'cancelled' ? `<button type="button" class="btn small danger" data-order-cancel="${esc(o.id)}"${busy ? ' disabled' : ''}>Отменить</button>` : ''}
       </div>
+      ${o.status !== 'cancelled' ? `<div class="o-actions">
+        <button type="button" class="btn small ghost" data-fl-ticket="${esc(o.id)}">${icon('printer', 'sm')}На кухню</button>
+        ${!o.paid_at ? `<button type="button" class="btn small ghost" data-fl-edit="${esc(o.id)}">${icon('edit', 'sm')}Изменить</button>` : ''}
+        ${o.table_id && !o.paid_at && o.status !== 'new' ? `<button type="button" class="btn small ghost" data-fl-table="${esc(o.table_id)}">Счёт стола</button>` : ''}
+      </div>` : ''}
     </article>`;
   }
 
@@ -931,6 +1125,7 @@
   });
 
   document.addEventListener('click', async (e) => {
+    if (floor?.handleClick(e)) return;
     const a = e.target.closest('[data-act]');
     if (a) {
       const id = a.dataset.id;
@@ -966,7 +1161,7 @@
     }
     const bn = e.target.closest('[data-banner]');
     if (bn) {
-      if (bn.dataset.banner === 'sound') { unlockAudio(); ding(); } else { bannerMsg = ''; location.hash = '#orders'; renderBanner(); }
+      if (bn.dataset.banner === 'sound') { unlockAudio(); ding(); } else { const toFloor = /Стол .*:|Вызов/.test(bannerMsg); bannerMsg = ''; location.hash = toFloor ? '#floor' : '#orders'; renderBanner(); }
       return;
     }
     if (e.target.closest('[data-print]')) { printAll(); return; }
@@ -1008,25 +1203,37 @@
       api = ctx.api;
       me = ctx.me;
       paintBrand();
+      floor = window.Floor.create({
+        api, isOwner: true,
+        getOrders: () => orders, getDishes: () => dishes,
+        reloadOrders: loadOrders, onCalls: announceCalls,
+        rerender: () => { updateCount(); if (['floor', 'orders'].includes(tab) && !document.querySelector('.modal')) render(); },
+      });
       try {
-        await Promise.all([loadMenu(), loadStaff(), loadOrders(), loadTables()]);
+        await Promise.all([loadMenu(), loadStaff(), loadOrders(), loadTables(), floor.load()]);
       } catch (ex) { S.toast(S.errText(ex), true); }
+      updateCount();
       setTab(location.hash.slice(1) || 'orders');
       renderBanner();
       stop?.();
       // заказы — сразу, как пришли; меню — если его меняют на другом устройстве (не мешая открытой форме)
-      stop = api.subscribe(['orders', 'dishes', 'categories', 'tables'], async (table) => {
+      stop = api.subscribe(['orders', 'dishes', 'categories', 'tables', 'calls', 'bills'], async (table) => {
         try {
-          if (table === 'orders') { await loadOrders(); if (tab === 'orders') renderOrders(); return; }
+          if (table === 'calls' || table === 'bills') { await floor.load(); updateCount(); if (tab === 'floor' && !document.querySelector('.modal')) render(); return; }
+          if (table === 'orders') { await loadOrders(); if (tab === 'orders') renderOrders(); else if (tab === 'floor' && !document.querySelector('.modal')) render(); return; }
           if (document.querySelector('.modal')) return;
-          if (table === 'tables') { await loadTables(); if (tab === 'tables') renderTables(); return; }
+          if (table === 'tables') { await Promise.all([loadTables(), floor.load()]); if (tab === 'tables') renderTables(); return; }
           await loadMenu();
           if (tab === 'menu') renderMenu();
         } catch { /* позже */ }
       }, (ok) => { ordersLive = ok; if (tab === 'orders') renderOrders(); });
       clearInterval(ordersTimer);
       ordersTimer = setInterval(async () => {
-        try { await loadOrders(); if (tab === 'orders' && !document.querySelector('.modal')) renderOrders(); } catch { /* нет сети */ }
+        try {
+          await Promise.all([loadOrders(), floor.load()]);
+          updateCount();
+          if (!document.querySelector('.modal') && (tab === 'orders' || tab === 'floor')) render();
+        } catch { /* нет сети */ }
       }, 15000);
     },
     onLogout() { stop?.(); stop = null; clearInterval(ordersTimer); bannerMsg = ''; renderBanner(); },
