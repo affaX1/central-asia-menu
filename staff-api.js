@@ -124,10 +124,24 @@
         const { data, error } = await q.order('paid_at', { ascending: false }).limit(5000);
         fail(error); return data || [];
       },
-      async closeBill(tableId, method, orderIds) {
-        const { data, error } = await sb.rpc('close_bill', { p_table: tableId, p_method: method, p_orders: orderIds || null });
+      async closeBill(tableId, method, orderIds, tip = 0, payments = null) {
+        const { data, error } = await sb.rpc('close_bill', { p_table: tableId, p_method: method, p_orders: orderIds || null, p_tip: tip || 0, p_payments: payments });
         fail(error); return Array.isArray(data) ? data[0] : data;
       },
+      async claimTable(tableId, on) { const { error } = await sb.rpc('claim_table', { p_table: tableId, p_claim: on }); fail(error); },
+      async staffPlaceOrder(tableId, items, note, key) {
+        const { data, error } = await sb.rpc('staff_place_order', { p_table: tableId, p_items: items, p_note: note, p_client_key: key });
+        fail(error); return Array.isArray(data) ? data[0] : data;
+      },
+      async serveOrder(id) {
+        const { data, error } = await sb.rpc('serve_order', { p_id: id });
+        fail(error); return Array.isArray(data) ? data[0] : data;
+      },
+      // ---------- свой Telegram (сотрудник) ----------
+      async myTelegram() { const { data, error } = await sb.rpc('my_telegram'); fail(error); return Array.isArray(data) ? data[0] : data; },
+      async myTelegramStart() { const { data, error } = await sb.rpc('my_telegram_start'); fail(error); return Array.isArray(data) ? data[0] : data; },
+      async myTelegramCheck() { const { data, error } = await sb.rpc('my_telegram_check'); fail(error); return data; },
+      async myTelegramOff() { const { error } = await sb.rpc('my_telegram_off'); fail(error); },
       // ---------- владелец: изменить состав заказа; кухня ----------
       async editOrder(id, items) {
         const { data, error } = await sb.rpc('edit_order', { p_id: id, p_items: items });

@@ -16,15 +16,35 @@
     document.documentElement.dataset.theme = th === 'dark' ? 'dark' : 'light'; // панели сотрудников светлые, тёмная — только если выбрали сами
   } catch { /* светлая */ }
 
-  const tr = (o) => (o == null ? '' : typeof o === 'string' ? o : o.ru || o.en || Object.values(o).find(Boolean) || '');
+  // ---------- язык панели ----------
+  // владелец — всегда русский; официант и повар выбирают сами (по умолчанию — язык телефона)
+  const LANGS = (window.STAFF_LANGS || [['ru', 'Русский']]).map(([c]) => c);
+  const fixedLang = document.documentElement.dataset.staffLang;
+  let lang = fixedLang || (() => {
+    try { const v = localStorage.getItem('staff:lang'); if (LANGS.includes(v)) return v; } catch { /* нет хранилища */ }
+    const phone = (navigator.languages || [navigator.language || '']).map((x) => String(x).slice(0, 2).toLowerCase());
+    return phone.find((x) => LANGS.includes(x)) || (LANGS.includes('en') ? 'en' : 'ru');
+  })();
+  document.documentElement.lang = lang;
+  const T = window.STAFF_T || {};
+  const t = (key, ...args) => {
+    const e = T[key];
+    if (!e) return key;
+    const v = e[lang] ?? e.en ?? e.ru;
+    return typeof v === 'function' ? v(...args) : v;
+  };
+  const locale = () => ({ ru: 'ru-RU', en: 'en-GB', ms: 'ms-MY', uz: 'uz-UZ' })[lang] || 'ru-RU';
+  const tr = (o) => (o == null ? '' : typeof o === 'string' ? o : o[lang] || o.en || o.ru || Object.values(o).find(Boolean) || '');
+  // подписи в разметке страницы: <span data-t="tab_orders">
+  const paintStatic = () => document.querySelectorAll('[data-t]').forEach((el) => { el.textContent = t(el.dataset.t); });
   let settings = null;
   const money = (n) => {
     const v = Math.round(Number(n || 0) * 100) / 100;
-    const num = new Intl.NumberFormat('ru-RU', { minimumFractionDigits: Number.isInteger(v) ? 0 : 2, maximumFractionDigits: 2 }).format(v);
+    const num = new Intl.NumberFormat(locale(), { minimumFractionDigits: Number.isInteger(v) ? 0 : 2, maximumFractionDigits: 2 }).format(v);
     const c = settings?.currency || '';
     return settings?.currency_before ? `${c} ${num}` : `${num} ${c}`;
   };
-  const unitLabel = { g: 'г', ml: 'мл', pcs: 'шт.' };
+  const unitLabel = new Proxy({}, { get: (_, k) => t(`unit_${k}`) });
 
   // ---------- всплывашка ----------
   let toastTimer = null;
@@ -46,23 +66,23 @@
   // понятные тексты ошибок
   function errText(e) {
     const m = String(e?.message || e || '');
-    if (/invalid login|invalid credentials/i.test(m)) return 'Неверный email или пароль. Ещё не регистрировались? Нажмите «Меня пригласили — зарегистрироваться» ниже.';
-    if (/email not confirmed/i.test(m)) return 'Email ещё не подтверждён — откройте ссылку из письма.';
-    if (/already registered|already exists/i.test(m)) return 'Этот email уже зарегистрирован — войдите.';
-    if (/password/i.test(m) && /(least|short|weak|characters)/i.test(m)) return 'Пароль слишком простой: минимум 8 символов.';
-    if (/rate limit|too many/i.test(m)) return 'Слишком много попыток. Подождите минуту.';
+    if (/invalid login|invalid credentials/i.test(m)) return t('err_login');
+    if (/email not confirmed/i.test(m)) return t('err_unconfirmed');
+    if (/already registered|already exists/i.test(m)) return t('err_registered');
+    if (/password/i.test(m) && /(least|short|weak|characters)/i.test(m)) return t('err_weak');
+    if (/rate limit|too many/i.test(m)) return t('err_rate');
     if (/last_owner/.test(m)) return 'Нельзя: это единственный владелец.';
     if (/\bself\b/.test(m)) return 'Себя отключить, понизить или удалить нельзя.';
     if (/bad_email/.test(m)) return 'Проверьте email.';
     if (/bad_timezone/.test(m)) return 'Неизвестный часовой пояс.';
-    if (/forbidden|row-level security|permission denied/i.test(m)) return 'Нет прав на это действие.';
+    if (/forbidden|row-level security|permission denied/i.test(m)) return t('no_rights');
     if (/foreign key|violates foreign/i.test(m)) return 'Нельзя удалить категорию, пока в ней есть блюда.';
     if (/duplicate key/i.test(m)) return 'Такой код уже занят.';
     if (/check constraint/i.test(m)) return 'Проверьте поля: что-то заполнено неверно.';
     if (/payload too large|exceeded the maximum|too large/i.test(m)) return 'Файл слишком большой.';
     if (/mime|invalid.*type/i.test(m)) return 'Этот формат картинки не подходит: нужен JPG, PNG или WebP.';
-    if (/fetch|network|failed to|load failed/i.test(m)) return 'Нет связи. Проверьте интернет.';
-    return 'Не получилось: ' + m.slice(0, 140);
+    if (/fetch|network|failed to|load failed/i.test(m)) return t('net_err');
+    return t('failed', m.slice(0, 140));
   }
 
   // ---------- вход ----------
@@ -75,10 +95,27 @@
     if (!box) return;
     box.hidden = !me;
     if (!me) return;
-    const role = { owner: 'владелец', waiter: 'официант', cook: 'повар' }[me.role] || 'без доступа';
+    const role = t(`role_${me.role || 'none'}`);
     box.innerHTML = `<span class="a-who"><b>${esc(me.name || me.email)}</b><small>${esc(role)}</small></span>
-      <button type="button" class="pill" id="logout-btn">${icon('logout', 'sm')}Выйти</button>`;
+      ${fixedLang ? '' : langSelect('lang-pick')}
+      <button type="button" class="pill" id="logout-btn">${icon('logout', 'sm')}${esc(t('logout'))}</button>`;
   }
+
+  function langSelect(id) {
+    return `<label class="lang-pick"><span class="sr-only">${esc(t('language'))}</span><select id="${id}" data-lang-pick aria-label="${esc(t('language'))}">
+      ${(window.STAFF_LANGS || []).map(([c, n]) => `<option value="${c}"${c === lang ? ' selected' : ''}>${esc(n)}</option>`).join('')}</select></label>`;
+  }
+  function setLang(next) {
+    if (!LANGS.includes(next) || fixedLang) return;
+    lang = next;
+    document.documentElement.lang = lang;
+    try { localStorage.setItem('staff:lang', lang); } catch { /* не сохранится */ }
+    paintStatic();
+    renderUser();
+    if (!me || !opts?.rerender) { route(); return; }
+    opts.rerender();
+  }
+  document.addEventListener('change', (e) => { if (e.target.matches?.('[data-lang-pick]')) setLang(e.target.value); });
 
   function screen(html) {
     $('#a-nav')?.setAttribute('hidden', '');
@@ -100,45 +137,37 @@
     const reset = mode === 'reset';
     screen(`<form class="a-card" id="auth-form" data-mode="${mode}" novalidate>
       ${icon('lock', 'lg')}
-      <h2>${reg ? 'Регистрация сотрудника' : reset ? 'Восстановить пароль' : 'Вход для сотрудников'}</h2>
-      <p>${reg ? 'Регистрируйтесь на тот email, который пригласил владелец. После регистрации подтвердите email по ссылке из письма.'
-        : reset ? 'Пришлём письмо со ссылкой для нового пароля.'
-          : 'Гостям вход не нужен — меню открывается по QR-коду на столе.'}</p>
-      ${reg ? '<label class="field"><span>Ваше имя</span><input name="name" type="text" maxlength="60" autocomplete="name" required></label>' : ''}
-      <label class="field"><span>Email</span><input name="email" type="email" autocomplete="username" inputmode="email" required></label>
-      ${reset ? '' : `<label class="field"><span>Пароль${reg ? ' (минимум 8 символов)' : ''}</span>
+      <h2>${esc(t(reg ? 'auth_reg_t' : reset ? 'auth_reset_t' : 'auth_login_t'))}</h2>
+      <p>${esc(t(reg ? 'auth_reg_d' : reset ? 'auth_reset_d' : 'auth_login_d'))}</p>
+      ${fixedLang ? '' : `<div class="auth-lang">${langSelect('lang-pick-auth')}</div>`}
+      ${reg ? `<label class="field"><span>${esc(t('f_name'))}</span><input name="name" type="text" maxlength="60" autocomplete="name" required></label>` : ''}
+      <label class="field"><span>${esc(t('f_email'))}</span><input name="email" type="email" autocomplete="username" inputmode="email" required></label>
+      ${reset ? '' : `<label class="field"><span>${esc(t('f_pass'))}${reg ? esc(t('f_pass8')) : ''}</span>
         <input name="password" type="password" minlength="${reg ? 8 : 1}" autocomplete="${reg ? 'new-password' : 'current-password'}" required></label>`}
       ${err ? `<p class="notice bad" role="alert">${icon('alert')}<span>${esc(err)}</span></p>` : ''}
       ${info ? `<p class="notice info" role="status">${icon('mail')}<span>${esc(info)}</span></p>` : ''}
-      <button class="btn block" type="submit">${reg ? 'Зарегистрироваться' : reset ? 'Отправить письмо' : 'Войти'}</button>
+      <button class="btn block" type="submit">${esc(t(reg ? 'b_register' : reset ? 'b_send_mail' : 'b_login'))}</button>
       <div class="a-links">
-        ${mode !== 'login' ? '<button class="link-btn" type="button" data-auth="login">Уже есть аккаунт — войти</button>' : ''}
-        ${mode !== 'register' ? '<button class="link-btn" type="button" data-auth="register">Меня пригласили — зарегистрироваться</button>' : ''}
-        ${mode === 'login' ? '<button class="link-btn" type="button" data-auth="reset">Забыли пароль?</button>' : ''}
+        ${mode !== 'login' ? `<button class="link-btn" type="button" data-auth="login">${esc(t('l_have'))}</button>` : ''}
+        ${mode !== 'register' ? `<button class="link-btn" type="button" data-auth="register">${esc(t('l_invited'))}</button>` : ''}
+        ${mode === 'login' ? `<button class="link-btn" type="button" data-auth="reset">${esc(t('l_forgot'))}</button>` : ''}
       </div>
     </form>`);
   }
 
   function noAccessScreen(kind) {
-    const text = {
-      unconfirmed: ['Подтвердите email', 'Мы отправили письмо со ссылкой. Откройте её, потом нажмите «Проверить ещё раз».'],
-      uninvited: ['Нет приглашения', 'Этот email не приглашён. Попросите владельца пригласить именно этот адрес в разделе «Сотрудники», затем нажмите «Проверить ещё раз».'],
-      disabled: ['Доступ отключён', 'Владелец отключил доступ этому аккаунту. Если это ошибка — обратитесь к владельцу.'],
-      owner: ['Только для владельца', 'Эта страница — для владельца ресторана.'],
-      floor: ['Это страница зала', 'Вы вошли как повар. Ваша страница — «Кухня».'],
-      kitchen: ['Это страница кухни', 'Вы вошли как официант. Ваша страница — «Зал и заказы».'],
-    }[kind];
-    const home = me?.role === 'cook' ? ['kitchen.html', 'Открыть кухню'] : ['waiter.html', 'Открыть страницу официанта'];
+    const text = t(`na_${kind}`);
+    const home = me?.role === 'cook' ? ['kitchen.html', t('open_kitchen')] : ['waiter.html', t('open_waiter')];
     screen(`<div class="a-card">${icon('lock', 'lg')}
       <h2>${esc(text[0])}</h2><p>${esc(me?.email || '')}</p><p>${esc(text[1])}</p>
       ${['owner', 'floor', 'kitchen'].includes(kind) ? `<a class="btn block" href="${home[0]}">${esc(home[1])}</a>`
-        : '<button class="btn block" type="button" data-auth="recheck">Проверить ещё раз</button>'}
+        : `<button class="btn block" type="button" data-auth="recheck">${esc(t('recheck'))}</button>`}
     </div>`);
   }
 
   async function route() {
     if (!api) { setupScreen(); return; }
-    screen('<p class="a-empty">Загрузка…</p>');
+    screen(`<p class="a-empty">${esc(t('loading'))}</p>`);
     try {
       const s = await api.session();
       if (!s) { me = null; authScreen(); return; }
@@ -170,23 +199,23 @@
     const email = String(f.get('email') || '').trim().toLowerCase();
     const password = String(f.get('password') || '');
     const name = String(f.get('name') || '').trim();
-    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { authScreen(mode, 'Проверьте email.'); return; }
-    if (mode === 'register' && name.length < 2) { authScreen(mode, 'Напишите ваше имя.'); return; }
-    if (mode === 'register' && password.length < 8) { authScreen(mode, 'Пароль — минимум 8 символов.'); return; }
-    if (mode === 'login' && !password) { authScreen(mode, 'Введите пароль.'); return; }
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { authScreen(mode, t('e_email')); return; }
+    if (mode === 'register' && name.length < 2) { authScreen(mode, t('e_name')); return; }
+    if (mode === 'register' && password.length < 8) { authScreen(mode, t('e_pass8')); return; }
+    if (mode === 'login' && !password) { authScreen(mode, t('e_pass')); return; }
     const btn = e.target.querySelector('[type="submit"]');
     btn.disabled = true;
-    btn.textContent = 'Подождите…';
+    btn.textContent = t('wait');
     try {
       if (mode === 'reset') {
         await api.resetPassword(email);
-        authScreen('login', '', 'Если такой аккаунт есть, письмо уже отправлено. Откройте ссылку из письма.');
+        authScreen('login', '', t('i_reset'));
         return;
       }
       if (mode === 'register') {
         const r = await api.signUp(email, password, name);
         if (r.needsEmailConfirm) {
-          authScreen('login', '', `Письмо отправлено на ${email}. Откройте ссылку из письма, потом войдите здесь.`);
+          authScreen('login', '', t('i_mail', email));
           return;
         }
       } else {
@@ -220,7 +249,7 @@
     const back = document.createElement('div');
     back.className = 'modal-back';
     back.innerHTML = `<div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
-      <button type="button" class="sheet-close" data-modal-close aria-label="Закрыть">${icon('x')}</button>${html}</div>`;
+      <button type="button" class="sheet-close" data-modal-close aria-label="${esc(t('close'))}">${icon('x')}</button>${html}</div>`;
     document.body.appendChild(back);
     document.body.classList.add('locked');
     const last = document.activeElement;
@@ -242,7 +271,7 @@
   // ---------- своё окно подтверждения вместо серого окна браузера ----------
   // ask('Удалить…?', { ok: 'Удалить' }) → Promise<true|false>
   // ask('Название', { input: 'старое' }) → Promise<строка|null>
-  function ask(text, { ok = 'Да', cancel = 'Отмена', title = '' , input = null, max = 200 } = {}) {
+  function ask(text, { ok = t('yes'), cancel = t('cancel'), title = '', input = null, max = 200 } = {}) {
     return new Promise((resolve) => {
       const back = document.createElement('div');
       back.className = 'ask-back';
@@ -311,10 +340,11 @@
   }
 
   window.Staff = {
-    $, esc, icon, tr, money, unitLabel, toast, errText, modal, closeModal, ask, processImage,
+    $, esc, icon, tr, t, money, unitLabel, toast, errText, modal, closeModal, ask, processImage, paintStatic,
+    get lang() { return lang; }, locale, setLang,
     get settings() { return settings; },
     set settings(v) { settings = v; },
     get me() { return me; },
-    start(o) { opts = o; route(); },
+    start(o) { opts = o; paintStatic(); route(); },
   };
 })();

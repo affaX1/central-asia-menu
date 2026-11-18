@@ -135,7 +135,7 @@
       if (!o) throw new Error('not_found');
       let changed = false;
       if (o.status === 'new') {
-        Object.assign(o, { status: 'accepted', accepted_at: new Date().toISOString(), accepted_by_name: myName(), updated_at: new Date().toISOString() });
+        Object.assign(o, { status: 'accepted', accepted_at: new Date().toISOString(), accepted_by: uid(), accepted_by_name: myName(), updated_at: new Date().toISOString() });
         changed = true; save(d);
       }
       return { id: o.id, no: o.no, status: o.status, accepted_at: o.accepted_at, accepted_by_name: o.accepted_by_name, changed };
@@ -144,7 +144,7 @@
       await delay(); owner();
       if (localStorage.getItem('fake:offline') === '1') throw new TypeError('Failed to fetch');
       const d = db(); const o = d.orders.find((x) => x.id === id);
-      if (!['new', 'accepted', 'cooking', 'ready', 'cancelled'].includes(status)) throw new Error('violates check constraint');
+      if (!['new', 'accepted', 'cooking', 'ready', 'served', 'cancelled'].includes(status)) throw new Error('violates check constraint');
       const was = o.status;
       o.status = status; o.updated_at = new Date().toISOString();
       if (status === 'cancelled') o.cancelled_at = o.updated_at;
@@ -152,13 +152,54 @@
       save(d); return o;
     },
     async tables() { await delay(); owner(); return db().tables; },
-    async floorTables() { await delay(); staffOk(); offline(); return db().tables.map(({ id, label, active, sort }) => ({ id, label, active, sort })).sort((a, b) => a.sort - b.sort); },
+    async floorTables() {
+      await delay(); staffOk(); offline();
+      const d = db();
+      return d.tables.map(({ id, label, active, sort }) => {
+        const w = (d.tableWaiters || {})[id];
+        const s = w && d.staff.find((x) => x.user_id === w);
+        return { id, label, active, sort, waiter_id: w || null, waiter_name: s ? s.name || s.email : null };
+      }).sort((a, b) => a.sort - b.sort);
+    },
+    async claimTable(tableId, on) {
+      await delay(); floor(); const d = db(); d.tableWaiters = d.tableWaiters || {};
+      if (on) d.tableWaiters[tableId] = uid(); else if (d.tableWaiters[tableId] === uid() || role() === 'owner') delete d.tableWaiters[tableId];
+      save(d);
+    },
+    async staffPlaceOrder(tableId, items, note, key) {
+      await delay(); floor(); offline();
+      const d = db();
+      const old = d.orders.find((o) => o.client_key === key);
+      if (old) return old;
+      const tb = d.tables.find((x) => x.id === tableId && x.active);
+      if (!tb) throw new Error('bad_table');
+      if (!items.length) throw new Error('empty');
+      const out = []; const keys = new Set(); let sub = 0;
+      for (const it of items) { const r = lineOf(d, it, false); if (keys.has(r.key)) throw new Error('bad_items'); keys.add(r.key); out.push(r.line); sub += r.line.price * r.line.qty; }
+      sub = r2(sub);
+      d.seq = Math.max(1000, d.seq || 0) + 1;
+      const now = new Date().toISOString();
+      const o = { id: crypto.randomUUID(), no: d.seq, table_id: tb.id, table_label: tb.label, items: out, subtotal: sub, ...chargesOf(d.settings, sub), note, status: 'accepted', accepted_at: now, accepted_by: uid(), accepted_by_name: myName(), source: 'staff', created_by_name: myName(), client_key: key, guest_token: crypto.randomUUID(), created_at: now, updated_at: now };
+      d.orders.push(o); save(d); return o;
+    },
+    async serveOrder(id) {
+      await delay(); floor(); offline();
+      const d = db(); const o = d.orders.find((x) => x.id === id);
+      if (!o) throw new Error('not_found');
+      if (['accepted', 'cooking', 'ready'].includes(o.status)) { o.status = 'served'; o.served_at = new Date().toISOString(); o.updated_at = o.served_at; save(d); }
+      return o;
+    },
+    async myTelegram() { await delay(); staffOk(); const d = db(); return { linked: !!(d.staffTg || {})[uid()], bot_username: d.telegram?.token ? 'central_asia_test_bot' : null, bot_ready: !!d.telegram?.token }; },
+    async myTelegramStart() { await delay(); staffOk(); const d = db(); if (!d.telegram?.token) throw new Error('no_bot'); d.tgCode = { user: uid(), code: 'ca' + Math.random().toString(16).slice(2, 12), n: 0 }; save(d); return { code: d.tgCode.code, bot_username: 'central_asia_test_bot' }; },
+    async myTelegramCheck() { await delay(); staffOk(); const d = db(); if (!d.tgCode) return 'no_code'; d.tgCode.n += 1; if (d.tgCode.n < 2) { save(d); return 'pending'; } d.staffTg = { ...(d.staffTg || {}), [uid()]: '555' }; d.tgCode = null; save(d); return 'linked'; },
+    async myTelegramOff() { await delay(); staffOk(); const d = db(); if (d.staffTg) delete d.staffTg[uid()]; save(d); },
     async calls(from) { await delay(); floor(); offline(); const f = new Date(from).getTime(); return (db().calls || []).filter((c) => !c.done_at || new Date(c.created_at).getTime() >= f); },
     async doneCall(id) { await delay(); floor(); const d = db(); const c = (d.calls || []).find((x) => x.id === id); if (c && !c.done_at) Object.assign(c, { done_at: new Date().toISOString(), done_by_name: myName() }); save(d); },
     async bills(from, to) { await delay(); floor(); const f = new Date(from).getTime(); const t = to ? new Date(to).getTime() : Infinity; return (db().bills || []).filter((b) => { const x = new Date(b.paid_at).getTime(); return x >= f && x < t; }).sort((a, b) => new Date(b.paid_at) - new Date(a.paid_at)); },
-    async closeBill(tableId, method, ids) {
+    async closeBill(tableId, method, ids, tip = 0, payments = null) {
       await delay(); floor(); offline();
-      if (!['cash', 'card', 'qr', 'other'].includes(method)) throw new Error('bad_method');
+      if (!['cash', 'card', 'qr', 'other', 'mixed'].includes(method)) throw new Error('bad_method');
+      if (tip < 0) throw new Error('bad_tip');
       const d = db();
       const list = d.orders.filter((o) => o.table_id === tableId && !o.paid_at && o.status !== 'cancelled' && (!ids || ids.includes(o.id)));
       if (list.some((o) => o.status === 'new')) throw new Error('has_new');
@@ -166,8 +207,14 @@
       const sum = (k) => r2(list.reduce((s, o) => s + Number(o[k] ?? (k === 'subtotal' ? o.total : 0)), 0));
       d.billSeq = (d.billSeq || 0) + 1;
       const tb = d.tables.find((t) => t.id === tableId);
+      const total = sum('total');
+      let pays = payments;
+      if (!pays) { if (method === 'mixed') throw new Error('bad_payments'); pays = [{ method, amount: r2(total + tip) }]; }
+      if (pays.length < 1 || pays.length > 4 || pays.some((p) => !['cash', 'card', 'qr', 'other'].includes(p.method) || !(p.amount > 0))) throw new Error('bad_payments');
+      if (Math.abs(r2(pays.reduce((x, p) => x + p.amount, 0)) - r2(total + tip)) > 0.01) throw new Error('bad_payments');
+      const methods = [...new Set(pays.map((p) => p.method))];
       const bill = { id: crypto.randomUUID(), no: d.billSeq, table_id: tableId, table_label: tb?.label || list[0].table_label, order_ids: list.map((o) => o.id), order_nos: list.map((o) => o.no),
-        subtotal: sum('subtotal'), service: sum('service'), tax: sum('tax'), total: sum('total'), method, paid_at: new Date().toISOString(), paid_by_name: myName() };
+        subtotal: sum('subtotal'), service: sum('service'), tax: sum('tax'), total, tip: r2(tip), payments: pays, method: methods.length === 1 ? methods[0] : 'mixed', paid_at: new Date().toISOString(), paid_by: uid(), paid_by_name: myName() };
       list.forEach((o) => { o.paid_at = bill.paid_at; o.bill_id = bill.id; });
       (d.calls || []).forEach((c) => { if (c.table_id === tableId && !c.done_at && c.kind === 'bill') Object.assign(c, { done_at: bill.paid_at, done_by_name: myName() }); });
       d.bills = (d.bills || []).concat(bill);

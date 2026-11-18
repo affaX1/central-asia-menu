@@ -7,23 +7,29 @@
   <title>Официант</title>
   <meta name="theme-color" content="#FAF5EC">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="manifest" href="waiter.webmanifest">
+  <link rel="apple-touch-icon" href="icon-180.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Waiter">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Playfair+Display:wght@600;700&display=swap">
-  <link rel="stylesheet" href="styles.css?v=18">
-  <link rel="stylesheet" href="staff.css?v=18">
+  <link rel="stylesheet" href="styles.css?v=20">
+  <link rel="stylesheet" href="staff.css?v=20">
 </head>
 <body class="admin">
   <aside class="a-side" id="a-side">
     <a class="a-brand" href="waiter.html">
       <span class="logo" id="a-logo" aria-hidden="true">CA</span>
-      <span><h1>Официант</h1><p id="a-sub">Central Asia Restaurant</p></span>
+      <span><h1 data-t="w_title">Официант</h1><p id="a-sub">Central Asia Restaurant</p></span>
     </a>
     <nav class="a-nav" id="a-nav" hidden aria-label="Разделы">
       <div class="a-nav-in">
-        <a class="a-tab" href="#floor" data-tab="floor"><svg class="ic sm" aria-hidden="true"><use href="icons.svg#i-table"/></svg>Зал<span class="tab-count" id="calls-count" hidden></span></a>
-        <a class="a-tab" href="#orders" data-tab="orders"><svg class="ic sm" aria-hidden="true"><use href="icons.svg#i-list"/></svg>Заказы<span class="tab-count" id="tab-count" hidden></span></a>
-        <a class="a-tab" href="#menu" data-tab="menu"><svg class="ic sm" aria-hidden="true"><use href="icons.svg#i-menu"/></svg>Меню и наличие</a>
+        <a class="a-tab" href="#orders" data-tab="orders"><svg class="ic sm" aria-hidden="true"><use href="icons.svg#i-list"/></svg><span data-t="tab_orders">Заказы</span><span class="tab-count" id="tab-count" hidden></span></a>
+        <a class="a-tab" href="#floor" data-tab="floor"><svg class="ic sm" aria-hidden="true"><use href="icons.svg#i-table"/></svg><span data-t="tab_floor">Зал</span><span class="tab-count" id="calls-count" hidden></span></a>
+        <a class="a-tab" href="#menu" data-tab="menu"><svg class="ic sm" aria-hidden="true"><use href="icons.svg#i-menu"/></svg><span data-t="tab_menu">Меню</span></a>
+        <a class="a-tab" href="#shift" data-tab="shift"><svg class="ic sm" aria-hidden="true"><use href="icons.svg#i-users"/></svg><span data-t="tab_shift">Смена</span></a>
       </div>
     </nav>
     <div id="a-user" hidden></div>
@@ -33,11 +39,13 @@
     <main class="a-main" id="a-main"></main>
   </div>
 
-  <script src="config.js?v=18"></script>
+  <script src="config.js?v=20"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
-  <script src="staff-api.js?v=18"></script>
-  <script src="staff-core.js?v=18"></script>
-  <script src="floor.js?v=18"></script>
-  <script src="waiter.js?v=18"></script>
+  <script src="staff-i18n.js?v=20"></script>
+  <script src="staff-api.js?v=20"></script>
+  <script src="staff-core.js?v=20"></script>
+  <script src="floor.js?v=20"></script>
+  <script src="staff-tools.js?v=20"></script>
+  <script src="waiter.js?v=20"></script>
 </body>
 </html>

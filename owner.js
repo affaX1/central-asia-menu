@@ -615,7 +615,8 @@
     try { st = await api.telegramStatus(); } catch (ex) { box.innerHTML = `<p class="notice bad">${icon('alert')}<span>${esc(S.errText(ex))}</span></p>`; return; }
     st = st || {};
     box.innerHTML = `
-      <p class="${st.connected ? 'notice ok' : 'help'}">${st.connected ? `${icon('check')}<span>Подключено: бот ${esc(st.bot_hint || '')}, чатов: ${st.chats}. Новые заказы и вызовы приходят в Telegram, даже если панель закрыта.</span>` : 'Не подключено. Новые заказы и вызовы будут приходить вам в Telegram, даже когда панель закрыта.'}</p>
+      <p class="${st.connected ? 'notice ok' : 'help'}">${st.connected ? `${icon('check')}<span>Подключено: бот ${esc(st.bot_username ? '@' + st.bot_username : st.bot_hint || '')}, ваших чатов: ${st.chats}. Сотрудников со своим Telegram: ${st.staff_linked || 0}.</span>` : 'Не подключено. Новые заказы и вызовы будут приходить вам в Telegram, даже когда панель закрыта.'}</p>
+      ${st.bot_hint ? '<p class="help">Официанты и повара подключают свой Telegram сами: на своей странице → «Смена» (у повара — «Настройки») → «Подключить Telegram». Официант получает вызовы и заказы своих столов и «готово» с кухни, повар — заказы на кухню.</p>' : ''}
       ${st.net_ok === false ? `<p class="notice bad">${icon('alert')}<span>На сервере выключено расширение pg_net — сообщения не уйдут. Запустите schema.sql ещё раз.</span></p>` : ''}
       <ol class="tg-steps">
         <li>В Telegram откройте <b>@BotFather</b>, отправьте <b>/newbot</b>, придумайте имя — он пришлёт <b>токен</b>.</li>
@@ -764,8 +765,8 @@
   // =================================================================
   //  ЗАКАЗЫ
   // =================================================================
-  const ST = { new: 'Новый', accepted: 'Принят', cooking: 'Готовится', ready: 'Готов', cancelled: 'Отменён' };
-  const NEXT = { new: ['accepted', 'Принять заказ'], accepted: ['cooking', 'Готовится'], cooking: ['ready', 'Готов'] };
+  const ST = { new: 'Новый', accepted: 'Принят', cooking: 'Готовится', ready: 'Готов', served: 'Подан', cancelled: 'Отменён' };
+  const NEXT = { new: ['accepted', 'Принять заказ'], accepted: ['cooking', 'Готовится'], cooking: ['ready', 'Готов'], ready: ['served', 'Подано'] };
   const pad = (n) => String(n).padStart(2, '0');
   const localDate = (d = new Date()) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
   const dayStart = (d = new Date()) => { const x = new Date(d); x.setHours(0, 0, 0, 0); return x; };
@@ -1204,8 +1205,8 @@
       me = ctx.me;
       paintBrand();
       floor = window.Floor.create({
-        api, isOwner: true,
-        getOrders: () => orders, getDishes: () => dishes,
+        api, isOwner: true, me,
+        getOrders: () => orders, getDishes: () => dishes, getCats: () => cats,
         reloadOrders: loadOrders, onCalls: announceCalls,
         rerender: () => { updateCount(); if (['floor', 'orders'].includes(tab) && !document.querySelector('.modal')) render(); },
       });
@@ -1217,9 +1218,9 @@
       renderBanner();
       stop?.();
       // заказы — сразу, как пришли; меню — если его меняют на другом устройстве (не мешая открытой форме)
-      stop = api.subscribe(['orders', 'dishes', 'categories', 'tables', 'calls', 'bills'], async (table) => {
+      stop = api.subscribe(['orders', 'dishes', 'categories', 'tables', 'calls', 'bills', 'table_waiters'], async (table) => {
         try {
-          if (table === 'calls' || table === 'bills') { await floor.load(); updateCount(); if (tab === 'floor' && !document.querySelector('.modal')) render(); return; }
+          if (table === 'calls' || table === 'bills' || table === 'table_waiters') { await floor.load(); updateCount(); if (tab === 'floor' && !document.querySelector('.modal')) render(); return; }
           if (table === 'orders') { await loadOrders(); if (tab === 'orders') renderOrders(); else if (tab === 'floor' && !document.querySelector('.modal')) render(); return; }
           if (document.querySelector('.modal')) return;
           if (table === 'tables') { await Promise.all([loadTables(), floor.load()]); if (tab === 'tables') renderTables(); return; }

@@ -9,7 +9,7 @@
 
   const S = window.Staff;
   const { esc, icon, tr, money } = S;
-  const PAY = { cash: 'Наличные', card: 'Карта', qr: 'QR', other: 'Другое' };
+  const PAY = { cash: 'Наличные', card: 'Карта', qr: 'QR', other: 'Другое', mixed: 'Раздельно' };
   const r2 = (x) => Math.round(x * 100) / 100;
   const pad = (n) => String(n).padStart(2, '0');
   const ymd = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
@@ -114,7 +114,11 @@
     }
     const top = [...dishMap.values()].sort((a, b) => b.qty - a.qty || b.v - a.v);
     // оплата
-    const byPay = Object.keys(PAY).map((m) => ({ k: PAY[m], v: r2(R.bills.filter((b) => b.method === m).reduce((s, b) => s + Number(b.total), 0)), n: R.bills.filter((b) => b.method === m).length })).filter((r) => r.n);
+    // оплата по способам: раздельные счета делятся на части; суммы — с чаевыми, как пришли деньги
+    const parts = R.bills.flatMap((b) => (b.payments?.length ? b.payments : [{ method: b.method, amount: Number(b.total) + Number(b.tip || 0) }]));
+    const byPay = ['cash', 'card', 'qr', 'other'].map((m) => ({ k: PAY[m], v: r2(parts.filter((p) => p.method === m).reduce((s, p) => s + Number(p.amount), 0)), n: parts.filter((p) => p.method === m).length })).filter((r) => r.n);
+    const tips = r2(R.bills.reduce((s, b) => s + Number(b.tip || 0), 0));
+    const received = r2(parts.reduce((s, p) => s + Number(p.amount), 0));
     // столы и официанты
     const group = (list, keyf, valf) => {
       const m = new Map();
@@ -124,6 +128,7 @@
     const byTable = group(valid, (o) => `Стол ${o.table_label}`, (o) => Number(o.total));
     const byWaiter = group(valid, (o) => o.accepted_by_name, () => 1);
     const byCashier = group(R.bills, (b) => b.paid_by_name, (b) => Number(b.total));
+    const tipsBy = group(R.bills.filter((b) => Number(b.tip) > 0), (b) => b.paid_by_name, (b) => Number(b.tip));
 
     main.innerHTML = `
       ${toolbar()}
@@ -134,7 +139,7 @@
         <div class="a-stat"><b>${money(avg)}</b><span>средний чек</span></div>
         <div class="a-stat${unpaid ? ' hot' : ''}"><b>${money(unpaid)}</b><span>не оплачено</span></div>
       </div>
-      ${service || tax || cancelled.length ? `<p class="help">${service ? `Сервисный сбор: ${money(service)}. ` : ''}${tax ? `Налог: ${money(tax)}. ` : ''}${cancelled.length ? `Отменено заказов: ${cancelled.length} на ${money(cancelled.reduce((s, o) => s + Number(o.total), 0))}.` : ''}</p>` : ''}
+      ${service || tax || cancelled.length || tips ? `<p class="help">${tips ? `Чаевые: ${money(tips)}. ` : ''}${service ? `Сервисный сбор: ${money(service)}. ` : ''}${tax ? `Налог: ${money(tax)}. ` : ''}${cancelled.length ? `Отменено заказов: ${cancelled.length} на ${money(cancelled.reduce((s, o) => s + Number(o.total), 0))}.` : ''}</p>` : ''}
       <section class="panel"><div class="panel-head"><h3>Продажи по дням</h3></div><div class="panel-body">
         ${bars(byDay, money, { compact: byDay.length > 16 })}
         <details class="rp-table"><summary>Таблицей</summary><table><tbody>${byDay.map((r) => `<tr><td>${esc(r.k)}</td><td>${money(r.v)}</td></tr>`).join('')}</tbody></table></details>
@@ -145,7 +150,8 @@
           ${top.length > 12 ? `<details class="rp-table"><summary>Все блюда</summary><table><tbody>${top.map((d) => `<tr><td>${esc(d.k)}</td><td>${d.qty} шт.</td><td>${money(d.v)}</td></tr>`).join('')}</tbody></table></details>` : ''}
         </div></section>
         <section class="panel"><div class="panel-head"><h3>Способы оплаты</h3></div><div class="panel-body">
-          ${hbars(byPay, money, (r) => `счетов: ${r.n} · ${paid ? Math.round((r.v / paid) * 100) : 0}%`)}
+          ${hbars(byPay, money, (r) => `платежей: ${r.n} · ${received ? Math.round((r.v / received) * 100) : 0}%`)}
+          ${tips ? `<p class="help">С чаевыми ${money(tips)}: всего получено ${money(received)}.</p>` : ''}
         </div></section>
       </div>
       <section class="panel"><div class="panel-head"><h3>Заказы по часам</h3></div><div class="panel-body">
@@ -156,6 +162,7 @@
         <section class="panel"><div class="panel-head"><h3>Сотрудники</h3></div><div class="panel-body">
           <p class="section-label" style="margin-top:0">Приняли заказов</p>${hbars(byWaiter, (v) => `${v}`)}
           <p class="section-label">Закрыли счетов на сумму</p>${hbars(byCashier, money, (r) => `счетов: ${r.n}`)}
+          ${tipsBy.length ? `<p class="section-label">Чаевые</p>${hbars(tipsBy, money, (r) => `счетов: ${r.n}`)}` : ''}
         </div></section>
       </div>
       <div class="btn-row">
@@ -179,12 +186,13 @@
     const dt = (iso) => (iso ? new Date(iso).toLocaleString('ru-RU') : '');
     if (kind === 'orders') {
       csv(`заказы_${tag}.csv`, ['№', 'Дата и время', 'Стол', 'Статус', 'Позиции', 'Блюда', 'Сбор', 'Налог', 'Итого', 'Оплачен', 'Принял', 'Комментарий'],
-        R.orders.map((o) => [o.no, dt(o.created_at), o.table_label, { new: 'новый', accepted: 'принят', cooking: 'готовится', ready: 'готов', cancelled: 'отменён' }[o.status] || o.status,
+        R.orders.map((o) => [o.no, dt(o.created_at), o.table_label, { new: 'новый', accepted: 'принят', cooking: 'готовится', ready: 'готов', served: 'подан', cancelled: 'отменён' }[o.status] || o.status,
           (o.items || []).map((i) => `${i.qty}× ${tr(i.name) || i.id}${optNames(i).length ? ` (${optNames(i).join(', ')})` : ''}`).join('; '),
           num(o.subtotal ?? o.total), num(o.service), num(o.tax), num(o.total), dt(o.paid_at), o.accepted_by_name || '', o.note || '']));
     } else if (kind === 'bills') {
-      csv(`счета_${tag}.csv`, ['Чек №', 'Оплачен', 'Стол', 'Заказы', 'Блюда', 'Сбор', 'Налог', 'Итого', 'Оплата', 'Кто закрыл'],
-        R.bills.map((b) => [b.no, dt(b.paid_at), b.table_label, (b.order_nos || []).join(', '), num(b.subtotal), num(b.service), num(b.tax), num(b.total), PAY[b.method] || b.method, b.paid_by_name || '']));
+      csv(`счета_${tag}.csv`, ['Чек №', 'Оплачен', 'Стол', 'Заказы', 'Блюда', 'Сбор', 'Налог', 'Итого', 'Чаевые', 'Оплата', 'Части оплаты', 'Кто закрыл'],
+        R.bills.map((b) => [b.no, dt(b.paid_at), b.table_label, (b.order_nos || []).join(', '), num(b.subtotal), num(b.service), num(b.tax), num(b.total), num(b.tip), PAY[b.method] || b.method,
+          (b.payments || []).map((p) => `${PAY[p.method] || p.method} ${num(p.amount)}`).join(' + '), b.paid_by_name || '']));
     } else {
       const m = new Map();
       for (const o of R.orders) if (o.status !== 'cancelled') for (const i of o.items || []) {
@@ -211,9 +219,9 @@
     tax_on_service: 'налог на сбор', label: 'название', active: 'включён', token: 'QR-код', role: 'роль', email: 'email', status: 'статус', items: 'состав заказа',
     total: 'итого', subtotal: 'блюда', service: 'сбор', tax: 'налог', paid_at: 'оплата', bill_id: 'счёт', note: 'комментарий', accepted_by_name: 'принял',
     edited_at: 'изменён', edited_by_name: 'кто изменил', accepted_at: 'принят в', ready_at: 'готов в', cooking_at: 'начали готовить', cancelled_at: 'отменён в',
-    accepted_by: null, status_by: null, method: 'оплата', tables_count: null,
+    accepted_by: null, status_by: null, method: 'оплата', tables_count: null, tip: 'чаевые', payments: 'части оплаты', served_at: 'подан в', source: 'источник', created_by_name: 'пробил',
   };
-  const STV = { new: 'новый', accepted: 'принят', cooking: 'готовится', ready: 'готов', cancelled: 'отменён', waiter: 'официант', owner: 'владелец', cook: 'повар' };
+  const STV = { new: 'новый', accepted: 'принят', cooking: 'готовится', ready: 'готов', served: 'подан', cancelled: 'отменён', waiter: 'официант', owner: 'владелец', cook: 'повар', guest: 'гость', staff: 'официант' };
   function val(k, v) {
     if (v === null || v === undefined || v === '') return '—';
     if (typeof v === 'boolean') return v ? 'да' : 'нет';
@@ -233,7 +241,7 @@
     const ch = r.changes || {};
     const who = r.who || (r.entity === 'order' ? 'система' : 'неизвестно');
     const what = `${ENT[r.entity] || r.entity}${r.label ? ` «${r.label}»` : ''}`;
-    if (r.entity === 'bill') return { who, text: `закрыл ${r.label || 'счёт'}: ${money(ch.total)}${ch.method ? `, ${PAY[ch.method] || ch.method}` : ''}`, list: [] };
+    if (r.entity === 'bill') return { who, text: `закрыл ${r.label || 'счёт'}: ${money(ch.total)}${ch.method ? `, ${PAY[ch.method] || ch.method}` : ''}${Number(ch.tip) ? `, чаевые ${money(ch.tip)}` : ''}`, list: [] };
     if (r.action === 'insert') return { who, text: `добавил: ${what}`, list: [] };
     if (r.action === 'delete') return { who, text: `удалил: ${what}`, list: [] };
     const list = Object.entries(ch).filter(([k]) => FIELD[k] !== null && !['updated_at'].includes(k))
