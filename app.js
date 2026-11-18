@@ -781,7 +781,7 @@
     const gs = guestStatus(o.status);
     const ic = gs === 'accepted' ? 'check' : gs === 'cancelled' ? 'x' : 'clock';
     return `
-      ${justSent === id ? `<p class="sent-ok" role="status">${icon('check')}<span>${esc(t('sentTitle')(o.no))}</span></p>` : ''}
+      ${justSent === id && gs === 'new' ? `<p class="sent-ok" role="status">${icon('check')}<span>${esc(t('sentTitle')(o.no))}</span></p>` : ''}
       <h2 class="sheet-title" id="sheet-title">${esc(t('orderNo')(o.no))}</h2>
       <p class="track-meta"><span class="table-tag">${icon('table')}${esc(t('table'))} ${esc(o.table_label)}</span><span>${esc(t('sentAt')(timeOf(o.created_at)))}</span></p>
       <div class="track-card is-${gs}" aria-live="polite">
