@@ -1129,6 +1129,7 @@ create table if not exists private.telegram (
   updated_at    timestamptz not null default now()
 );
 insert into private.telegram (id) values (1) on conflict (id) do nothing;
+alter table private.telegram enable row level security;  -- читать могут только функции сервера
 
 create or replace function public.tg_money(p numeric)
 returns text language sql stable security definer set search_path = public as $$
