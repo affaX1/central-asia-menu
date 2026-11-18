@@ -19,7 +19,7 @@ const tr = (o) => (typeof o === 'string' ? { ru: o, uz: o, en: o, ar: o, ms: o }
 const out = [];
 out.push('-- Сгенерировано tools/make-seed.js из data.js. Стартовое меню и настройки.');
 out.push('-- Запускать после schema.sql. Повторный запуск ничего не перезапишет.');
-out.push('-- ВНИМАНИЕ: цены, вес и калории — примерные. Владелец меняет их в своей панели.');
+out.push('-- ВНИМАНИЕ: цены, вес, калории и описания — примерные; вид мяса и состав не заполнены. Владелец меняет их в своей панели.');
 out.push('');
 out.push(`update public.settings set
   name = ${q(typeof R.name === 'string' ? R.name : R.name.en)},
@@ -27,6 +27,7 @@ out.push(`update public.settings set
   currency = ${q(R.currency)},
   currency_before = ${R.currencyBefore ? 'true' : 'false'},
   timezone = ${q(R.timezone || 'Asia/Kuala_Lumpur')},
+  halal = ${R.halal ? 'true' : 'false'},
   schedule = ${j(R.schedule)},
   address = ${j(R.address || {})},
   phone = ${q(R.phone || '')},
@@ -43,8 +44,8 @@ out.push('');
 const sortIn = {};
 M.dishes.forEach((d) => {
   sortIn[d.category] = (sortIn[d.category] || 0) + 10;
-  out.push(`insert into public.dishes (id, category_id, name, "desc", ingredients, price, weight, unit, kcal, tags, allergens, sort, hidden)
-values (${q(d.id)}, ${q(d.category)}, ${j(d.name)}, ${j(d.desc)}, ${j(d.ingredients)}, ${Number(d.price)}, ${d.weight ?? 'null'}, ${q(d.unit || 'g')}, ${d.kcal ?? 'null'}, ${arr(d.tags)}, ${arr(d.allergens)}, ${sortIn[d.category]}, ${d.hidden ? 'true' : 'false'})
+  out.push(`insert into public.dishes (id, category_id, name, "desc", ingredients, price, weight, unit, kcal, tags, allergens, meat, sort, hidden)
+values (${q(d.id)}, ${q(d.category)}, ${j(d.name)}, ${j(d.desc)}, ${j(d.ingredients)}, ${Number(d.price)}, ${d.weight ?? 'null'}, ${q(d.unit || 'g')}, ${d.kcal ?? 'null'}, ${arr(d.tags)}, ${arr(d.allergens)}, ${arr(d.meat)}, ${sortIn[d.category]}, ${d.hidden ? 'true' : 'false'})
 on conflict (id) do nothing;`);
 });
 out.push('');

@@ -6,8 +6,8 @@
 --  Роли и права (проверяет сама база, а не браузер):
 --    гость (anon)      — читает опубликованное меню, проверяет свой стол по QR,
 --                        отправляет заказ и видит только СВОЙ заказ (по секретному ключу).
---    официант (waiter) — входит под своим аккаунтом, видит меню, цены и наличие.
---                        Только чтение: ни меню, ни заказы, ни столы изменить не может.
+--    официант (waiter) — входит под своим аккаунтом, видит меню, цены, наличие и заказы,
+--                        может только ПРИНЯТЬ новый заказ. Меню, столы, настройки — только чтение.
 --    владелец (owner)  — меняет всё: заказы и их статусы, меню, цены, наличие, фото,
 --                        столы и QR-коды, данные ресторана, расписание и сотрудников.
 --  Доступ получают только приглашённые email (приглашает владелец),
@@ -134,6 +134,8 @@ create table if not exists public.settings (
   tables_count     int  not null default 10 check (tables_count between 1 and 200),
   orders_enabled   boolean not null default true,   -- принимать заказы из меню
   orders_when_closed boolean not null default false, -- принимать и вне часов работы
+  halal            boolean not null default false,  -- «Халяль» — только если ресторан это подтвердил
+  halal_note       jsonb not null default '{}',     -- например данные сертификата; пусто — не показываем
   updated_at       timestamptz not null default now()
 );
 -- старые колонки предыдущей версии, если были
@@ -144,6 +146,8 @@ alter table public.settings add column if not exists logo_url text check (logo_u
 alter table public.settings add column if not exists map_url text check (map_url is null or map_url ~ '^https://');
 alter table public.settings add column if not exists orders_enabled boolean not null default true;
 alter table public.settings add column if not exists orders_when_closed boolean not null default false;
+alter table public.settings add column if not exists halal boolean not null default false;
+alter table public.settings add column if not exists halal_note jsonb not null default '{}';
 alter table public.settings add column if not exists schedule jsonb not null default
   '[{"closed":false,"open":"10:00","close":"22:00"},{"closed":false,"open":"10:00","close":"22:00"},{"closed":false,"open":"10:00","close":"22:00"},{"closed":false,"open":"10:00","close":"22:00"},{"closed":false,"open":"10:00","close":"22:00"},{"closed":false,"open":"10:00","close":"22:00"},{"closed":false,"open":"10:00","close":"22:00"}]';
 insert into public.settings (id) values (1) on conflict (id) do nothing;
@@ -189,12 +193,16 @@ create table if not exists public.dishes (
   tags        text[] not null default '{}' check (tags <@ array['hit', 'new', 'spicy', 'veg']),
   allergens   text[] not null default '{}'
               check (allergens <@ array['gluten', 'milk', 'eggs', 'fish', 'shellfish', 'nuts', 'soy', 'sesame']),
+  meat        text[] not null default '{}'      -- вид мяса; пусто = ресторан ещё не указал
+              check (meat <@ array['beef', 'lamb', 'horse', 'chicken', 'fish', 'seafood']),
   sort        int  not null default 0,
   hidden      boolean not null default false,  -- скрыто из меню совсем
   available   boolean not null default true,   -- false = временно нет в наличии
   updated_at  timestamptz not null default now()
 );
 alter table public.dishes drop column if exists emoji;
+alter table public.dishes add column if not exists meat text[] not null default '{}'
+  check (meat <@ array['beef', 'lamb', 'horse', 'chicken', 'fish', 'seafood']);
 create index if not exists dishes_category_idx on public.dishes (category_id, sort);
 
 -- у названия должен быть хотя бы один язык
@@ -393,7 +401,7 @@ create unique index if not exists tables_label_uniq on public.tables (lower(btri
 -- ---------- Заказы ----------
 create table if not exists public.orders (
   id          uuid primary key default gen_random_uuid(),
-  no          bigint generated always as identity,          -- номер, который видят гость и владелец
+  no          bigint generated always as identity (start with 1001) unique, -- номер заказа: уникальный, не повторяется
   table_id    uuid references public.tables (id) on delete set null,
   table_label text not null,                                  -- стол на момент заказа
   items       jsonb not null,                                 -- [{ id, qty, price, name }] — проверено сервером
@@ -408,8 +416,12 @@ create table if not exists public.orders (
   accepted_at timestamptz,
   ready_at    timestamptz,
   cancelled_at timestamptz,
-  status_by   uuid references auth.users (id) on delete set null
+  status_by   uuid references auth.users (id) on delete set null,
+  accepted_by uuid references auth.users (id) on delete set null,
+  accepted_by_name text
 );
+alter table public.orders add column if not exists accepted_by uuid references auth.users (id) on delete set null;
+alter table public.orders add column if not exists accepted_by_name text;
 create index if not exists orders_created_idx on public.orders (created_at desc);
 create index if not exists orders_table_created_idx on public.orders (table_id, created_at desc);
 create index if not exists orders_active_idx on public.orders (status) where status in ('new', 'accepted', 'cooking', 'ready');
@@ -420,7 +432,10 @@ begin
   new.updated_at := now();
   if new.status is distinct from old.status then
     new.status_by := auth.uid();
-    if new.status = 'accepted' and new.accepted_at is null then new.accepted_at := now(); end if;
+    if new.status = 'accepted' and new.accepted_at is null then
+      new.accepted_at := now();
+      new.accepted_by := coalesce(new.accepted_by, auth.uid());
+    end if;
     if new.status = 'ready' then new.ready_at := now(); end if;
     if new.status = 'cancelled' then new.cancelled_at := now(); else new.cancelled_at := null; end if;
   end if;
@@ -474,7 +489,8 @@ drop policy if exists tables_owner_all on public.tables;
 create policy tables_owner_all on public.tables for all to authenticated
   using (public.is_owner()) with check (public.is_owner());
 drop policy if exists orders_owner_read on public.orders;
-create policy orders_owner_read on public.orders for select to authenticated using (public.is_owner());
+drop policy if exists orders_staff_read on public.orders;
+create policy orders_staff_read on public.orders for select to authenticated using (public.is_staff());
 drop policy if exists orders_owner_status on public.orders;
 create policy orders_owner_status on public.orders for update to authenticated
   using (public.is_owner()) with check (public.is_owner());
@@ -567,14 +583,36 @@ begin
     returning o.id, o.no, o.guest_token, o.total, o.status, o.table_label, o.items, o.note, o.created_at;
 end $$;
 
+drop function if exists public.get_order(uuid, uuid);
 -- ---------- Гость: посмотреть СВОЙ заказ (нужны и номер заказа, и его секрет) ----------
 create or replace function public.get_order(p_id uuid, p_token uuid)
-returns table (id uuid, no bigint, status text, total numeric, table_label text, items jsonb, note text, created_at timestamptz, updated_at timestamptz)
+returns table (id uuid, no bigint, status text, total numeric, table_label text, items jsonb, note text, created_at timestamptz, updated_at timestamptz, accepted_at timestamptz)
 language sql stable security definer set search_path = public as $$
-  select o.id, o.no, o.status, o.total, o.table_label, o.items, o.note, o.created_at, o.updated_at
+  select o.id, o.no, o.status, o.total, o.table_label, o.items, o.note, o.created_at, o.updated_at, o.accepted_at
   from public.orders o
   where o.id = p_id and o.guest_token = p_token and o.created_at > now() - interval '3 days';
 $$;
+
+-- ---------- Официант (или владелец): принять новый заказ ----------
+-- Принять можно только заказ в статусе «новый». Если два официанта нажмут одновременно,
+-- примет первый; второй получит актуальный статус и changed = false.
+create or replace function public.accept_order(p_id uuid)
+returns table (id uuid, no bigint, status text, accepted_at timestamptz, accepted_by_name text, changed boolean)
+language plpgsql security definer set search_path = public as $$
+declare v_name text;
+begin
+  if not public.is_staff() then raise exception 'forbidden'; end if;
+  select coalesce(nullif(s.name, ''), s.email) into v_name from public.staff s where s.user_id = auth.uid();
+  return query
+    update public.orders o
+       set status = 'accepted', accepted_by = auth.uid(), accepted_by_name = v_name
+     where o.id = p_id and o.status = 'new'
+    returning o.id, o.no, o.status, o.accepted_at, o.accepted_by_name, true;
+  if not found then
+    return query select o.id, o.no, o.status, o.accepted_at, o.accepted_by_name, false from public.orders o where o.id = p_id;
+    if not found then raise exception 'not_found'; end if;
+  end if;
+end $$;
 
 -- ---------- Владелец: создать сразу N столов (1, 2, 3…) ----------
 create or replace function public.create_tables(p_from int, p_to int)
@@ -606,12 +644,14 @@ end $$;
 revoke all on function public.table_info(text) from public;
 revoke all on function public.place_order(text, jsonb, text, text, uuid) from public;
 revoke all on function public.get_order(uuid, uuid) from public;
+revoke all on function public.accept_order(uuid) from public;
 revoke all on function public.create_tables(int, int) from public;
 revoke all on function public.reset_table_token(uuid) from public;
 revoke all on function public.restaurant_open(timestamptz) from public;
 grant execute on function public.table_info(text) to anon, authenticated;
 grant execute on function public.place_order(text, jsonb, text, text, uuid) to anon, authenticated;
 grant execute on function public.get_order(uuid, uuid) to anon, authenticated;
+grant execute on function public.accept_order(uuid) to authenticated;
 grant execute on function public.restaurant_open(timestamptz) to anon, authenticated;
 grant execute on function public.create_tables(int, int) to authenticated;
 grant execute on function public.reset_table_token(uuid) to authenticated;

@@ -16,7 +16,7 @@
       settings: {
         id: 1, name: r.name, tagline: r.tagline, logo_url: null, currency: r.currency, currency_before: r.currencyBefore,
         timezone: r.timezone, schedule: r.schedule, address: {}, map_url: null, phone: '', footer: r.footer,
-        default_language: M.defaultLanguage, tables_count: 10, orders_enabled: true, orders_when_closed: true,
+        default_language: M.defaultLanguage, tables_count: 10, orders_enabled: true, orders_when_closed: true, halal: false, halal_note: {},
       },
       tables: [1, 2, 3].map((n) => ({ id: 'tbl-' + n, label: String(n), token: ('a' + n).padEnd(20, '0'), active: true, sort: n })),
       orders: [],
@@ -25,7 +25,7 @@
       dishes: M.dishes.map((d, i) => ({
         id: d.id, category_id: d.category, name: d.name, desc: d.desc || {}, ingredients: d.ingredients || {},
         price: d.price, weight: d.weight ?? null, unit: d.unit || 'g', kcal: d.kcal ?? null, photo_url: null,
-        tags: d.tags || [], allergens: d.allergens || [], sort: (i + 1) * 10, hidden: false, available: true,
+        tags: d.tags || [], allergens: d.allergens || [], meat: d.meat || [], sort: (i + 1) * 10, hidden: false, available: true,
       })),
       staff: [
         { user_id: 'u-owner', email: 'owner@example.com', name: 'Владелец', role: 'owner', active: true, created_at: '2026-01-01' },
@@ -73,13 +73,28 @@
     async uploadImage(blob) { await delay(); owner(); return new Promise((res) => { const fr = new FileReader(); fr.onload = () => res(fr.result); fr.readAsDataURL(blob); }); },
     async deleteImage() {},
     async orders(from, to) {
-      await delay(); owner();
+      await delay();
+      if (!['owner', 'waiter'].includes(role())) throw new Error('permission denied');
+      if (localStorage.getItem('fake:offline') === '1') throw new TypeError('Failed to fetch');
       const f = new Date(from).getTime();
       const t = to ? new Date(to).getTime() : Infinity;
       return db().orders.filter((o) => {
         const c = new Date(o.created_at).getTime();
         return to ? c >= f && c < t : c >= f || ['new', 'accepted', 'cooking'].includes(o.status);
       });
+    },
+    async acceptOrder(id) {
+      await delay();
+      if (!['owner', 'waiter'].includes(role())) throw new Error('forbidden');
+      if (localStorage.getItem('fake:offline') === '1') throw new TypeError('Failed to fetch');
+      const d = db(); const o = d.orders.find((x) => x.id === id);
+      if (!o) throw new Error('not_found');
+      let changed = false;
+      if (o.status === 'new') {
+        Object.assign(o, { status: 'accepted', accepted_at: new Date().toISOString(), accepted_by_name: role() === 'owner' ? 'Владелец' : 'Азиз', updated_at: new Date().toISOString() });
+        changed = true; save(d);
+      }
+      return { id: o.id, no: o.no, status: o.status, accepted_at: o.accepted_at, accepted_by_name: o.accepted_by_name, changed };
     },
     async setOrderStatus(id, status) {
       await delay(); owner();
@@ -136,7 +151,7 @@
       if (name === 'table_info') { const t = d.tables.find((x) => x.token === b.p_token && x.active); return reply(200, t ? [{ label: t.label }] : []); }
       if (name === 'get_order') {
         const o = d.orders.find((x) => x.id === b.p_id && x.guest_token === b.p_token);
-        return reply(200, o ? [{ id: o.id, no: o.no, status: o.status, total: o.total, table_label: o.table_label, items: o.items, note: o.note, created_at: o.created_at, updated_at: o.updated_at }] : []);
+        return reply(200, o ? [{ id: o.id, no: o.no, status: o.status, total: o.total, table_label: o.table_label, items: o.items, note: o.note, created_at: o.created_at, updated_at: o.updated_at, accepted_at: o.accepted_at || null }] : []);
       }
       if (name === 'place_order') {
         if (!b.p_client_key) return fail('bad_request');
@@ -160,7 +175,7 @@
           items.push({ id: dish.id, qty: it.qty, price: dish.price, name: dish.name });
         }
         if (d.orders.filter((o) => o.table_id === tb.id && Date.now() - new Date(o.created_at) < 300000).length >= 5) return fail('too_many');
-        d.seq = (d.seq || 0) + 1;
+        d.seq = Math.max(1000, d.seq || 0) + 1; // как в базе: номера с 1001, не повторяются
         const now = new Date().toISOString();
         const o = { id: crypto.randomUUID(), no: d.seq, table_id: tb.id, table_label: tb.label, items, total: Math.round(total * 100) / 100, note: b.p_note, lang: b.p_lang, status: 'new', client_key: b.p_client_key, guest_token: crypto.randomUUID(), created_at: now, updated_at: now };
         d.orders.push(o); save(d);

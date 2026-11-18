@@ -87,7 +87,7 @@
         await sb.storage.from(BUCKET).remove([path]); // ошибку не показываем: старый файл просто останется
       },
 
-      // ---------- заказы (только владелец — проверяет база) ----------
+      // ---------- заказы (видят официант и владелец — проверяет база) ----------
       // без toIso: все незакрытые + всё созданное с fromIso; с toIso: история за период
       async orders(fromIso, toIso) {
         let q = sb.from('orders').select('*');
@@ -96,6 +96,11 @@
           : q.or(`created_at.gte.${fromIso},status.in.(new,accepted,cooking)`);
         const { data, error } = await q.order('created_at', { ascending: true }).limit(2000);
         fail(error); return data || [];
+      },
+      // официант или владелец принимает новый заказ; changed=false — его уже принял кто-то другой (или отменили)
+      async acceptOrder(id) {
+        const { data, error } = await sb.rpc('accept_order', { p_id: id });
+        fail(error); return Array.isArray(data) ? data[0] : data;
       },
       async setOrderStatus(id, status) {
         const { data, error } = await sb.from('orders').update({ status }).eq('id', id).select().single();

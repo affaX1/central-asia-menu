@@ -206,3 +206,15 @@ body.admin { min-height: 100vh; }
   .p-table { font: 800 22pt Helvetica, Arial, sans-serif; color: #B5462E; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .p-hint { font: 500 9.5pt Helvetica, Arial, sans-serif; color: #6F5E4A; }
 }
+
+/* ---------- страница официанта ---------- */
+.o-section { margin-bottom: 22px; }
+.o-section-title { display: flex; align-items: center; gap: 10px; margin: 6px 0 12px; font-size: 22px; }
+.o-count { display: inline-grid; place-items: center; min-width: 30px; height: 30px; padding: 0 9px; border-radius: 999px; background: var(--surface-2); color: var(--muted); font: 800 15px var(--font-body); }
+.o-count.hot { background: var(--accent); color: var(--accent-ink); }
+.accept-btn { min-height: 56px; font-size: 17px; font-weight: 800; border-radius: 16px; }
+.accept-btn .ic { width: 22px; height: 22px; stroke-width: 2.4; }
+.o-card .st .ic { width: 14px; height: 14px; stroke-width: 2.6; }
+/* вкладки — тёплые, без тёмной заливки */
+.a-tab[aria-current="page"], .a-tab.on { background: var(--accent-soft); color: var(--accent); }
+.a-tab[aria-current="page"] .tab-count { background: var(--accent); color: var(--accent-ink); }

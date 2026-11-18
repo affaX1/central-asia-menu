@@ -11,6 +11,7 @@
 
   const LANGS = [['ru', 'Русский'], ['en', 'English'], ['uz', "O'zbekcha"], ['ar', 'العربية'], ['ms', 'Bahasa Melayu']];
   const TAGS = [['hit', 'Хит'], ['new', 'Новинка'], ['spicy', 'Острое'], ['veg', 'Без мяса']];
+  const MEAT = [['beef', 'говядина'], ['lamb', 'баранина'], ['horse', 'конина'], ['chicken', 'курица'], ['fish', 'рыба'], ['seafood', 'морепродукты']];
   const ALLERGENS = [['gluten', 'глютен'], ['milk', 'молоко'], ['eggs', 'яйца'], ['fish', 'рыба'], ['shellfish', 'морепродукты'], ['nuts', 'орехи'], ['soy', 'соя'], ['sesame', 'кунжут']];
   const DAYS = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье'];
   const ZONES = ['Asia/Kuala_Lumpur', 'Asia/Singapore', 'Asia/Jakarta', 'Asia/Bangkok', 'Asia/Tashkent', 'Asia/Samarkand', 'Asia/Almaty',
@@ -149,8 +150,9 @@
           <label class="field"><span>Единица</span><select name="unit">${[['g', 'граммы'], ['ml', 'миллилитры'], ['pcs', 'штуки']].map(([v, n]) => `<option value="${v}"${d.unit === v ? ' selected' : ''}>${n}</option>`).join('')}</select></label>
         </div>
         ${langFields('desc', d.desc, { label: 'Описание (необязательно)', area: true })}
-        <details style="margin-top:12px"><summary class="section-label" style="cursor:pointer">Состав (необязательно)</summary>
-          ${langFields('ingr', d.ingredients, { label: 'Состав', area: true })}</details>
+        ${langFields('ingr', d.ingredients, { label: 'Основные ингредиенты (коротко, через запятую)', area: true, hint: 'Например: рис, морковь, нут. Показываются в карточке блюда рядом с видом мяса.' })}
+        <p class="section-label">Вид мяса (гости видят его первым в составе)</p>
+        <div class="checks">${MEAT.map(([v, n]) => `<label><input type="checkbox" name="meat" value="${v}"${d.meat?.includes(v) ? ' checked' : ''}>${n}</label>`).join('')}</div>
         <p class="section-label">Метки</p>
         <div class="checks">${TAGS.map(([v, n]) => `<label><input type="checkbox" name="tags" value="${v}"${d.tags?.includes(v) ? ' checked' : ''}>${n}</label>`).join('')}</div>
         <p class="section-label">Аллергены</p>
@@ -230,7 +232,7 @@
           ingredients: readLang(f, 'ingr'),
           price: Math.round(price * 100) / 100,
           weight, unit: f.get('unit'), kcal,
-          tags: f.getAll('tags'), allergens: f.getAll('allergens'),
+          tags: f.getAll('tags'), allergens: f.getAll('allergens'), meat: f.getAll('meat'),
           available: !!f.get('available'), hidden: !f.get('shown'),
           sort: Number(f.get('sort')) || 0,
           photo_url: uploaded || (removePhoto ? null : d.photo_url || null),
@@ -387,9 +389,13 @@
             <label class="field"><span>Язык, если язык телефона гостя не поддерживается</span><select name="default_language">${LANGS.map(([c, n]) => `<option value="${c}"${c === st.default_language ? ' selected' : ''}>${n}</option>`).join('')}</select></label>
             <div class="field full"><span>Онлайн-заказы</span>
               ${sw('name="orders_enabled"', st.orders_enabled, 'Принимать заказы из меню')}
-              ${sw('name="orders_when_closed"', st.orders_when_closed, 'Принимать и когда ресторан закрыт по расписанию')}
+              ${sw('name="orders_when_closed"', st.orders_when_closed, 'Принимать и когда ресторан закрыт по расписанию')}</div>
+            <div class="field full"><span>Халяль</span>
+              ${sw('name="halal"', st.halal, 'Показывать гостям «Халяль»')}
+              <span class="hint">Включайте, только если ресторан действительно халяльный. Данные сертификата — ниже, если они есть.</span>
               <span class="hint">Если приём выключен или ресторан закрыт, гость видит понятное сообщение и не может отправить заказ.</span></div>
           </div>
+          ${langFields('halal_note', st.halal_note, { label: 'Халяль: данные сертификата (необязательно)', hint: 'Например: «Сертификат JAKIM № …». Пусто — гости видят только значок «Халяль».' })}
           ${langFields('footer', st.footer, { label: 'Подпись внизу меню (необязательно)' })}
         </div></section>
 
@@ -479,6 +485,8 @@
           default_language: f.get('default_language'),
           orders_enabled: !!f.get('orders_enabled'),
           orders_when_closed: !!f.get('orders_when_closed'),
+          halal: !!f.get('halal'),
+          halal_note: readLang(f, 'halal_note'),
           footer: readLang(f, 'footer'),
           logo_url: uploaded || (removeLogo ? null : st.logo_url || null),
         };
@@ -676,7 +684,7 @@
     const busy = busyOrders.has(o.id);
     return `<article class="o-card${o.status === 'new' ? ' is-new' : ''}">
       <div class="o-head"><b class="o-table">${icon('qr', 'sm')}Стол ${esc(o.table_label)}</b><span class="st st-${esc(o.status)}">${esc(ST[o.status] || o.status)}</span></div>
-      <div class="o-meta">Заказ №${esc(o.no)} · ${esc(hhmm(o.created_at))} · ${esc(ago(o.created_at))}${o.lang ? ` · язык гостя ${esc(String(o.lang).toUpperCase())}` : ''}</div>
+      <div class="o-meta">Заказ №${esc(o.no)} · ${esc(hhmm(o.created_at))} · ${esc(ago(o.created_at))}${o.lang ? ` · язык гостя ${esc(String(o.lang).toUpperCase())}` : ''}${o.accepted_by_name ? ` · принял: ${esc(o.accepted_by_name)}` : ''}</div>
       <ul class="o-items">${(o.items || []).map((i) => `<li><span><b>${esc(i.qty)}×</b> ${esc(tr(i.name) || i.id)}</span><span>${money(i.price * i.qty)}</span></li>`).join('')}</ul>
       ${o.note ? `<div class="o-note"><b>Комментарий гостя:</b> ${esc(o.note)}</div>` : ''}
       <div class="o-total"><span>Итого</span><b>${money(o.total)}</b></div>

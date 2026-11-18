@@ -17,11 +17,13 @@
 //    kcal        — калории (можно не писать)
 //    photo       — ссылка на фото блюда; пока нет — аккуратная заглушка
 //    tags        — 'hit' хит, 'new' новинка, 'spicy' острое, 'veg' без мяса
-//    ingredients — состав (можно не писать)
+//    meat        — вид мяса: 'beef' говядина, 'lamb' баранина, 'horse' конина, 'chicken' курица, 'fish', 'seafood'
+//    ingredients — основные ингредиенты (можно не писать)
 //    allergens   — gluten, milk, eggs, fish, shellfish, nuts, soy, sesame
 //    hidden      — true, чтобы временно убрать блюдо из меню (стоп-лист)
 //
-//  ВНИМАНИЕ: цены, вес и калории ниже — ПРИМЕРНЫЕ, их нужно заменить настоящими.
+//  ВНИМАНИЕ: цены, вес, калории и описания ниже — ПРИМЕРНЫЕ (черновик), их нужно заменить данными ресторана.
+//  Вид мяса и состав НЕ заполнены: их должен указать ресторан.
 //  Когда подключена база (config.js), меню берётся из базы, а этот файл — только запасной.
 // =====================================================================
 
@@ -38,6 +40,8 @@ window.MENU = {
     currency: 'RM',           // малайзийский ринггит
     currencyBefore: true,     // писать «RM 28», а не «28 RM»
     timezone: 'Asia/Kuala_Lumpur',
+    halal: false,             // «Халяль» показываем, только когда ресторан это подтвердит
+    halalNote: null,          // например данные сертификата: { ru: '...', en: '...' }
     // 7 дней с понедельника. close меньше open — работа после полуночи. closed: true — выходной.
     schedule: [
       { closed: false, open: '10:00', close: '22:00' },
@@ -83,13 +87,6 @@ window.MENU = {
         en: 'Devzira rice, lamb, yellow carrots, chickpeas and a quail egg',
         ar: 'أرز ديفزيرا، لحم ضأن، جزر أصفر، حمص وبيضة سمان',
         ms: 'Beras devzira, daging kambing, lobak kuning, kacang kuda dan telur puyuh',
-      },
-      ingredients: {
-        ru: 'рис, баранина, морковь, нут, лук, чеснок, зира, перепелиное яйцо',
-        uz: "guruch, qo'y go'shti, sabzi, no'xat, piyoz, sarimsoq, zira, bedana tuxumi",
-        en: 'rice, lamb, carrots, chickpeas, onion, garlic, cumin, quail egg',
-        ar: 'أرز، لحم ضأن، جزر، حمص، بصل، ثوم، كمون، بيض سمان',
-        ms: 'beras, daging kambing, lobak merah, kacang kuda, bawang, bawang putih, jintan putih, telur puyuh',
       },
       allergens: ['eggs'],
     },

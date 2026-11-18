@@ -4,29 +4,36 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="robots" content="noindex, nofollow">
-  <title>Меню для официанта</title>
+  <title>Официант</title>
   <meta name="theme-color" content="#FAF5EC">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Playfair+Display:wght@600;700&display=swap">
-  <link rel="stylesheet" href="styles.css?v=8">
-  <link rel="stylesheet" href="staff.css?v=8">
+  <link rel="stylesheet" href="styles.css?v=9">
+  <link rel="stylesheet" href="staff.css?v=9">
 </head>
 <body class="admin">
   <header class="a-top">
     <a class="a-brand" href="waiter.html">
       <span class="logo" id="a-logo" aria-hidden="true"></span>
-      <span><h1>Меню для официанта</h1><p id="a-sub">Central Asia Restaurant</p></span>
+      <span><h1>Официант</h1><p id="a-sub">Central Asia Restaurant</p></span>
     </a>
     <div id="a-user" hidden></div>
   </header>
+  <nav class="a-nav" id="a-nav" hidden aria-label="Разделы">
+    <div class="a-nav-in">
+      <a class="a-tab" href="#orders" data-tab="orders"><svg class="ic sm" aria-hidden="true"><use href="icons.svg#i-list"/></svg>Заказы<span class="tab-count" id="tab-count" hidden></span></a>
+      <a class="a-tab" href="#menu" data-tab="menu"><svg class="ic sm" aria-hidden="true"><use href="icons.svg#i-menu"/></svg>Меню и наличие</a>
+    </div>
+  </nav>
+  <div class="a-banner" id="a-banner" hidden></div>
   <main class="a-main" id="a-main"></main>
 
-  <script src="config.js?v=8"></script>
+  <script src="config.js?v=9"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
-  <script src="staff-api.js?v=8"></script>
-  <script src="staff-core.js?v=8"></script>
-  <script src="waiter.js?v=8"></script>
+  <script src="staff-api.js?v=9"></script>
+  <script src="staff-core.js?v=9"></script>
+  <script src="waiter.js?v=9"></script>
 </body>
 </html>

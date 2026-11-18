@@ -55,8 +55,9 @@
       sentTitle: (n) => `Заказ №${n} отправлен`,
       orderNo: (n) => `Заказ №${n}`,
       sentAt: (x) => `Отправлен в ${x}`,
-      statuses: { new: 'Отправлен', accepted: 'Принят', cooking: 'Готовится', ready: 'Готов', cancelled: 'Отменён' },
-      statusHint: { new: 'Ресторан получил заказ и скоро его примет.', accepted: 'Ресторан принял ваш заказ.', cooking: 'Ваш заказ готовится.', ready: 'Ваш заказ готов.', cancelled: 'Ресторан отменил заказ. Пожалуйста, обратитесь к официанту.' },
+      statuses: { new: 'Отправлен', accepted: 'Принят официантом', cancelled: 'Отменён' },
+      meatNames: { beef: 'Говядина', lamb: 'Баранина', horse: 'Конина', chicken: 'Курица', fish: 'Рыба', seafood: 'Морепродукты' }, halal: 'Халяль', meatLabel: 'Мясо',
+      statusHint: { new: 'Заказ сохранён. Ждём, когда официант его примет.', accepted: 'Официант принял ваш заказ.', cancelled: 'Заказ отменён. Пожалуйста, обратитесь к официанту.' },
       statusStale: 'Не удалось обновить статус — проверим ещё раз через несколько секунд.',
       myOrders: 'Мои заказы', orderMore: 'Заказать ещё', note: 'Комментарий',
     },
@@ -107,8 +108,9 @@
       sentTitle: (n) => `Buyurtma №${n} yuborildi`,
       orderNo: (n) => `Buyurtma №${n}`,
       sentAt: (x) => `${x} da yuborilgan`,
-      statuses: { new: 'Yuborildi', accepted: 'Qabul qilindi', cooking: 'Tayyorlanmoqda', ready: 'Tayyor', cancelled: 'Bekor qilindi' },
-      statusHint: { new: 'Restoran buyurtmani oldi va tez orada qabul qiladi.', accepted: 'Restoran buyurtmangizni qabul qildi.', cooking: 'Buyurtmangiz tayyorlanmoqda.', ready: 'Buyurtmangiz tayyor.', cancelled: "Restoran buyurtmani bekor qildi. Iltimos, ofitsiantga murojaat qiling." },
+      statuses: { new: 'Yuborildi', accepted: 'Ofitsiant qabul qildi', cancelled: 'Bekor qilindi' },
+      meatNames: { beef: "Mol go'shti", lamb: "Qo'y go'shti", horse: "Ot go'shti", chicken: 'Tovuq', fish: 'Baliq', seafood: 'Dengiz mahsulotlari' }, halal: 'Halol', meatLabel: "Go'sht",
+      statusHint: { new: 'Buyurtma saqlandi. Ofitsiant qabul qilishini kutmoqdamiz.', accepted: 'Ofitsiant buyurtmangizni qabul qildi.', cancelled: 'Buyurtma bekor qilindi. Iltimos, ofitsiantga murojaat qiling.' },
       statusStale: "Holatni yangilab bo'lmadi — bir necha soniyadan keyin yana tekshiramiz.",
       myOrders: 'Buyurtmalarim', orderMore: 'Yana buyurtma berish', note: 'Izoh',
     },
@@ -159,8 +161,9 @@
       sentTitle: (n) => `Order #${n} sent`,
       orderNo: (n) => `Order #${n}`,
       sentAt: (x) => `Sent at ${x}`,
-      statuses: { new: 'Sent', accepted: 'Accepted', cooking: 'Cooking', ready: 'Ready', cancelled: 'Cancelled' },
-      statusHint: { new: 'The restaurant has your order and will accept it shortly.', accepted: 'The restaurant accepted your order.', cooking: 'Your order is being prepared.', ready: 'Your order is ready.', cancelled: 'The restaurant cancelled the order. Please talk to your waiter.' },
+      statuses: { new: 'Sent', accepted: 'Accepted by waiter', cancelled: 'Cancelled' },
+      meatNames: { beef: 'Beef', lamb: 'Lamb', horse: 'Horse meat', chicken: 'Chicken', fish: 'Fish', seafood: 'Seafood' }, halal: 'Halal', meatLabel: 'Meat',
+      statusHint: { new: 'Your order is saved and waiting for a waiter to accept it.', accepted: 'A waiter has accepted your order.', cancelled: 'The order was cancelled. Please talk to your waiter.' },
       statusStale: "Couldn't refresh the status — we'll check again in a few seconds.",
       myOrders: 'My orders', orderMore: 'Order more', note: 'Note',
     },
@@ -212,8 +215,9 @@
       sentTitle: (n) => `تم إرسال الطلب رقم ${n}`,
       orderNo: (n) => `الطلب رقم ${n}`,
       sentAt: (x) => `أُرسل الساعة ${x}`,
-      statuses: { new: 'أُرسل', accepted: 'تم القبول', cooking: 'قيد التحضير', ready: 'جاهز', cancelled: 'أُلغي' },
-      statusHint: { new: 'استلم المطعم طلبك وسيقبله قريبًا.', accepted: 'قبل المطعم طلبك.', cooking: 'طلبك قيد التحضير.', ready: 'طلبك جاهز.', cancelled: 'ألغى المطعم الطلب. يرجى التحدث إلى النادل.' },
+      statuses: { new: 'أُرسل', accepted: 'قبله النادل', cancelled: 'أُلغي' },
+      meatNames: { beef: 'لحم بقري', lamb: 'لحم ضأن', horse: 'لحم خيل', chicken: 'دجاج', fish: 'سمك', seafood: 'مأكولات بحرية' }, halal: 'حلال', meatLabel: 'اللحم',
+      statusHint: { new: 'تم حفظ طلبك وننتظر أن يقبله النادل.', accepted: 'قبل النادل طلبك.', cancelled: 'أُلغي الطلب. يرجى التحدث إلى النادل.' },
       statusStale: 'تعذّر تحديث الحالة — سنحاول مجددًا بعد ثوانٍ.',
       myOrders: 'طلباتي', orderMore: 'اطلب المزيد', note: 'ملاحظة',
     },
@@ -264,8 +268,9 @@
       sentTitle: (n) => `Pesanan #${n} dihantar`,
       orderNo: (n) => `Pesanan #${n}`,
       sentAt: (x) => `Dihantar pada ${x}`,
-      statuses: { new: 'Dihantar', accepted: 'Diterima', cooking: 'Sedang dimasak', ready: 'Siap', cancelled: 'Dibatalkan' },
-      statusHint: { new: 'Restoran telah menerima pesanan dan akan mengesahkannya sebentar lagi.', accepted: 'Restoran telah menerima pesanan anda.', cooking: 'Pesanan anda sedang disediakan.', ready: 'Pesanan anda sudah siap.', cancelled: 'Restoran membatalkan pesanan. Sila berjumpa pelayan.' },
+      statuses: { new: 'Dihantar', accepted: 'Diterima oleh pelayan', cancelled: 'Dibatalkan' },
+      meatNames: { beef: 'Daging lembu', lamb: 'Daging kambing', horse: 'Daging kuda', chicken: 'Ayam', fish: 'Ikan', seafood: 'Makanan laut' }, halal: 'Halal', meatLabel: 'Daging',
+      statusHint: { new: 'Pesanan anda disimpan dan menunggu pelayan menerimanya.', accepted: 'Pelayan telah menerima pesanan anda.', cancelled: 'Pesanan dibatalkan. Sila berjumpa pelayan.' },
       statusStale: 'Status gagal dikemas kini — kami akan cuba lagi sebentar lagi.',
       myOrders: 'Pesanan saya', orderMore: 'Pesan lagi', note: 'Nota',
     },
@@ -298,13 +303,14 @@
         currency: r.currency, currencyBefore: !!r.currencyBefore, timezone: r.timezone, schedule: r.schedule,
         address: nonEmpty(r.address), mapUrl: r.mapUrl || null, phone: r.phone || '', footer: nonEmpty(r.footer),
         ordersEnabled: false, ordersWhenClosed: false,
+        halal: !!r.halal, halalNote: nonEmpty(r.halalNote),
         defaultLanguage: b.defaultLanguage,
       },
       categories: b.categories.map((c) => ({ id: c.id, name: c.name })),
       dishes: b.dishes.filter((d) => !d.hidden).map((d) => ({
         id: d.id, category: d.category, name: d.name, desc: nonEmpty(d.desc), ingredients: nonEmpty(d.ingredients),
         price: Number(d.price), weight: d.weight ?? null, unit: d.unit || 'g', kcal: d.kcal ?? null, photo: d.photo || null,
-        tags: d.tags || [], allergens: d.allergens || [], available: d.available !== false,
+        tags: d.tags || [], allergens: d.allergens || [], meat: d.meat || [], available: d.available !== false,
       })),
     };
   }
@@ -318,6 +324,7 @@
         currency: st.currency, currencyBefore: st.currency_before, timezone: st.timezone, schedule: st.schedule,
         address: nonEmpty(st.address), mapUrl: st.map_url || null, phone: st.phone || '', footer: nonEmpty(st.footer),
         ordersEnabled: !!st.orders_enabled, ordersWhenClosed: !!st.orders_when_closed,
+        halal: !!st.halal, halalNote: nonEmpty(st.halal_note),
         defaultLanguage: st.default_language,
       },
       categories: shown.map((c) => ({ id: c.id, name: c.name })),
@@ -326,7 +333,7 @@
         .map((d) => ({
           id: d.id, category: d.category_id, name: d.name, desc: nonEmpty(d.desc), ingredients: nonEmpty(d.ingredients),
           price: Number(d.price), weight: d.weight, unit: d.unit, kcal: d.kcal, photo: d.photo_url || null,
-          tags: d.tags || [], allergens: d.allergens || [], available: d.available,
+          tags: d.tags || [], allergens: d.allergens || [], meat: d.meat || [], available: d.available,
         })),
     };
   }
@@ -490,6 +497,11 @@
     const badges = [];
     if (table && tableState !== 'invalid') badges.push(`<span class="badge">${icon('table', 'sm')}${esc(t('table'))} ${esc(table)}</span>`);
     badges.push(`<span class="badge ${st.open ? 'ok' : 'off'}"><span class="dot"></span>${esc(st.text)}</span>`);
+    if (r.halal) {
+      badges.push(r.halalNote
+        ? `<button type="button" class="badge halal" data-sheet="halal">${icon('check', 'sm')}${esc(t('halal'))}</button>`
+        : `<span class="badge halal">${icon('check', 'sm')}${esc(t('halal'))}</span>`);
+    }
 
     const links = [];
     const hl = hoursLine();
@@ -534,15 +546,25 @@
     return `<div class="stepper"><button type="button" data-act="dec" data-id="${esc(id)}" aria-label="${esc(`${t('remove')}: ${itemName(id)}`)}">${icon('minus')}</button><span aria-live="polite">${n}</span>${plus}</div>`;
   }
 
+  // «Конина · рис, морковь, казы» — только из данных ресторана
+  const meatText = (d) => (d.meat || []).map((m) => t('meatNames')[m]).filter(Boolean).join(', ');
+  function compoHtml(d) {
+    const meat = meatText(d);
+    const ingr = L(d.ingredients);
+    if (!meat && !ingr) return '';
+    return `<p class="compo">${meat ? `<b>${esc(meat)}</b>` : ''}${meat && ingr ? ' · ' : ''}${ingr ? esc(ingr) : ''}</p>`;
+  }
+
   function card(d) {
     const desc = L(d.desc);
+    const compo = compoHtml(d);
     return `
       <article class="card${d.available ? '' : ' is-sold'}" data-open="${esc(d.id)}" tabindex="0" role="button" aria-label="${esc(L(d.name))}">
         ${photo(d, '', true)}
         <div class="card-body">
           ${tagsHtml(d)}
           <h3>${esc(L(d.name))}</h3>
-          ${desc ? `<p class="desc">${esc(desc)}</p>` : '<p class="desc"></p>'}
+          ${compo || (desc ? `<p class="desc">${esc(desc)}</p>` : '<p class="desc"></p>')}
           <div class="card-foot">
             <div class="price-wrap"><span class="price">${money(d.price)}</span><span class="amount">${esc(amount(d))}</span></div>
             <div class="slot" data-slot="${esc(d.id)}">${control(d.id)}</div>
@@ -650,9 +672,9 @@
       bar.setAttribute('aria-label', `${t('order')}: ${count}, ${t('total')} ${money(sum)}`);
     } else if (last) {
       bar.dataset.go = 'track:' + last.id;
-      const st = last.data.status;
-      bar.innerHTML = `<span class="bar-left">${icon('list')}${esc(t('orderNo')(last.no))}</span><span class="bar-sum st-${esc(st)}">${esc(t('statuses')[st] || st)}</span>`;
-      bar.setAttribute('aria-label', `${t('orderNo')(last.no)}: ${t('statuses')[st] || st}`);
+      const st = guestStatus(last.data.status);
+      bar.innerHTML = `<span class="bar-left">${icon('list')}${esc(t('orderNo')(last.no))}</span><span class="bar-sum st-${esc(st)}">${st === 'accepted' ? icon('check', 'sm') : ''}${esc(t('statuses')[st])}</span>`;
+      bar.setAttribute('aria-label', `${t('orderNo')(last.no)}: ${t('statuses')[st]}`);
     }
     bar.hidden = !count && !last;
     document.body.classList.toggle('has-bar', !bar.hidden);
@@ -730,7 +752,7 @@
     if (sendError) foot.push(`<p class="notice bad" role="alert">${icon('alert')}<span>${esc(sendError)}</span></p>`);
     if (ONLINE) {
       foot.push(`<button type="button" class="btn block send-btn" data-act="send"${block || sending ? ' disabled' : ''}>
-        ${sending ? `<span class="spinner" aria-hidden="true"></span>${esc(t('sending'))}` : `${esc(t('sendOrder'))} · <bdi dir="ltr">${money(totals().sum)}</bdi>`}</button>`);
+        ${sending ? `<span class="spinner" aria-hidden="true"></span><span>${esc(t('sending'))}</span>` : `<span>${esc(t('sendOrder'))}</span><span class="send-sum"><bdi dir="ltr">${money(totals().sum)}</bdi></span>`}</button>`);
     }
     out.push(`<div class="sheet-actions">${foot.join('')}</div>`);
     out.push(myOrdersHtml());
@@ -738,34 +760,38 @@
   }
 
   function myOrdersHtml() {
-    const list = myOrders.filter((o) => tracked[o.id]);
+    const list = myOrders.filter((o) => tracked[o.id]).slice(0, 5);
     if (!list.length) return '';
     return `<h4>${esc(t('myOrders'))}</h4><ul class="my-orders">${list.map((o) => {
-      const st = tracked[o.id].status;
+      const st = guestStatus(tracked[o.id].status);
       return `<li><button type="button" class="my-order" data-act="track" data-id="${esc(o.id)}">
         <span><b>${esc(t('orderNo')(o.no))}</b><small>${esc(t('sentAt')(timeOf(tracked[o.id].created_at)))}</small></span>
-        <span class="st st-${esc(st)}">${esc(t('statuses')[st] || st)}</span>${icon('chevron', 'chev')}</button></li>`;
+        <span class="st st-${esc(st)}">${st === 'accepted' ? icon('check', 'sm') : ''}${esc(t('statuses')[st])}</span>${icon('chevron', 'chev')}</button></li>`;
     }).join('')}</ul>`;
   }
 
   const timeOf = (iso) => new Intl.DateTimeFormat(t('locale'), { hour: '2-digit', minute: '2-digit', hour12: lang === 'en' }).format(new Date(iso));
-  const STEPS = ['new', 'accepted', 'cooking', 'ready'];
+  // гость видит три состояния: отправлен → принят официантом (кухонные этапы тоже считаются принятым) / отменён
+  const guestStatus = (s) => (s === 'new' ? 'new' : s === 'cancelled' ? 'cancelled' : 'accepted');
 
   function trackSheetHtml(id) {
     const o = tracked[id];
     const mine = myOrders.find((x) => x.id === id);
     if (!o || !mine) return `<div class="state">${icon('alert')}<p>${esc(t('errServer'))}</p></div>`;
-    const cancelled = o.status === 'cancelled';
-    const step = STEPS.indexOf(o.status);
+    const gs = guestStatus(o.status);
+    const ic = gs === 'accepted' ? 'check' : gs === 'cancelled' ? 'x' : 'clock';
     return `
       ${justSent === id ? `<p class="sent-ok" role="status">${icon('check')}<span>${esc(t('sentTitle')(o.no))}</span></p>` : ''}
       <h2 class="sheet-title" id="sheet-title">${esc(t('orderNo')(o.no))}</h2>
       <p class="track-meta"><span class="table-tag">${icon('table')}${esc(t('table'))} ${esc(o.table_label)}</span><span>${esc(t('sentAt')(timeOf(o.created_at)))}</span></p>
-      <div class="track-card ${cancelled ? 'is-cancelled' : ''}" aria-live="polite">
-        <b>${esc(t('statuses')[o.status] || o.status)}</b>
-        <span>${esc(t('statusHint')[o.status] || '')}</span>
-        ${cancelled ? '' : `<ol class="steps">${STEPS.map((s, i) => `<li class="${i < step ? 'done' : i === step ? 'now' : ''}"><i></i><span>${esc(t('statuses')[s])}</span></li>`).join('')}</ol>`}
+      <div class="track-card is-${gs}" aria-live="polite">
+        <span class="track-icon">${icon(ic)}</span>
+        <div><b>${esc(t('statuses')[gs])}</b><span>${esc(t('statusHint')[gs])}</span></div>
       </div>
+      ${gs === 'cancelled' ? '' : `<ol class="steps2">
+        <li class="done">${icon('check', 'sm')}<span>${esc(t('statuses').new)}</span></li>
+        <li class="${gs === 'accepted' ? 'done' : 'wait'}">${gs === 'accepted' ? icon('check', 'sm') : '<i></i>'}<span>${esc(t('statuses').accepted)}</span></li>
+      </ol>`}
       ${trackStale ? `<p class="notice info">${icon('alert')}<span>${esc(t('statusStale'))}</span></p>` : ''}
       <ul class="order-list track-list">${(o.items || []).map((i) => `
         <li><span class="o-name"><b>${esc(L(i.name) || i.id)}</b><small>${money(i.price)} × ${i.qty}</small></span><span class="o-sum">${money(i.price * i.qty)}</span></li>`).join('')}</ul>
@@ -850,14 +876,22 @@
     if (!recent.length) return;
     let ok = true;
     let changed = false;
+    const gone = [];
     await Promise.all(recent.map(async (o) => {
       try {
         const rows = await rpc('get_order', { p_id: o.id, p_token: o.token });
         const row = Array.isArray(rows) ? rows[0] : rows;
-        if (!row) return;
+        if (!row) { gone.push(o.id); return; }  // сервер не знает такой заказ (старше 3 дней или другая база)
         if (JSON.stringify(tracked[o.id]) !== JSON.stringify(row)) { tracked[o.id] = row; changed = true; }
       } catch { ok = false; }
     }));
+    if (gone.length) {
+      myOrders = myOrders.filter((o) => !gone.includes(o.id));
+      gone.forEach((id) => delete tracked[id]);
+      store.set('myOrders', myOrders);
+      changed = true;
+      if (sheet?.type === 'track' && gone.includes(sheet.id)) closeSheet();
+    }
     if (trackStale === ok) changed = true;
     trackStale = !ok;
     if (changed) {
@@ -869,7 +903,7 @@
   function schedulePoll(soon) {
     clearTimeout(pollTimer);
     if (!ONLINE || !myOrders.length) return;
-    const active = myOrders.some((o) => ['new', 'accepted', 'cooking'].includes(tracked[o.id]?.status));
+    const active = myOrders.some((o) => tracked[o.id]?.status === 'new');
     pollTimer = setTimeout(async () => {
       if (!document.hidden) await pollOrders();
       schedulePoll();
@@ -910,6 +944,11 @@
       return;
     }
 
+    if (sheet.type === 'halal') {
+      body.innerHTML = `<h2 class="sheet-title" id="sheet-title">${esc(t('halal'))}</h2><p class="sheet-desc">${esc(L(R().halalNote))}</p>`;
+      return;
+    }
+
     if (sheet.type === 'hours') {
       const s = R().schedule;
       const today = SCH.localNow(R().timezone, new Date()).day;
@@ -935,6 +974,7 @@
         <h2 class="sheet-title" id="sheet-title">${esc(L(d.name))}</h2>
         ${L(d.desc) ? `<p class="sheet-desc">${esc(L(d.desc))}</p>` : ''}
         ${d.available ? '' : `<p class="notice bad">${icon('alert')}<span>${esc(t('soldOut'))}</span></p>`}
+        ${meatText(d) ? `<h4>${esc(t('meatLabel'))}</h4><p class="meat-line">${esc(meatText(d))}</p>` : ''}
         ${L(d.ingredients) ? `<h4>${esc(t('ingredients'))}</h4><p>${esc(L(d.ingredients))}</p>` : ''}
         ${allergens ? `<h4>${esc(t('allergens'))}</h4><p>${esc(allergens)}</p>` : ''}
         <div class="sheet-foot">
@@ -967,7 +1007,7 @@
     void el.offsetHeight; // зафиксировать начальное положение, чтобы анимация сработала
     el.classList.add('open');
     $('#backdrop').classList.add('open');
-    $('#sheet-close').focus({ preventScroll: true });
+    el.focus({ preventScroll: true });
   }
 
   function closeSheet() {
