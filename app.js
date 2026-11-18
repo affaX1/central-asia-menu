@@ -673,7 +673,7 @@
     } else if (last) {
       bar.dataset.go = 'track:' + last.id;
       const st = guestStatus(last.data.status);
-      bar.innerHTML = `<span class="bar-left">${icon('list')}${esc(t('orderNo')(last.no))}</span><span class="bar-sum st-${esc(st)}">${st === 'accepted' ? icon('check', 'sm') : ''}${esc(t('statuses')[st])}</span>`;
+      bar.innerHTML = `<span class="bar-left">${icon('list')}<span class="bar-txt">${esc(t('orderNo')(last.no))}</span></span><span class="bar-sum st-${esc(st)}">${st === 'accepted' ? icon('check', 'sm') : ''}<span class="bar-txt">${esc(t('statuses')[st])}</span></span>`;
       bar.setAttribute('aria-label', `${t('orderNo')(last.no)}: ${t('statuses')[st]}`);
     }
     bar.hidden = !count && !last;

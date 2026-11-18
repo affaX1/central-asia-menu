@@ -425,6 +425,10 @@ body.has-bar .foot { padding-bottom: calc(112px + var(--safe-b)); }
 .order-bar.status-bar .bar-sum.st-new { background: var(--warn-soft); color: var(--warn); }
 .order-bar.status-bar .bar-sum.st-accepted { background: var(--ok-soft); color: var(--ok); }
 .order-bar.status-bar .bar-sum.st-cancelled { background: var(--surface-2); color: var(--muted); }
+.order-bar.status-bar .bar-left { flex: 1 1 auto; min-width: 0; }
+.order-bar.status-bar .bar-sum { flex: 0 1 auto; min-width: 0; padding: 8px 12px; font-size: 14.5px; direction: inherit; unicode-bidi: normal; }
+.order-bar.status-bar .bar-txt { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.order-bar.status-bar .bar-sum .ic { flex: none; }
 
 .table-tag { background: var(--accent-soft); color: var(--accent); font-size: 16px; padding: 6px 12px; }
 .table-tag .ic { width: 18px; height: 18px; }
