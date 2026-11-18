@@ -22,6 +22,11 @@ alter table storage.objects enable row level security;
 grant usage on schema storage to anon, authenticated;
 grant select, insert, update, delete on storage.objects to anon, authenticated;
 create publication supabase_realtime;
+-- имитация pg_net: запросы не уходят в интернет, а пишутся в таблицу
+create schema net;
+create table net.sent (id bigserial primary key, url text, body jsonb, at timestamptz default now());
+create function net.http_post(url text, body jsonb default '{}', params jsonb default '{}', headers jsonb default '{}', timeout_milliseconds int default 5000)
+returns bigint language sql as $$ insert into net.sent (url, body) values (url, body) returning id $$;
 
 -- помощники тестов
 create function public.t_ok(ok boolean, msg text) returns void language plpgsql as $$

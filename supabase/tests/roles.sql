@@ -230,4 +230,158 @@ select t_ok(not exists (select 1 from public.table_info((select token from tk wh
 reset role;
 
 select t_ok((select count(*) from pg_publication_tables where pubname = 'supabase_realtime' and tablename in ('dishes', 'categories', 'settings', 'orders', 'tables')) = 5, 'живые обновления включены для меню, настроек, заказов и столов');
+
+-- ============ 7. Повар, сбор и налог, варианты блюд ============
+set role authenticated; set request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
+select t_ok(public.invite_staff('Cook@Example.com', 'cook', 'Повар Бахтиёр') = 'invited', 'владелец приглашает повара');
+select t_fails($$select public.invite_staff('x@y.co', 'boss')$$, 'bad_role', 'неизвестная роль не приглашается');
+update public.settings set service_pct = 10, tax_pct = 6, tax_on_service = true;
+update public.dishes set price = 28, available = true,
+  options = '[{"id":"portion","name":{"ru":"Порция"},"required":true,"choices":[{"id":"full","name":{"ru":"Целая"},"price":0},{"id":"half","name":{"ru":"Половина"},"price":-10}]},{"id":"extra","name":{"ru":"Добавки"},"multi":true,"choices":[{"id":"egg","name":{"ru":"Яйцо"},"price":3},{"id":"meat","name":{"ru":"Мясо"},"price":8}]}]'
+  where id = 'plov-samarkand';
+select t_fails($$update public.dishes set options = '[{"id":"x"}]' where id = 'shurpa'$$, 'check', 'кривые варианты блюда не сохраняются');
+select t_fails($$update public.settings set service_pct = 50$$, 'check', 'сервисный сбор больше 30% не сохраняется');
+reset role; reset request.jwt.claim.sub;
+insert into auth.users (id, email, email_confirmed_at) values ('44444444-4444-4444-4444-444444444444', 'cook@example.com', now());
+select t_ok((select role from public.staff where user_id = '44444444-4444-4444-4444-444444444444') = 'cook', 'приглашённый повар получил роль');
+create temp table tv as select label, token, id from public.tables;
+grant select on tv to anon, authenticated;
+
+set role anon;
+create temp table o7 as select * from public.place_order((select token from tv where label = '1'),
+  '[{"id":"plov-tashkent","qty":1,"price":28}]', null, 'ru', 'bbbbbbbb-0000-0000-0000-000000000001');
+grant select on o7 to authenticated;
+select t_ok((select subtotal from o7) = 28 and (select service from o7) = 2.80 and (select tax from o7) = 1.85 and (select total from o7) = 32.65,
+  'сервисный сбор 10% и налог 6% (и на сбор) считает сервер: 28 → 32.65');
+create temp table o8 as select * from public.place_order((select token from tv where label = '1'),
+  '[{"id":"plov-samarkand","qty":2,"price":21,"opts":["portion:half","extra:egg"]},{"id":"plov-samarkand","qty":1,"price":28,"opts":["portion:full"]}]', null, 'ru', gen_random_uuid());
+grant select on o8 to authenticated;
+select t_ok((select subtotal from o8) = 70 and jsonb_array_length((select items from o8) -> 0 -> 'opts') = 2 and ((select items from o8) -> 0 ->> 'price')::numeric = 21,
+  'варианты: половина порции (−10) + яйцо (+3) = 21 за штуку; одно блюдо с разными вариантами в одном заказе');
+select t_fails($$select * from public.place_order((select token from tv where label = '1'), '[{"id":"plov-samarkand","qty":1,"price":28}]', null, 'ru', gen_random_uuid())$$, 'options:plov-samarkand', 'без обязательного варианта заказ не проходит');
+select t_fails($$select * from public.place_order((select token from tv where label = '1'), '[{"id":"plov-samarkand","qty":1,"price":18,"opts":["portion:full","portion:half"]}]', null, 'ru', gen_random_uuid())$$, 'options:plov-samarkand', 'два варианта в одиночной группе не проходят');
+select t_fails($$select * from public.place_order((select token from tv where label = '1'), '[{"id":"plov-samarkand","qty":1,"price":28,"opts":["portion:full","extra:gold"]}]', null, 'ru', gen_random_uuid())$$, 'options:plov-samarkand', 'несуществующий вариант не проходит');
+select t_fails($$select * from public.place_order((select token from tv where label = '1'), '[{"id":"plov-samarkand","qty":1,"price":28,"opts":["portion:half"]}]', null, 'ru', gen_random_uuid())$$, 'price_changed:plov-samarkand', 'цена без учёта варианта не проходит');
+select t_fails($$select * from public.place_order((select token from tv where label = '1'), '[{"id":"green-tea","qty":1,"price":10,"opts":["portion:full"]}]', null, 'ru', gen_random_uuid())$$, 'options:green-tea', 'чужой вариант у другого блюда не проходит');
+select t_ok((select service from public.get_order((select id from o7), (select guest_token from o7))) = 2.80, 'гость видит сбор и налог в своём заказе');
+
+-- ============ 8. Вызов официанта ============
+create temp table c1 as select * from public.call_staff((select token from tv where label = '1'), 'waiter');
+grant select on c1 to authenticated;
+select t_ok((select id from public.call_staff((select token from tv where label = '1'), 'waiter')) = (select id from c1), 'повторное «позвать официанта» не создаёт второй вызов');
+select t_ok((select kind from public.call_staff((select token from tv where label = '1'), 'bill', 'card')) = 'bill', 'гость просит счёт картой');
+select t_ok((select count(*) from public.table_calls((select token from tv where label = '1'))) = 2, 'гость видит два открытых вызова своего стола');
+select t_fails($$select * from public.call_staff('0000000000000000000a', 'waiter')$$, 'bad_table', 'вызов с неверного QR не проходит');
+select t_fails($$select * from public.call_staff((select token from tv where label = '1'), 'dance')$$, 'bad_request', 'неизвестный вызов не проходит');
+select t_fails($$select * from public.calls$$, 'permission denied', 'гость не читает вызовы других столов');
+select t_fails($$select public.done_call((select id from c1))$$, 'permission denied', 'гость не закрывает вызовы');
+select t_fails($$select * from public.floor_tables()$$, 'permission denied', 'гость не видит список столов зала');
+reset role;
+
+set role authenticated; set request.jwt.claim.sub = '44444444-4444-4444-4444-444444444444';
+select t_ok(public.is_staff() and public.is_kitchen() and not public.is_floor(), 'повар: кухня, но не зал');
+select t_ok((select count(*) from public.calls) = 0, 'повар не видит вызовы зала');
+select t_fails($$select public.done_call((select id from c1))$$, 'forbidden', 'повар не закрывает вызовы');
+select t_fails($$select * from public.accept_order((select id from o7))$$, 'forbidden', 'повар не принимает заказы у гостей');
+select t_fails($$select * from public.close_bill((select id from tv where label = '1'), 'cash')$$, 'forbidden', 'повар не закрывает счета');
+select t_ok(public.t_rows($$update public.dishes set price = 1$$) = 0, 'повар не меняет меню');
+select t_ok((select count(*) from public.orders) > 0, 'повар видит заказы для кухни');
+reset role; reset request.jwt.claim.sub;
+
+set role authenticated; set request.jwt.claim.sub = '22222222-2222-2222-2222-222222222222';
+select t_ok((select count(*) from public.calls where done_at is null) = 2, 'официант видит открытые вызовы');
+select t_ok((select count(*) from public.floor_tables()) >= 4 and not exists (select 1 from information_schema.columns where table_name = 'floor_tables'), 'официант видит столы зала (без кодов QR)');
+select public.done_call((select id from c1));
+select t_ok((select done_by_name from public.calls where id = (select id from c1)) = 'Азиз', 'официант закрыл вызов, записано кто');
+
+-- ============ 9. Счёт и оплата ============
+select t_fails($$select * from public.close_bill((select id from tv where label = '1'), 'cash')$$, 'has_new', 'счёт нельзя закрыть, пока на столе есть непринятые заказы');
+select public.accept_order(id) from public.orders where table_id = (select id from tv where label = '1') and status = 'new';
+select t_fails($$select * from public.close_bill((select id from tv where label = '1'), 'bitcoin')$$, 'bad_method', 'неизвестный способ оплаты не проходит');
+create temp table b1 as select * from public.close_bill((select id from tv where label = '1'), 'card');
+select t_ok((select total from b1) = (select sum(total) from public.orders where table_id = (select id from tv where label = '1') and status <> 'cancelled')
+  and (select paid_by_name from b1) = 'Азиз' and cardinality((select order_ids from b1)) = 2, 'официант закрыл счёт стола: все заказы стола в одном счёте, сумма сервера');
+select t_ok(not exists (select 1 from public.orders where table_id = (select id from tv where label = '1') and paid_at is null and status <> 'cancelled'), 'заказы стола отмечены оплаченными');
+select t_fails($$select * from public.close_bill((select id from tv where label = '1'), 'cash')$$, 'nothing_to_pay', 'второй раз тот же счёт не закрывается');
+select t_fails($$update public.orders set paid_at = null$$, 'permission denied', 'официант не снимает оплату прямым запросом');
+select t_ok((select count(*) from public.bills) = 1, 'официант видит счета');
+reset role; reset request.jwt.claim.sub;
+set role anon;
+select t_ok((select count(*) from public.table_calls((select token from tv where label = '1'))) = 0, 'после оплаты вызов «счёт» закрылся сам');
+select t_fails($$select * from public.bills$$, 'permission denied', 'гость не видит счета');
+select t_ok((select paid_at is not null from public.get_order((select id from o7), (select guest_token from o7))), 'гость видит, что заказ оплачен');
+create temp table o9 as select * from public.place_order((select token from tv where label = 'VIP'),
+  '[{"id":"plov-tashkent","qty":2,"price":28}]', null, 'ru', gen_random_uuid());
+grant select on o9 to authenticated;
+reset role;
+
+-- ============ 10. Кухня ============
+set role authenticated; set request.jwt.claim.sub = '44444444-4444-4444-4444-444444444444';
+select t_ok((select status from public.kitchen_set((select id from o9), 'cooking')) = 'new', 'непринятый заказ кухня не берёт');
+reset role; set role authenticated; set request.jwt.claim.sub = '22222222-2222-2222-2222-222222222222';
+select public.accept_order((select id from o9));
+select t_fails($$select * from public.kitchen_set((select id from o9), 'cooking')$$, 'forbidden', 'официант не ведёт кухню');
+reset role; set role authenticated; set request.jwt.claim.sub = '44444444-4444-4444-4444-444444444444';
+select t_ok((select status from public.kitchen_set((select id from o9), 'cooking')) = 'cooking', 'повар: «готовится»');
+select t_ok((select status from public.kitchen_set((select id from o9), 'ready')) = 'ready', 'повар: «готово»');
+select t_fails($$select * from public.kitchen_set((select id from o9), 'cancelled')$$, 'bad_status', 'повар не отменяет заказы');
+select t_ok((select cooking_at is not null and ready_at is not null from public.orders where id = (select id from o9)), 'время начала и готовности записано');
+reset role; reset request.jwt.claim.sub;
+
+-- ============ 11. Изменение заказа ============
+set role authenticated; set request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
+update public.dishes set price = 30 where id = 'plov-tashkent';
+create temp table e1 as select * from public.edit_order((select id from o9), '[{"id":"plov-tashkent","qty":3},{"id":"green-tea","qty":1}]');
+select t_ok((select subtotal from e1) = 94 and (select edited_by_name from e1) = 'Хозяин' and (select total from e1) = 109.60,
+  'владелец меняет заказ: старая позиция по старой цене (28×3), новая по текущей (10), сбор и налог пересчитаны');
+select t_fails($$select * from public.edit_order((select id from o9), '[]')$$, 'empty', 'пустой заказ после изменения не сохраняется (для этого есть «Отменить»)');
+select t_fails($$select * from public.edit_order((select id from o9), '[{"id":"non","qty":1}]')$$, 'unavailable:non', 'добавить блюдо «нет в наличии» нельзя');
+select t_fails($$select * from public.edit_order((select id from o7), '[{"id":"plov-tashkent","qty":1}]')$$, 'paid', 'оплаченный заказ не меняется');
+reset role; set role authenticated; set request.jwt.claim.sub = '22222222-2222-2222-2222-222222222222';
+select t_fails($$select * from public.edit_order((select id from o9), '[{"id":"plov-tashkent","qty":1}]')$$, 'forbidden', 'официант не меняет состав заказа');
+reset role; reset request.jwt.claim.sub;
+set role anon;
+select t_ok((select edited_at is not null and total = 109.60 from public.get_order((select id from o9), (select guest_token from o9))), 'гость видит изменённый заказ');
+reset role;
+
+-- ============ 12. Журнал изменений ============
+set role authenticated; set request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
+select t_ok(exists (select 1 from public.audit_log where entity = 'dish' and entity_id = 'plov-tashkent' and who = 'Хозяин'
+  and changes -> 'price' = '[28, 30]'::jsonb), 'журнал: владелец поменял цену 28 → 30');
+select t_ok(exists (select 1 from public.audit_log where entity = 'bill' and who = 'Азиз'), 'журнал: официант закрыл счёт');
+select t_ok(exists (select 1 from public.audit_log where entity = 'table' and changes ? 'token'), 'журнал: замена QR стола записана');
+select t_ok(not exists (select 1 from public.audit_log a, tk where a.changes::text like '%' || tk.token || '%'), 'в журнал не попадают секретные коды столов');
+reset role; set role authenticated; set request.jwt.claim.sub = '22222222-2222-2222-2222-222222222222';
+select t_ok((select count(*) from public.audit_log) = 0, 'официант не видит журнал');
+reset role; set role anon;
+select t_fails($$select * from public.audit_log$$, 'permission denied', 'гость не видит журнал');
+reset role;
+
+-- ============ 13. Telegram ============
+set role anon;
+select t_fails($$select * from private.telegram$$, 'permission denied', 'гость не видит токен Telegram');
+select t_fails($$select public.set_telegram('1:x', '{1}', true, true, true)$$, 'permission denied', 'гость не подключает Telegram');
+reset role; set role authenticated; set request.jwt.claim.sub = '22222222-2222-2222-2222-222222222222';
+select t_fails($$select * from public.telegram_status()$$, 'forbidden', 'официант не видит настройки Telegram');
+select t_fails($$select * from private.telegram$$, 'permission denied', 'официант не видит токен Telegram');
+reset role; set role authenticated; set request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
+select t_fails($$select public.set_telegram('not-a-token', '{123456}', true, true, false)$$, 'bad_token', 'кривой токен бота не сохраняется');
+select t_fails($$select public.set_telegram('123456:ABCDEFGHIJKLMNOPQRSTUVWXYZabcdef12', '{abc}', true, true, false)$$, 'bad_chat', 'кривой чат не сохраняется');
+select public.set_telegram('123456:ABCDEFGHIJKLMNOPQRSTUVWXYZabcdef12', '{987654321}', true, true, true);
+select t_ok((select connected and bot_hint = '…ef12' and chats = 1 from public.telegram_status()), 'владелец подключил Telegram; наружу виден только хвост токена');
+select t_ok(public.telegram_test() = 1, 'проверочное сообщение уходит');
+reset role; reset request.jwt.claim.sub;
+set role anon;
+select public.place_order((select token from tv where label = 'VIP'), '[{"id":"green-tea","qty":1,"price":10}]', 'тест', 'ru', gen_random_uuid());
+select public.call_staff((select token from tv where label = 'VIP'), 'bill', 'cash');
+reset role;
+select t_ok(exists (select 1 from net.sent where url like '%/bot123456:%/sendMessage' and body ->> 'text' like 'Новый заказ №%стол VIP%Зелёный%'), 'новый заказ ушёл в Telegram');
+select t_ok(exists (select 1 from net.sent where body ->> 'text' = 'Стол VIP: просят счёт (наличные)' and body ->> 'chat_id' = '987654321'), 'вызов «счёт» ушёл в Telegram');
+-- Telegram сломался — заказ всё равно создаётся
+create or replace function net.http_post(url text, body jsonb default '{}', params jsonb default '{}', headers jsonb default '{}', timeout_milliseconds int default 5000)
+returns bigint language plpgsql as $$ begin raise exception 'network down'; end $$;
+set role anon;
+select t_ok((select count(*) from public.place_order((select token from tv where label = 'VIP'), '[{"id":"green-tea","qty":1,"price":10}]', null, 'ru', gen_random_uuid())) = 1, 'если Telegram недоступен, заказ всё равно принимается');
+reset role;
+select t_ok((select count(*) from pg_publication_tables where pubname = 'supabase_realtime' and tablename in ('calls', 'bills')) = 2, 'живые обновления включены для вызовов и счетов');
 \echo ALL DATABASE TESTS PASSED
