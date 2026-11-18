@@ -384,4 +384,95 @@ set role anon;
 select t_ok((select count(*) from public.place_order((select token from tv where label = 'VIP'), '[{"id":"green-tea","qty":1,"price":10}]', null, 'ru', gen_random_uuid())) = 1, 'если Telegram недоступен, заказ всё равно принимается');
 reset role;
 select t_ok((select count(*) from pg_publication_tables where pubname = 'supabase_realtime' and tablename in ('calls', 'bills')) = 2, 'живые обновления включены для вызовов и счетов');
+
+-- ============ 14. Официант: заказ за гостя, «подано», мои столы ============
+-- вернём рабочий net.http_post (в прошлом блоке его «сломали»)
+create or replace function net.http_post(url text, body jsonb default '{}', params jsonb default '{}', headers jsonb default '{}', timeout_milliseconds int default 5000)
+returns bigint language sql as $$ insert into net.sent (url, body) values (url, body) returning id $$;
+set role authenticated; set request.jwt.claim.sub = '22222222-2222-2222-2222-222222222222';
+create temp table s1 as select * from public.staff_place_order((select id from tv where label = '2'),
+  '[{"id":"plov-tashkent","qty":2},{"id":"plov-samarkand","qty":1,"opts":["portion:half"]}]', 'гость без телефона', 'cccccccc-0000-0000-0000-000000000001');
+select t_ok((select status from s1) = 'accepted' and (select source from s1) = 'staff' and (select accepted_by_name from s1) = 'Азиз' and (select subtotal from s1) = 78,
+  'официант сам пробил заказ: сразу «принят», цены сервера (30×2 + 18), записано кто');
+select t_ok((select no from public.staff_place_order((select id from tv where label = '2'), '[{"id":"green-tea","qty":9}]', null, 'cccccccc-0000-0000-0000-000000000001')) = (select no from s1),
+  'повторная отправка официантом не создаёт второй заказ');
+select t_fails($$select * from public.staff_place_order((select id from tv where label = '2'), '[{"id":"non","qty":1}]', null, gen_random_uuid())$$, 'unavailable:non', 'официант не пробьёт блюдо «нет в наличии»');
+select t_fails($$select * from public.staff_place_order((select id from tv where label = '2'), '[{"id":"plov-samarkand","qty":1}]', null, gen_random_uuid())$$, 'options:plov-samarkand', 'официант не пробьёт блюдо без обязательного варианта');
+select t_fails($$select * from public.staff_place_order((select id from tv where label = '4'), '[{"id":"green-tea","qty":1}]', null, gen_random_uuid())$$, 'bad_table', 'на отключённый стол заказ не пробивается');
+select t_ok((select status from public.serve_order((select id from s1))) = 'served', 'официант отметил «подано»');
+select t_ok((select served_at is not null from public.orders where id = (select id from s1)), 'время подачи записано');
+select t_ok((select status from public.serve_order((select id from s1))) = 'served', 'повторное «подано» ничего не ломает');
+select public.claim_table((select id from tv where label = '2'), true);
+select t_ok((select waiter_name from public.floor_tables() where label = '2') = 'Азиз', 'официант взял стол 2 себе');
+reset role; reset request.jwt.claim.sub;
+set role authenticated; set request.jwt.claim.sub = '44444444-4444-4444-4444-444444444444';
+select t_fails($$select * from public.staff_place_order((select id from tv where label = '2'), '[{"id":"green-tea","qty":1}]', null, gen_random_uuid())$$, 'forbidden', 'повар не пробивает заказы');
+select t_fails($$select * from public.serve_order((select id from s1))$$, 'forbidden', 'повар не отмечает «подано»');
+select t_fails($$select public.claim_table((select id from tv where label = '3'), true)$$, 'forbidden', 'повар не берёт столы');
+reset role; reset request.jwt.claim.sub;
+set role anon;
+select t_fails($$select * from public.staff_place_order((select id from tv where label = '2'), '[{"id":"green-tea","qty":1}]', null, gen_random_uuid())$$, 'permission denied', 'гость не может пробить заказ как официант');
+select t_fails($$select * from public.table_waiters$$, 'permission denied', 'гость не видит, кто обслуживает столы');
+reset role;
+
+-- ============ 15. Чаевые и раздельная оплата ============
+set role authenticated; set request.jwt.claim.sub = '22222222-2222-2222-2222-222222222222';
+create temp table b2 as select * from public.close_bill((select id from tv where label = '2'), 'mixed', null, 10,
+  jsonb_build_array(jsonb_build_object('method', 'cash', 'amount', 50), jsonb_build_object('method', 'card', 'amount', (select sum(total) from public.orders where table_id = (select id from tv where label = '2') and paid_at is null and status <> 'cancelled') + 10 - 50)));
+select t_ok((select tip from b2) = 10 and (select method from b2) = 'mixed' and jsonb_array_length((select payments from b2)) = 2, 'раздельная оплата: 50 наличными + остаток картой, чаевые 10');
+reset role; set role anon;
+create temp table o10 as select * from public.place_order((select token from tv where label = 'VIP'), '[{"id":"green-tea","qty":1,"price":10}]', null, 'ru', gen_random_uuid());
+grant select on o10 to authenticated;
+reset role;
+set role authenticated; set request.jwt.claim.sub = '22222222-2222-2222-2222-222222222222';
+select public.accept_order(id) from public.orders where table_id = (select id from tv where label = 'VIP') and status = 'new';
+select t_fails($$select * from public.close_bill((select id from tv where label = 'VIP'), 'mixed', null, 0, '[{"method":"cash","amount":1}]')$$, 'bad_payments', 'части оплаты не сходятся с суммой — счёт не закрывается');
+select t_fails($$select * from public.close_bill((select id from tv where label = 'VIP'), 'cash', null, -5)$$, 'bad_tip', 'отрицательные чаевые не проходят');
+select t_fails($$select * from public.close_bill((select id from tv where label = 'VIP'), 'cash', null, 0, '[{"method":"gold","amount":10}]')$$, 'bad_payments', 'неизвестный способ в части оплаты не проходит');
+create temp table b3 as select * from public.close_bill((select id from tv where label = 'VIP'), 'cash', array[(select id from o10)], 2);
+select t_ok((select cardinality(order_ids) from b3) = 1 and (select tip from b3) = 2 and (select total from b3) = (select total from o10), 'оплата одного заказа стола отдельно (каждый платит за свой)');
+select t_ok(exists (select 1 from public.orders where table_id = (select id from tv where label = 'VIP') and paid_at is null and status <> 'cancelled'), 'остальные заказы стола остались неоплаченными');
+reset role; reset request.jwt.claim.sub;
+
+-- ============ 16. Telegram сотрудника ============
+set role authenticated; set request.jwt.claim.sub = '22222222-2222-2222-2222-222222222222';
+create temp table tgc as select * from public.my_telegram_start();
+select t_ok((select code from tgc) like 'ca%', 'официант получил код для подключения Telegram');
+select t_ok(public.my_telegram_check() = 'pending', 'сервер спросил у Telegram новые сообщения');
+reset role; reset request.jwt.claim.sub;
+insert into net._http_response (id, status_code, content)
+  select req, 200, json_build_object('ok', true, 'result', json_build_array(json_build_object('message', json_build_object('text', '/start ' || (select code from tgc), 'chat', json_build_object('id', 555000111)))))::text
+  from private.staff_tg where user_id = '22222222-2222-2222-2222-222222222222';
+set role authenticated; set request.jwt.claim.sub = '22222222-2222-2222-2222-222222222222';
+select t_ok(public.my_telegram_check() = 'linked', 'Telegram официанта подключён по коду');
+select t_ok((select linked from public.my_telegram()), 'официант видит: Telegram подключён');
+select t_fails($$select * from private.staff_tg$$, 'permission denied', 'официант не видит чаты других');
+reset role; reset request.jwt.claim.sub;
+set role anon;
+select public.call_staff((select token from tv where label = '2'), 'waiter');
+reset role;
+select t_ok(exists (select 1 from net.sent where body ->> 'chat_id' = '555000111' and body ->> 'text' = 'Стол 2: зовут официанта'), 'вызов со стола 2 пришёл официанту этого стола в Telegram');
+set role anon;
+select public.call_staff((select token from tv where label = '3'), 'waiter');
+reset role;
+select t_ok(exists (select 1 from net.sent where body ->> 'chat_id' = '555000111' and body ->> 'text' = 'Стол 3: зовут официанта'), 'вызов с ничьего стола приходит всем официантам с Telegram');
+-- повар подключён — получает заказы на кухню
+insert into private.staff_tg (user_id, chat_id) values ('44444444-4444-4444-4444-444444444444', '777000222');
+set role authenticated; set request.jwt.claim.sub = '22222222-2222-2222-2222-222222222222';
+create temp table s2 as select * from public.staff_place_order((select id from tv where label = '2'), '[{"id":"green-tea","qty":2}]', null, gen_random_uuid());
+reset role; reset request.jwt.claim.sub;
+select t_ok(exists (select 1 from net.sent where body ->> 'chat_id' = '777000222' and body ->> 'text' like 'На кухню: заказ №%стол 2%'), 'заказ официанта пришёл повару в Telegram');
+set role authenticated; set request.jwt.claim.sub = '44444444-4444-4444-4444-444444444444';
+select public.kitchen_set((select id from s2), 'ready');
+reset role; reset request.jwt.claim.sub;
+select t_ok(exists (select 1 from net.sent where body ->> 'chat_id' = '555000111' and body ->> 'text' like 'Готово: заказ №%стол 2 — отнесите'), 'кухня отметила «готово» — официант стола получил Telegram');
+-- имя бота
+set role authenticated; set request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
+select t_ok((select bot_username from public.telegram_status()) is null, 'имя бота ещё не известно — запрос ушёл');
+reset role; reset request.jwt.claim.sub;
+insert into net._http_response (id, status_code, content) select getme_req, 200, '{"ok":true,"result":{"username":"central_asia_bot"}}' from private.telegram;
+set role authenticated; set request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
+select t_ok((select bot_username from public.telegram_status()) = 'central_asia_bot' and (select staff_linked from public.telegram_status()) = 2, 'владелец видит имя бота и сколько сотрудников подключено');
+reset role; reset request.jwt.claim.sub;
+select t_ok((select count(*) from pg_publication_tables where pubname = 'supabase_realtime' and tablename = 'table_waiters') = 1, 'живые обновления включены для «моих столов»');
 \echo ALL DATABASE TESTS PASSED

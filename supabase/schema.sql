@@ -492,9 +492,17 @@ alter table public.orders add column if not exists bill_id uuid;
 alter table public.orders add column if not exists edited_at timestamptz;
 alter table public.orders add column if not exists edited_by_name text;
 update public.orders set subtotal = total where subtotal is null;
+alter table public.orders add column if not exists served_at timestamptz;
+alter table public.orders add column if not exists source text not null default 'guest';
+alter table public.orders add column if not exists created_by_name text;
+alter table public.orders drop constraint if exists orders_status_check;
+alter table public.orders add constraint orders_status_check check (status in ('new', 'accepted', 'cooking', 'ready', 'served', 'cancelled'));
+alter table public.orders drop constraint if exists orders_source_check;
+alter table public.orders add constraint orders_source_check check (source in ('guest', 'staff'));
 create index if not exists orders_created_idx on public.orders (created_at desc);
 create index if not exists orders_table_created_idx on public.orders (table_id, created_at desc);
-create index if not exists orders_active_idx on public.orders (status) where status in ('new', 'accepted', 'cooking', 'ready');
+drop index if exists public.orders_active_idx;
+create index if not exists orders_active_idx on public.orders (status) where status in ('new', 'accepted', 'cooking', 'ready', 'served');
 
 create or replace function public.orders_on_update()
 returns trigger language plpgsql security definer set search_path = public as $$
@@ -508,6 +516,7 @@ begin
     end if;
     if new.status = 'cooking' and new.cooking_at is null then new.cooking_at := now(); end if;
     if new.status = 'ready' then new.ready_at := now(); end if;
+    if new.status = 'served' and new.served_at is null then new.served_at := now(); end if;
     if new.status = 'cancelled' then new.cancelled_at := now(); else new.cancelled_at := null; end if;
   end if;
   return new;
@@ -824,11 +833,36 @@ end $$;
 -- =====================================================================
 
 -- ---------- Столы для зала (без секретных кодов QR) ----------
+-- Мои столы: кто из официантов обслуживает стол (один официант на стол)
+create table if not exists public.table_waiters (
+  table_id uuid primary key references public.tables (id) on delete cascade,
+  user_id  uuid not null references auth.users (id) on delete cascade,
+  since    timestamptz not null default now()
+);
+drop function if exists public.floor_tables();
 create or replace function public.floor_tables()
-returns table (id uuid, label text, active boolean, sort int)
+returns table (id uuid, label text, active boolean, sort int, waiter_id uuid, waiter_name text)
 language sql stable security definer set search_path = public as $$
-  select t.id, t.label, t.active, t.sort from public.tables t where public.is_staff() order by t.sort, t.label;
+  select t.id, t.label, t.active, t.sort, w.user_id, coalesce(nullif(s.name, ''), s.email)
+  from public.tables t
+  left join public.table_waiters w on w.table_id = t.id
+  left join public.staff s on s.user_id = w.user_id
+  where public.is_staff() order by t.sort, t.label;
 $$;
+
+-- Официант: взять стол себе / отпустить. Если стол был у другого — переходит к вам.
+create or replace function public.claim_table(p_table uuid, p_claim boolean)
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  if not public.is_floor() then raise exception 'forbidden'; end if;
+  if not exists (select 1 from public.tables where id = p_table) then raise exception 'not_found'; end if;
+  if p_claim then
+    insert into public.table_waiters (table_id, user_id) values (p_table, auth.uid())
+    on conflict (table_id) do update set user_id = excluded.user_id, since = now();
+  else
+    delete from public.table_waiters where table_id = p_table and (user_id = auth.uid() or public.is_owner());
+  end if;
+end $$;
 
 -- ---------- Счета ----------
 create table if not exists public.bills (
@@ -842,20 +876,29 @@ create table if not exists public.bills (
   service      numeric(10, 2) not null default 0,
   tax          numeric(10, 2) not null default 0,
   total        numeric(10, 2) not null,
-  method       text not null check (method in ('cash', 'card', 'qr', 'other')),
+  method       text not null,
   paid_at      timestamptz not null default now(),
   paid_by      uuid references auth.users (id) on delete set null,
   paid_by_name text
 );
 create index if not exists bills_paid_idx on public.bills (paid_at desc);
+alter table public.bills add column if not exists tip numeric(10, 2) not null default 0 check (tip >= 0);
+alter table public.bills add column if not exists payments jsonb not null default '[]';   -- [{ method, amount }] — раздельная оплата
+alter table public.bills drop constraint if exists bills_method_check;
+alter table public.bills add constraint bills_method_check check (method in ('cash', 'card', 'qr', 'other', 'mixed'));
 
--- Закрыть счёт стола: все неоплаченные заказы стола (или выбранные) → один счёт, способ оплаты.
-create or replace function public.close_bill(p_table uuid, p_method text, p_orders uuid[] default null)
+-- Закрыть счёт стола: все неоплаченные заказы стола (или выбранные) → один счёт.
+-- p_tip — чаевые; p_payments — раздельная оплата [{ method, amount }], сумма = к оплате + чаевые.
+drop function if exists public.close_bill(uuid, text, uuid[]);
+create or replace function public.close_bill(p_table uuid, p_method text, p_orders uuid[] default null,
+                                             p_tip numeric default 0, p_payments jsonb default null)
 returns setof public.bills language plpgsql security definer set search_path = public as $$
 declare v_ids uuid[]; v_nos bigint[]; v_sub numeric; v_srv numeric; v_tax numeric; v_tot numeric; v_label text; v_bill public.bills%rowtype;
+        v_tip numeric(10, 2) := round(coalesce(p_tip, 0), 2); v_pay jsonb := '[]'::jsonb; v_sum numeric := 0; v_methods text[] := '{}'; x jsonb; v_m text;
 begin
   if not public.is_floor() then raise exception 'forbidden'; end if;
-  if p_method not in ('cash', 'card', 'qr', 'other') then raise exception 'bad_method'; end if;
+  if p_method not in ('cash', 'card', 'qr', 'other', 'mixed') then raise exception 'bad_method'; end if;
+  if v_tip < 0 or v_tip > 100000 then raise exception 'bad_tip'; end if;
   perform 1 from public.orders o
     where o.table_id = p_table and o.paid_at is null and o.status <> 'cancelled'
       and (p_orders is null or o.id = any (p_orders))
@@ -871,15 +914,81 @@ begin
    where o.table_id = p_table and o.paid_at is null and o.status <> 'cancelled'
      and (p_orders is null or o.id = any (p_orders));
   if v_ids is null then raise exception 'nothing_to_pay'; end if;
-  insert into public.bills (table_id, table_label, order_ids, order_nos, subtotal, service, tax, total, method, paid_by, paid_by_name)
-  values (p_table, coalesce((select label from public.tables where id = p_table), v_label), v_ids, v_nos, v_sub, v_srv, v_tax, v_tot, p_method,
-          auth.uid(), public.staff_name())
+  -- оплата: один способ на всю сумму или несколько частей
+  if p_payments is null then
+    if p_method = 'mixed' then raise exception 'bad_payments'; end if;
+    v_pay := jsonb_build_array(jsonb_build_object('method', p_method, 'amount', v_tot + v_tip));
+    v_methods := array[p_method];
+  else
+    if jsonb_typeof(p_payments) <> 'array' or jsonb_array_length(p_payments) not between 1 and 4 then raise exception 'bad_payments'; end if;
+    for x in select value from jsonb_array_elements(p_payments) loop
+      v_m := x ->> 'method';
+      if v_m not in ('cash', 'card', 'qr', 'other') or jsonb_typeof(x -> 'amount') <> 'number' or (x ->> 'amount')::numeric <= 0 then raise exception 'bad_payments'; end if;
+      v_sum := v_sum + round((x ->> 'amount')::numeric, 2);
+      v_pay := v_pay || jsonb_build_array(jsonb_build_object('method', v_m, 'amount', round((x ->> 'amount')::numeric, 2)));
+      if not v_m = any (v_methods) then v_methods := v_methods || v_m; end if;
+    end loop;
+    if abs(v_sum - (v_tot + v_tip)) > 0.01 then raise exception 'bad_payments'; end if;
+  end if;
+  insert into public.bills (table_id, table_label, order_ids, order_nos, subtotal, service, tax, total, tip, payments, method, paid_by, paid_by_name)
+  values (p_table, coalesce((select label from public.tables where id = p_table), v_label), v_ids, v_nos, v_sub, v_srv, v_tax, v_tot, v_tip, v_pay,
+          case when cardinality(v_methods) = 1 then v_methods[1] else 'mixed' end, auth.uid(), public.staff_name())
   returning * into v_bill;
   update public.orders set paid_at = v_bill.paid_at, bill_id = v_bill.id where id = any (v_ids);
   -- открытый вызов «принесите счёт» этого стола закрывается сам
   update public.calls set done_at = now(), done_by = auth.uid(), done_by_name = public.staff_name()
    where table_id = p_table and done_at is null and kind = 'bill';
   return next v_bill;
+end $$;
+
+-- ---------- Официант (или владелец): заказ за гостя ----------
+-- Сразу «принят» этим официантом и идёт на кухню. Цены — по меню на сервере.
+create or replace function public.staff_place_order(p_table uuid, p_items jsonb, p_note text, p_client_key uuid)
+returns setof public.orders language plpgsql security definer set search_path = public as $$
+declare v_tab public.tables%rowtype; v_item jsonb; v_line jsonb; v_items jsonb := '[]'::jsonb; v_sub numeric(10, 2) := 0;
+        v_ch record; v_keys text[] := '{}'; v_count int := 0; v_name text;
+begin
+  if not public.is_floor() then raise exception 'forbidden'; end if;
+  if p_client_key is null then raise exception 'bad_request'; end if;
+  if exists (select 1 from public.orders where client_key = p_client_key) then
+    return query select * from public.orders where client_key = p_client_key; return;
+  end if;
+  select * into v_tab from public.tables where id = p_table and active;
+  if not found then raise exception 'bad_table'; end if;
+  if p_items is null or jsonb_typeof(p_items) <> 'array' or jsonb_array_length(p_items) = 0 then raise exception 'empty'; end if;
+  if jsonb_array_length(p_items) > 50 then raise exception 'bad_items'; end if;
+  for v_item in select value from jsonb_array_elements(p_items) loop
+    if jsonb_typeof(v_item) <> 'object' then raise exception 'bad_items'; end if;
+    v_line := public.order_line(v_item, false);
+    if (v_line ->> 'key') = any (v_keys) then raise exception 'bad_items'; end if;
+    v_keys := v_keys || (v_line ->> 'key');
+    v_count := v_count + (v_line ->> 'qty')::int;
+    v_sub := v_sub + (v_line ->> 'price')::numeric * (v_line ->> 'qty')::int;
+    v_items := v_items || jsonb_build_array(v_line - 'key');
+  end loop;
+  if v_count > 100 then raise exception 'bad_items'; end if;
+  select * into v_ch from public.order_charges(v_sub);
+  v_name := public.staff_name();
+  return query insert into public.orders as o (table_id, table_label, items, subtotal, service, tax, total, note, lang, client_key,
+                                               status, accepted_at, accepted_by, accepted_by_name, source, created_by_name)
+    values (v_tab.id, v_tab.label, v_items, v_sub, v_ch.service, v_ch.tax, v_ch.total,
+            left(nullif(btrim(coalesce(p_note, '')), ''), 300), null, p_client_key,
+            'accepted', now(), auth.uid(), v_name, 'staff', v_name)
+    returning o.*;
+end $$;
+
+-- ---------- Официант: заказ отнесли гостю ----------
+create or replace function public.serve_order(p_id uuid)
+returns setof public.orders language plpgsql security definer set search_path = public as $$
+declare v_o public.orders%rowtype;
+begin
+  if not public.is_floor() then raise exception 'forbidden'; end if;
+  select * into v_o from public.orders where id = p_id for update;
+  if not found then raise exception 'not_found'; end if;
+  if v_o.status in ('accepted', 'cooking', 'ready') then
+    return query update public.orders set status = 'served' where id = p_id returning *; return;
+  end if;
+  return query select * from public.orders where id = p_id;
 end $$;
 
 -- ---------- Вызов официанта / «принесите счёт» ----------
@@ -1002,6 +1111,11 @@ end $$;
 -- ---------- Права на новые таблицы ----------
 alter table public.bills enable row level security;
 alter table public.calls enable row level security;
+alter table public.table_waiters enable row level security;
+revoke all on public.table_waiters from anon, authenticated;
+grant select on public.table_waiters to authenticated;
+drop policy if exists table_waiters_staff_read on public.table_waiters;
+create policy table_waiters_staff_read on public.table_waiters for select to authenticated using (public.is_staff());
 revoke all on public.bills, public.calls from anon, authenticated;
 grant select on public.bills, public.calls to authenticated;
 drop policy if exists bills_floor_read on public.bills;
@@ -1010,14 +1124,20 @@ drop policy if exists calls_floor_read on public.calls;
 create policy calls_floor_read on public.calls for select to authenticated using (public.is_floor());
 
 revoke all on function public.floor_tables() from public;
-revoke all on function public.close_bill(uuid, text, uuid[]) from public;
+revoke all on function public.close_bill(uuid, text, uuid[], numeric, jsonb) from public;
+revoke all on function public.claim_table(uuid, boolean) from public;
+revoke all on function public.staff_place_order(uuid, jsonb, text, uuid) from public;
+revoke all on function public.serve_order(uuid) from public;
 revoke all on function public.call_staff(text, text, text) from public;
 revoke all on function public.table_calls(text) from public;
 revoke all on function public.done_call(uuid) from public;
 revoke all on function public.edit_order(uuid, jsonb) from public;
 revoke all on function public.kitchen_set(uuid, text) from public;
 grant execute on function public.floor_tables() to authenticated;
-grant execute on function public.close_bill(uuid, text, uuid[]) to authenticated;
+grant execute on function public.close_bill(uuid, text, uuid[], numeric, jsonb) to authenticated;
+grant execute on function public.claim_table(uuid, boolean) to authenticated;
+grant execute on function public.staff_place_order(uuid, jsonb, text, uuid) to authenticated;
+grant execute on function public.serve_order(uuid) to authenticated;
 grant execute on function public.call_staff(text, text, text) to anon, authenticated;
 grant execute on function public.table_calls(text) to anon, authenticated;
 grant execute on function public.done_call(uuid) to authenticated;
@@ -1129,6 +1249,17 @@ create table if not exists private.telegram (
   updated_at    timestamptz not null default now()
 );
 insert into private.telegram (id) values (1) on conflict (id) do nothing;
+alter table private.telegram add column if not exists bot_username text;
+alter table private.telegram add column if not exists getme_req bigint;
+-- Telegram сотрудника: свой чат (официант — вызовы и заказы своих столов, повар — заказы на кухню)
+create table if not exists private.staff_tg (
+  user_id  uuid primary key references auth.users (id) on delete cascade,
+  chat_id  text,
+  code     text,
+  code_at  timestamptz,
+  req      bigint
+);
+alter table private.staff_tg enable row level security;
 alter table private.telegram enable row level security;  -- читать могут только функции сервера
 
 create or replace function public.tg_money(p numeric)
@@ -1158,18 +1289,90 @@ begin
   return n;
 end $$;
 
+-- Отправить в конкретные чаты (сотрудникам). Тоже никогда не ломает заказ.
+create or replace function private.tg_send_to(p_chats text[], p_text text)
+returns int language plpgsql security definer set search_path = public, private as $$
+declare v private.telegram%rowtype; c text; n int := 0;
+begin
+  select * into v from private.telegram where id = 1;
+  if v.bot_token is null or p_chats is null or cardinality(p_chats) = 0 then return 0; end if;
+  if to_regprocedure('net.http_post(text,jsonb,jsonb,jsonb,integer)') is null then return 0; end if;
+  foreach c in array p_chats loop
+    begin
+      execute 'select net.http_post(url := $1, body := $2, headers := $3, params := $4, timeout_milliseconds := $5)'
+        using 'https://api.telegram.org/bot' || v.bot_token || '/sendMessage',
+              jsonb_build_object('chat_id', c, 'text', left(p_text, 3900), 'disable_web_page_preview', true),
+              '{"Content-Type": "application/json"}'::jsonb, '{}'::jsonb, 5000;
+      n := n + 1;
+    exception when others then null;
+    end;
+  end loop;
+  return n;
+end $$;
+
+-- Чаты официантов этого стола: его официант, а если стол ничей — все официанты с Telegram
+create or replace function private.tg_floor_chats(p_table uuid)
+returns text[] language sql stable security definer set search_path = public, private as $$
+  with own as (
+    select g.chat_id from public.table_waiters w join public.staff s on s.user_id = w.user_id and s.active
+    join private.staff_tg g on g.user_id = w.user_id
+    where w.table_id = p_table and g.chat_id is not null)
+  select coalesce(
+    (select array_agg(chat_id) from own),
+    (select array_agg(g.chat_id) from public.staff s join private.staff_tg g on g.user_id = s.user_id
+      where s.active and s.role = 'waiter' and g.chat_id is not null and not exists (select 1 from own)),
+    '{}');
+$$;
+create or replace function private.tg_cook_chats()
+returns text[] language sql stable security definer set search_path = public, private as $$
+  select coalesce(array_agg(g.chat_id), '{}') from public.staff s join private.staff_tg g on g.user_id = s.user_id
+  where s.active and s.role = 'cook' and g.chat_id is not null;
+$$;
+create or replace function public.tg_lines(p_items jsonb)
+returns text language sql immutable as $$
+  select string_agg((i ->> 'qty') || '× ' || coalesce(i -> 'name' ->> 'ru', i -> 'name' ->> 'en', i ->> 'id')
+           || coalesce(' (' || (select string_agg(coalesce(o -> 'name' ->> 'ru', o -> 'name' ->> 'en'), ', ') from jsonb_array_elements(coalesce(i -> 'opts', '[]')) o) || ')', ''), E'\n')
+  from jsonb_array_elements(p_items) i;
+$$;
+
+-- статусы заказа: «принят» → повару, «готово» → официанту стола
+create or replace function public.tg_on_order_status()
+returns trigger language plpgsql security definer set search_path = public, private as $$
+begin
+  begin
+    if new.status = 'accepted' and old.status = 'new' then
+      perform private.tg_send_to(private.tg_cook_chats(), 'На кухню: заказ №' || new.no || ' · стол ' || new.table_label || E'\n'
+        || coalesce(public.tg_lines(new.items), '') || coalesce(E'\nКомментарий: ' || new.note, ''));
+    elsif new.status = 'ready' and old.status <> 'ready' then
+      perform private.tg_send_to(private.tg_floor_chats(new.table_id), 'Готово: заказ №' || new.no || ' · стол ' || new.table_label || ' — отнесите');
+    end if;
+  exception when others then null;
+  end;
+  return null;
+end $$;
+drop trigger if exists tg_orders_status on public.orders;
+create trigger tg_orders_status after update of status on public.orders for each row execute function public.tg_on_order_status();
+
 create or replace function public.tg_on_order()
 returns trigger language plpgsql security definer set search_path = public, private as $$
 declare v private.telegram%rowtype; v_lines text;
 begin
   begin
     select * into v from private.telegram where id = 1;
-    if not coalesce(v.notify_orders, false) then return null; end if;
     select string_agg((i ->> 'qty') || '× ' || coalesce(i -> 'name' ->> 'ru', i -> 'name' ->> 'en', i ->> 'id')
              || coalesce(' (' || (select string_agg(coalesce(o -> 'name' ->> 'ru', o -> 'name' ->> 'en'), ', ') from jsonb_array_elements(coalesce(i -> 'opts', '[]')) o) || ')', ''), E'\n')
       into v_lines from jsonb_array_elements(new.items) i;
-    perform private.tg_send('Новый заказ №' || new.no || ' · стол ' || new.table_label || E'\n' || coalesce(v_lines, '')
-      || coalesce(E'\nКомментарий: ' || new.note, '') || E'\nИтого: ' || public.tg_money(new.total));
+    if coalesce(v.notify_orders, false) then
+      perform private.tg_send('Новый заказ №' || new.no || ' · стол ' || new.table_label
+        || case when new.source = 'staff' then ' (от официанта ' || coalesce(new.created_by_name, '') || ')' else '' end || E'\n' || coalesce(v_lines, '')
+        || coalesce(E'\nКомментарий: ' || new.note, '') || E'\nИтого: ' || public.tg_money(new.total));
+    end if;
+    if new.status = 'new' then
+      perform private.tg_send_to(private.tg_floor_chats(new.table_id), 'Новый заказ №' || new.no || ' · стол ' || new.table_label || ' — примите' || E'\n' || coalesce(v_lines, ''));
+    elsif new.status = 'accepted' then
+      perform private.tg_send_to(private.tg_cook_chats(), 'На кухню: заказ №' || new.no || ' · стол ' || new.table_label || E'\n'
+        || coalesce(v_lines, '') || coalesce(E'\nКомментарий: ' || new.note, ''));
+    end if;
   exception when others then null;
   end;
   return null;
@@ -1183,10 +1386,13 @@ declare v private.telegram%rowtype;
 begin
   begin
     select * into v from private.telegram where id = 1;
-    if not coalesce(v.notify_calls, false) then return null; end if;
-    perform private.tg_send('Стол ' || new.table_label || ': ' || case when new.kind = 'bill'
+    declare v_text text := 'Стол ' || new.table_label || ': ' || case when new.kind = 'bill'
       then 'просят счёт' || coalesce(' (' || case new.pay_method when 'cash' then 'наличные' when 'card' then 'карта' else 'QR' end || ')', '')
-      else 'зовут официанта' end);
+      else 'зовут официанта' end;
+    begin
+      if coalesce(v.notify_calls, false) then perform private.tg_send(v_text); end if;
+      perform private.tg_send_to(private.tg_floor_chats(new.table_id), v_text);
+    end;
   exception when others then null;
   end;
   return null;
@@ -1201,8 +1407,9 @@ begin
   begin
     select * into v from private.telegram where id = 1;
     if not coalesce(v.notify_bills, false) then return null; end if;
-    perform private.tg_send('Оплачен счёт №' || new.no || ' · стол ' || new.table_label || ': ' || public.tg_money(new.total) || ' · '
-      || case new.method when 'cash' then 'наличные' when 'card' then 'карта' when 'qr' then 'QR' else 'другое' end
+    perform private.tg_send('Оплачен счёт №' || new.no || ' · стол ' || new.table_label || ': ' || public.tg_money(new.total)
+      || case when new.tip > 0 then ' + чаевые ' || public.tg_money(new.tip) else '' end || ' · '
+      || case new.method when 'cash' then 'наличные' when 'card' then 'карта' when 'qr' then 'QR' when 'mixed' then 'раздельно' else 'другое' end
       || coalesce(' · ' || new.paid_by_name, ''));
   exception when others then null;
   end;
@@ -1212,16 +1419,110 @@ drop trigger if exists tg_bills on public.bills;
 create trigger tg_bills after insert on public.bills for each row execute function public.tg_on_bill();
 
 -- Владелец: состояние Telegram (сам токен наружу не отдаётся — только последние символы)
+-- имя бота (@…): спрашиваем у Telegram один раз после подключения, ответ приходит чуть позже
+create or replace function private.tg_bot_username()
+returns text language plpgsql security definer set search_path = public, private as $$
+declare v private.telegram%rowtype; v_body text; v_name text;
+begin
+  select * into v from private.telegram where id = 1;
+  if v.bot_token is null then return null; end if;
+  if v.bot_username is not null then return v.bot_username; end if;
+  if to_regclass('net._http_response') is null then return null; end if;
+  if v.getme_req is not null then
+    execute 'select content from net._http_response where id = $1' into v_body using v.getme_req;
+    if v_body is not null then
+      begin v_name := (v_body::jsonb) -> 'result' ->> 'username'; exception when others then v_name := null; end;
+      update private.telegram set bot_username = v_name, getme_req = null where id = 1;
+      return v_name;
+    end if;
+    return null;
+  end if;
+  begin
+    execute 'select net.http_get(url := $1)' into v.getme_req using 'https://api.telegram.org/bot' || v.bot_token || '/getMe';
+    update private.telegram set getme_req = v.getme_req where id = 1;
+  exception when others then null;
+  end;
+  return null;
+end $$;
+
+drop function if exists public.telegram_status();
 create or replace function public.telegram_status()
-returns table (connected boolean, bot_hint text, chats int, notify_orders boolean, notify_calls boolean, notify_bills boolean, net_ok boolean)
-language plpgsql stable security definer set search_path = public, private as $$
+returns table (connected boolean, bot_hint text, chats int, notify_orders boolean, notify_calls boolean, notify_bills boolean, net_ok boolean, bot_username text, staff_linked int)
+language plpgsql security definer set search_path = public, private as $$
 begin
   if not public.is_owner() then raise exception 'forbidden'; end if;
   return query select t.bot_token is not null and cardinality(t.chat_ids) > 0,
     case when t.bot_token is null then null else '…' || right(t.bot_token, 4) end,
     cardinality(t.chat_ids), t.notify_orders, t.notify_calls, t.notify_bills,
-    to_regprocedure('net.http_post(text,jsonb,jsonb,jsonb,integer)') is not null
+    to_regprocedure('net.http_post(text,jsonb,jsonb,jsonb,integer)') is not null,
+    private.tg_bot_username(),
+    (select count(*)::int from private.staff_tg g join public.staff s on s.user_id = g.user_id where g.chat_id is not null and s.active)
   from private.telegram t where t.id = 1;
+end $$;
+
+-- ---------- Сотрудник: подключить свой Telegram ----------
+-- 1) my_telegram_start() → код и имя бота; сотрудник открывает t.me/<бот>?start=<код> и жмёт «Start»
+-- 2) my_telegram_check() несколько раз: сервер смотрит последние сообщения бота и находит этот код
+create or replace function public.my_telegram()
+returns table (linked boolean, bot_username text, bot_ready boolean)
+language plpgsql security definer set search_path = public, private as $$
+begin
+  if not public.is_staff() then raise exception 'forbidden'; end if;
+  return query select exists (select 1 from private.staff_tg where user_id = auth.uid() and chat_id is not null),
+    private.tg_bot_username(), (select bot_token is not null from private.telegram where id = 1);
+end $$;
+
+create or replace function public.my_telegram_start()
+returns table (code text, bot_username text)
+language plpgsql security definer set search_path = public, private as $$
+declare v_code text := 'ca' || substr(md5(gen_random_uuid()::text), 1, 10);
+begin
+  if not public.is_staff() then raise exception 'forbidden'; end if;
+  if (select bot_token from private.telegram where id = 1) is null then raise exception 'no_bot'; end if;
+  insert into private.staff_tg (user_id, code, code_at, req) values (auth.uid(), v_code, now(), null)
+  on conflict (user_id) do update set code = excluded.code, code_at = now(), req = null;
+  return query select v_code, private.tg_bot_username();
+end $$;
+
+create or replace function public.my_telegram_check()
+returns text language plpgsql security definer set search_path = public, private as $$
+declare g private.staff_tg%rowtype; v private.telegram%rowtype; v_body text; v_chat text; u jsonb;
+begin
+  if not public.is_staff() then raise exception 'forbidden'; end if;
+  select * into g from private.staff_tg where user_id = auth.uid();
+  if not found or g.code is null then return case when g.chat_id is not null then 'linked' else 'no_code' end; end if;
+  if g.code_at < now() - interval '15 minutes' then return 'expired'; end if;
+  select * into v from private.telegram where id = 1;
+  if v.bot_token is null or to_regclass('net._http_response') is null then return 'no_bot'; end if;
+  if g.req is null then
+    execute 'select net.http_get(url := $1)' into g.req using 'https://api.telegram.org/bot' || v.bot_token || '/getUpdates?limit=100&allowed_updates=%5B%22message%22%5D';
+    update private.staff_tg set req = g.req where user_id = auth.uid();
+    return 'pending';
+  end if;
+  execute 'select content from net._http_response where id = $1' into v_body using g.req;
+  if v_body is null then return 'pending'; end if;
+  begin
+    for u in select value from jsonb_array_elements((v_body::jsonb) -> 'result') loop
+      if btrim(coalesce(u -> 'message' ->> 'text', '')) in ('/start ' || g.code, g.code) then
+        v_chat := u -> 'message' -> 'chat' ->> 'id';
+      end if;
+    end loop;
+  exception when others then v_chat := null;
+  end;
+  if v_chat is null then
+    update private.staff_tg set req = null where user_id = auth.uid();  -- в следующий раз спросим заново
+    return 'not_found';
+  end if;
+  update private.staff_tg set chat_id = v_chat, code = null, code_at = null, req = null where user_id = auth.uid();
+  perform private.tg_send_to(array[v_chat], 'Готово: уведомления ' || coalesce((select name from public.settings where id = 1), '') || ' подключены для ' || coalesce(public.staff_name(), 'вас') || '.');
+  return 'linked';
+end $$;
+
+create or replace function public.my_telegram_off()
+returns void language plpgsql security definer set search_path = public, private as $$
+begin
+  if not public.is_staff() then raise exception 'forbidden'; end if;
+  update private.staff_tg set chat_id = null, code = null, req = null where user_id = auth.uid();
 end $$;
 
 -- Владелец: подключить бота. p_token = null — оставить прежний токен (меняются чаты и галочки).
@@ -1236,6 +1537,8 @@ begin
     if c !~ '^-?[0-9]{3,20}$' then raise exception 'bad_chat'; end if;
   end loop;
   update private.telegram set
+    bot_username = case when p_token is not null and btrim(p_token) is distinct from bot_token then null else bot_username end,
+    getme_req = case when p_token is not null and btrim(p_token) is distinct from bot_token then null else getme_req end,
     bot_token = coalesce(btrim(p_token), bot_token), chat_ids = p_chats,
     notify_orders = coalesce(p_orders, true), notify_calls = coalesce(p_calls, true), notify_bills = coalesce(p_bills, false),
     updated_at = now()
@@ -1246,7 +1549,7 @@ create or replace function public.clear_telegram()
 returns void language plpgsql security definer set search_path = public, private as $$
 begin
   if not public.is_owner() then raise exception 'forbidden'; end if;
-  update private.telegram set bot_token = null, chat_ids = '{}', updated_at = now() where id = 1;
+  update private.telegram set bot_token = null, chat_ids = '{}', bot_username = null, getme_req = null, updated_at = now() where id = 1;
 end $$;
 
 create or replace function public.telegram_test()
@@ -1262,6 +1565,20 @@ revoke all on function public.tg_on_order() from public;
 revoke all on function public.tg_on_call() from public;
 revoke all on function public.tg_on_bill() from public;
 revoke all on function public.telegram_status() from public;
+revoke all on function private.tg_send_to(text[], text) from public;
+revoke all on function private.tg_floor_chats(uuid) from public;
+revoke all on function private.tg_cook_chats() from public;
+revoke all on function private.tg_bot_username() from public;
+revoke all on function public.tg_on_order_status() from public;
+revoke all on function public.tg_lines(jsonb) from public;
+revoke all on function public.my_telegram() from public;
+revoke all on function public.my_telegram_start() from public;
+revoke all on function public.my_telegram_check() from public;
+revoke all on function public.my_telegram_off() from public;
+grant execute on function public.my_telegram() to authenticated;
+grant execute on function public.my_telegram_start() to authenticated;
+grant execute on function public.my_telegram_check() to authenticated;
+grant execute on function public.my_telegram_off() to authenticated;
 revoke all on function public.set_telegram(text, text[], boolean, boolean, boolean) from public;
 revoke all on function public.clear_telegram() from public;
 revoke all on function public.telegram_test() from public;
@@ -1275,7 +1592,7 @@ do $$
 declare t text;
 begin
   if exists (select 1 from pg_publication where pubname = 'supabase_realtime') then
-    foreach t in array array['calls', 'bills'] loop
+    foreach t in array array['calls', 'bills', 'table_waiters'] loop
       if not exists (select 1 from pg_publication_tables
                      where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = t) then
         execute format('alter publication supabase_realtime add table public.%I', t);

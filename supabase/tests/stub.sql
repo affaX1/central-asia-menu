@@ -27,6 +27,9 @@ create schema net;
 create table net.sent (id bigserial primary key, url text, body jsonb, at timestamptz default now());
 create function net.http_post(url text, body jsonb default '{}', params jsonb default '{}', headers jsonb default '{}', timeout_milliseconds int default 5000)
 returns bigint language sql as $$ insert into net.sent (url, body) values (url, body) returning id $$;
+create table net._http_response (id bigint primary key, status_code int, content text);
+create function net.http_get(url text, params jsonb default '{}', headers jsonb default '{}', timeout_milliseconds int default 5000)
+returns bigint language sql as $$ insert into net.sent (url, body) values (url, null) returning id $$;
 
 -- помощники тестов
 create function public.t_ok(ok boolean, msg text) returns void language plpgsql as $$
