@@ -7,6 +7,7 @@
   // =====================================================================
 
   const S = window.Staff;
+  const ruPlural = (n, one, few, many) => { const a = Math.abs(n) % 100, b = a % 10; return a > 10 && a < 20 ? many : b === 1 ? one : b >= 2 && b <= 4 ? few : many; };
   const { $, esc, icon, tr, money } = S;
 
   const LANGS = [['ru', 'Русский'], ['en', 'English'], ['uz', "O'zbekcha"], ['ar', 'العربية'], ['ms', 'Bahasa Melayu']];
@@ -194,7 +195,7 @@
       m.querySelector('#photo-remove').hidden = true;
     });
     m.querySelector('#dish-delete')?.addEventListener('click', async () => {
-      if (!confirm(`Удалить «${tr(d.name)}» насовсем? Если блюдо просто закончилось — лучше выключить «В наличии».`)) return;
+      if (!await S.ask(`Удалить «${tr(d.name)}» насовсем? Если блюдо просто закончилось — лучше выключить «В наличии».`, { ok: 'Удалить' })) return;
       try {
         await api.deleteDish(d.id);
         if (d.photo_url) api.deleteImage(d.photo_url);
@@ -271,8 +272,8 @@
       </form>`);
     const err = (msg) => { const e = m.querySelector('#cat-err'); e.hidden = !msg; e.innerHTML = msg ? `${icon('alert')}<span>${esc(msg)}</span>` : ''; };
     m.querySelector('#cat-delete')?.addEventListener('click', async () => {
-      if (count) return err(`В категории ${count} блюд. Перенесите их в другую категорию или удалите, потом удалите категорию.`);
-      if (!confirm(`Удалить категорию «${tr(c.name)}»?`)) return;
+      if (count) return err(`В категории ${count} ${ruPlural(count, 'блюдо', 'блюда', 'блюд')}. Перенесите их в другую категорию или удалите, потом удалите категорию.`);
+      if (!await S.ask(`Удалить категорию «${tr(c.name)}»?`, { ok: 'Удалить' })) return;
       try {
         await api.deleteCategory(c.id);
         cats = cats.filter((x) => x.id !== c.id);
@@ -562,7 +563,7 @@
         }).join('')}</ul></section>`;
 
     $('#copy-link').addEventListener('click', async () => {
-      try { await navigator.clipboard.writeText(staffLink); S.toast('Ссылка скопирована'); } catch { prompt('Скопируйте ссылку:', staffLink); }
+      try { await navigator.clipboard.writeText(staffLink); S.toast('Ссылка скопирована'); } catch { await S.ask('Скопируйте ссылку:', { ok: 'Готово', cancel: 'Закрыть', input: staffLink }); }
     });
     $('#invite-form').addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -738,7 +739,7 @@
   async function setOrderStatus(id, status) {
     const o = orders.find((x) => x.id === id) || history.find((x) => x.id === id);
     if (!o || busyOrders.has(id)) return;
-    if (status === 'cancelled' && !confirm(`Отменить заказ №${o.no} (стол ${o.table_label})? Гость увидит, что заказ отменён.`)) { render(); return; }
+    if (status === 'cancelled' && !await S.ask(`Отменить заказ №${o.no} (стол ${o.table_label})? Гость увидит, что заказ отменён.`, { ok: 'Отменить заказ', cancel: 'Не отменять' })) { render(); return; }
     busyOrders.add(id);
     render();
     try {
@@ -929,7 +930,7 @@
     }
   });
 
-  document.addEventListener('click', (e) => {
+  document.addEventListener('click', async (e) => {
     const a = e.target.closest('[data-act]');
     if (a) {
       const id = a.dataset.id;
@@ -974,20 +975,20 @@
     const te = e.target.closest('[data-tbl-edit]');
     if (te) {
       const tb = tables.find((x) => x.id === te.dataset.tblEdit);
-      const label = prompt('Новое название стола (до 20 символов). QR-код при этом не меняется.', tb.label);
+      const label = await S.ask('Новое название стола (до 20 символов). QR-код при этом не меняется.', { ok: 'Сохранить', input: tb.label, max: 20 });
       if (label && label.trim() && label.trim() !== tb.label) tableAction(() => api.saveTable({ id: tb.id, label: label.trim().slice(0, 20), sort: tb.sort, active: tb.active }), 'Название изменено');
       return;
     }
     const tr2 = e.target.closest('[data-tbl-reset]');
     if (tr2) {
       const tb = tables.find((x) => x.id === tr2.dataset.tblReset);
-      if (confirm(`Сделать новый QR для стола ${tb.label}? Старая наклейка перестанет работать — распечатайте новую.`)) tableAction(() => api.resetTableToken(tb.id), 'Новый QR готов — скачайте или распечатайте его');
+      if (await S.ask(`Сделать новый QR для стола ${tb.label}? Старая наклейка перестанет работать — распечатайте новую.`, { ok: 'Новый QR' })) tableAction(() => api.resetTableToken(tb.id), 'Новый QR готов — скачайте или распечатайте его');
       return;
     }
     const td = e.target.closest('[data-tbl-del]');
     if (td) {
       const tb = tables.find((x) => x.id === td.dataset.tblDel);
-      if (confirm(`Удалить стол ${tb.label}? Его QR перестанет работать. Старые заказы останутся в истории.`)) tableAction(() => api.deleteTable(tb.id), 'Стол удалён');
+      if (await S.ask(`Удалить стол ${tb.label}? Его QR перестанет работать. Старые заказы останутся в истории.`, { ok: 'Удалить стол' })) tableAction(() => api.deleteTable(tb.id), 'Стол удалён');
       return;
     }
     const rv = e.target.closest('[data-revoke]');
@@ -995,7 +996,7 @@
     const rm = e.target.closest('[data-remove]');
     if (rm) {
       const s = staff.find((x) => x.user_id === rm.dataset.remove);
-      if (confirm(`Удалить доступ сотрудника ${s.email}? Аккаунт останется, но войти в панели он не сможет.`)) {
+      if (await S.ask(`Удалить доступ сотрудника ${s.email}? Аккаунт останется, но войти в панели он не сможет.`, { ok: 'Удалить доступ' })) {
         staffAction(() => api.removeStaff(s.user_id), 'Сотрудник удалён');
       }
     }

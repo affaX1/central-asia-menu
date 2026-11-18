@@ -82,6 +82,7 @@
 
   function screen(html) {
     $('#a-nav')?.setAttribute('hidden', '');
+    document.body.classList.remove('signed');
     $('#a-main').innerHTML = html;
     renderUser();
   }
@@ -148,6 +149,7 @@
       settings = await api.settings();
       renderUser();
       $('#a-nav')?.removeAttribute('hidden');
+      document.body.classList.add('signed'); // левая панель (на телефоне — нижняя)
       $('#a-main').innerHTML = '';
       await opts.onReady({ api, me, settings });
     } catch (e) {
@@ -232,6 +234,41 @@
   }
   function closeModal() { const f = modalClose; modalClose = null; f?.(); }
 
+  // ---------- своё окно подтверждения вместо серого окна браузера ----------
+  // ask('Удалить…?', { ok: 'Удалить' }) → Promise<true|false>
+  // ask('Название', { input: 'старое' }) → Promise<строка|null>
+  function ask(text, { ok = 'Да', cancel = 'Отмена', title = '' , input = null, max = 200 } = {}) {
+    return new Promise((resolve) => {
+      const back = document.createElement('div');
+      back.className = 'ask-back';
+      back.innerHTML = `<div class="ask-box" role="alertdialog" aria-modal="true" aria-labelledby="ask-text">
+        ${title ? `<h3>${esc(title)}</h3>` : ''}<p id="ask-text">${esc(text)}</p>
+        ${input !== null ? `<input class="ask-input" type="text" maxlength="${max}" value="${esc(input)}" autocomplete="off">` : ''}
+        <div class="ask-actions"><button type="button" class="btn ghost" data-ask="0">${esc(cancel)}</button>
+        <button type="button" class="btn" data-ask="1">${esc(ok)}</button></div></div>`;
+      const last = document.activeElement;
+      const done = (v) => {
+        const val = back.querySelector('.ask-input')?.value;
+        document.removeEventListener('keydown', onKey, true);
+        back.remove();
+        if (last && document.contains(last)) last.focus({ preventScroll: true });
+        resolve(input !== null ? (v ? val : null) : v);
+      };
+      const onKey = (ev) => {
+        if (ev.key === 'Escape') { ev.stopImmediatePropagation(); ev.preventDefault(); done(false); }
+        else if (ev.key === 'Enter' && ev.target.classList?.contains('ask-input')) { ev.preventDefault(); done(true); }
+      };
+      document.addEventListener('keydown', onKey, true);
+      back.addEventListener('click', (ev) => {
+        const b = ev.target.closest('[data-ask]');
+        if (b) done(b.dataset.ask === '1'); else if (ev.target === back) done(false);
+      });
+      document.body.appendChild(back);
+      const inp = back.querySelector('.ask-input');
+      if (inp) { inp.focus({ preventScroll: true }); inp.select(); } else back.querySelector('[data-ask="0"]').focus({ preventScroll: true });
+    });
+  }
+
   // ---------- картинки: проверка, обрезка, сжатие ----------
   // Возвращает JPEG ровно w×h (обрезка по центру), до ~3 МБ. Принимает JPG, PNG, WebP.
   async function processImage(file, w, h) {
@@ -269,7 +306,7 @@
   }
 
   window.Staff = {
-    $, esc, icon, tr, money, unitLabel, toast, errText, modal, closeModal, processImage,
+    $, esc, icon, tr, money, unitLabel, toast, errText, modal, closeModal, ask, processImage,
     get settings() { return settings; },
     set settings(v) { settings = v; },
     get me() { return me; },
