@@ -27,6 +27,18 @@
       close: 'Закрыть',
       theme: 'Сменить тему',
       language: 'Язык',
+      send: 'Отправить заказ',
+      sending: 'Отправляем…',
+      sentTitle: (n) => `Заказ №${n} отправлен!`,
+      sentHint: 'Официант скоро подойдёт. Статус обновляется сам.',
+      myOrders: 'Ваши заказы',
+      orderNo: (n) => `Заказ №${n}`,
+      note: 'Комментарий для кухни (необязательно)',
+      tableAsk: 'Номер вашего стола',
+      errNet: 'Не получилось отправить. Проверьте интернет и попробуйте ещё раз.',
+      errMany: 'Слишком много заказов подряд. Подождите минуту или позовите официанта.',
+      errTable: 'Укажите номер стола',
+      statuses: { new: 'Отправлен', accepted: 'Принят', cooking: 'Готовится', served: 'Подан', paid: 'Оплачен', cancelled: 'Отменён' },
       tags: { hit: 'Хит', new: 'Новинка', spicy: 'Острое', veg: 'Без мяса' },
       allergenNames: { gluten: 'глютен', milk: 'молоко', eggs: 'яйца', fish: 'рыба', shellfish: 'морепродукты', nuts: 'орехи', soy: 'соя', sesame: 'кунжут' },
     },
@@ -52,6 +64,18 @@
       close: 'Yopish',
       theme: "Mavzuni o'zgartirish",
       language: 'Til',
+      send: 'Buyurtmani yuborish',
+      sending: 'Yuborilmoqda…',
+      sentTitle: (n) => `Buyurtma №${n} yuborildi!`,
+      sentHint: "Ofitsiant tez orada keladi. Holat o'zi yangilanadi.",
+      myOrders: 'Buyurtmalaringiz',
+      orderNo: (n) => `Buyurtma №${n}`,
+      note: 'Oshxona uchun izoh (ixtiyoriy)',
+      tableAsk: 'Stolingiz raqami',
+      errNet: "Yuborib bo'lmadi. Internetni tekshirib, qayta urinib ko'ring.",
+      errMany: "Ketma-ket juda ko'p buyurtma. Bir daqiqa kuting yoki ofitsiantni chaqiring.",
+      errTable: 'Stol raqamini kiriting',
+      statuses: { new: 'Yuborildi', accepted: 'Qabul qilindi', cooking: 'Tayyorlanmoqda', served: 'Tortildi', paid: "To'landi", cancelled: 'Bekor qilindi' },
       tags: { hit: 'Xit', new: 'Yangi', spicy: 'Achchiq', veg: "Go'shtsiz" },
       allergenNames: { gluten: 'kleykovina', milk: 'sut', eggs: 'tuxum', fish: 'baliq', shellfish: 'dengiz mahsulotlari', nuts: "yong'oq", soy: 'soya', sesame: 'kunjut' },
     },
@@ -77,6 +101,18 @@
       close: 'Close',
       theme: 'Switch theme',
       language: 'Language',
+      send: 'Send order',
+      sending: 'Sending…',
+      sentTitle: (n) => `Order #${n} sent!`,
+      sentHint: 'Your waiter will be with you shortly. The status updates by itself.',
+      myOrders: 'Your orders',
+      orderNo: (n) => `Order #${n}`,
+      note: 'Note for the kitchen (optional)',
+      tableAsk: 'Your table number',
+      errNet: "Couldn't send. Check your connection and try again.",
+      errMany: 'Too many orders in a row. Wait a minute or ask your waiter.',
+      errTable: 'Enter your table number',
+      statuses: { new: 'Sent', accepted: 'Accepted', cooking: 'Cooking', served: 'Served', paid: 'Paid', cancelled: 'Cancelled' },
       tags: { hit: 'Popular', new: 'New', spicy: 'Spicy', veg: 'Vegetarian' },
       allergenNames: { gluten: 'gluten', milk: 'milk', eggs: 'eggs', fish: 'fish', shellfish: 'shellfish', nuts: 'nuts', soy: 'soy', sesame: 'sesame' },
     },
@@ -103,6 +139,18 @@
       close: 'إغلاق',
       theme: 'تغيير المظهر',
       language: 'اللغة',
+      send: 'إرسال الطلب',
+      sending: 'جارٍ الإرسال…',
+      sentTitle: (n) => `تم إرسال الطلب رقم ${n}!`,
+      sentHint: 'سيأتيك النادل قريبًا. تتحدّث الحالة تلقائيًا.',
+      myOrders: 'طلباتك',
+      orderNo: (n) => `الطلب رقم ${n}`,
+      note: 'ملاحظة للمطبخ (اختياري)',
+      tableAsk: 'رقم طاولتك',
+      errNet: 'تعذّر الإرسال. تحقّق من الاتصال وحاول مرة أخرى.',
+      errMany: 'طلبات كثيرة متتالية. انتظر دقيقة أو اطلب النادل.',
+      errTable: 'أدخل رقم الطاولة',
+      statuses: { new: 'أُرسل', accepted: 'تم القبول', cooking: 'قيد التحضير', served: 'تم التقديم', paid: 'مدفوع', cancelled: 'أُلغي' },
       tags: { hit: 'الأكثر طلبًا', new: 'جديد', spicy: 'حار', veg: 'نباتي' },
       allergenNames: { gluten: 'غلوتين', milk: 'حليب', eggs: 'بيض', fish: 'سمك', shellfish: 'مأكولات بحرية', nuts: 'مكسرات', soy: 'صويا', sesame: 'سمسم' },
     },
@@ -128,6 +176,18 @@
       close: 'Tutup',
       theme: 'Tukar tema',
       language: 'Bahasa',
+      send: 'Hantar pesanan',
+      sending: 'Menghantar…',
+      sentTitle: (n) => `Pesanan #${n} dihantar!`,
+      sentHint: 'Pelayan akan datang sebentar lagi. Status dikemas kini sendiri.',
+      myOrders: 'Pesanan anda',
+      orderNo: (n) => `Pesanan #${n}`,
+      note: 'Nota untuk dapur (pilihan)',
+      tableAsk: 'Nombor meja anda',
+      errNet: 'Gagal dihantar. Semak sambungan dan cuba lagi.',
+      errMany: 'Terlalu banyak pesanan berturut-turut. Tunggu seminit atau panggil pelayan.',
+      errTable: 'Masukkan nombor meja',
+      statuses: { new: 'Dihantar', accepted: 'Diterima', cooking: 'Sedang dimasak', served: 'Telah dihidang', paid: 'Dibayar', cancelled: 'Dibatalkan' },
       tags: { hit: 'Popular', new: 'Baharu', spicy: 'Pedas', veg: 'Vegetarian' },
       allergenNames: { gluten: 'gluten', milk: 'susu', eggs: 'telur', fish: 'ikan', shellfish: 'kerang-kerangan', nuts: 'kacang', soy: 'soya', sesame: 'bijan' },
     },
@@ -359,12 +419,129 @@
     return { count, sum };
   }
 
+  // ---------- Сервер заказов (Supabase) ----------
+  // Пока в config.js пусто — всё как раньше: гость показывает список официанту.
+  const B = window.MENU_BACKEND || {};
+  const ONLINE = !!(B.url && B.key);
+  const ACTIVE = ['new', 'accepted', 'cooking', 'served'];
+  const TABLE_RE = /^[\p{L}\p{N}-]{1,10}$/u;
+
+  async function rpc(name, body) {
+    const headers = { 'Content-Type': 'application/json', apikey: B.key };
+    if (String(B.key).startsWith('eyJ')) headers.Authorization = 'Bearer ' + B.key; // старый формат ключа
+    let res;
+    try {
+      res = await fetch(`${String(B.url).replace(/\/+$/, '')}/rest/v1/rpc/${name}`, {
+        method: 'POST', headers, body: JSON.stringify(body),
+      });
+    } catch {
+      throw new Error('network');
+    }
+    const data = await res.json().catch(() => null);
+    if (!res.ok) throw new Error(String(data?.message || `http_${res.status}`));
+    return Array.isArray(data) ? data[0] : data;
+  }
+
+  // Заказы, отправленные с этого телефона. Храним сутки, не больше 10.
+  let sent = store.get('sent', []);
+  if (!Array.isArray(sent)) sent = [];
+  sent = sent.filter((s) => s && s.id && Date.now() - s.at < 24 * 60 * 60 * 1000).slice(-10);
+  const activeSent = () => sent.filter((s) => ACTIVE.includes(s.status));
+  let sending = false;
+  let sendError = '';
+  let justSent = null;   // номер заказа, который только что ушёл (показываем «отправлен!»)
+  let noteDraft = '';
+  let tableDraft = '';
+
+  const itemsSummary = (items) => (items || [])
+    .map((i) => `${i.qty}× ${L(byId[i.id]?.name) || i.id}`).join(', ');
+
+  async function sendOrder() {
+    if (sending || !ONLINE) return;
+    const tbl = String(table || tableDraft).trim();
+    if (!TABLE_RE.test(tbl)) {
+      sendError = t('errTable');
+      renderSheet();
+      $('#table-input')?.focus();
+      return;
+    }
+    const items = Object.entries(order).map(([id, n]) => ({ id, qty: n }));
+    if (!items.length) return;
+
+    sending = true;
+    sendError = '';
+    renderSheet();
+    try {
+      const row = await rpc('place_order', { p_table: tbl, p_items: items, p_note: noteDraft.trim() || null, p_lang: lang });
+      if (!row?.id) throw new Error('bad_reply');
+      if (!table) {
+        table = tbl;
+        store.set('table', { v: table, at: Date.now() });
+        renderStatic();
+      }
+      sent.push({ id: row.id, no: row.no, table: tbl, at: Date.now(), status: 'new', items });
+      store.set('sent', sent);
+      order = {};
+      store.set('order', order);
+      noteDraft = '';
+      justSent = row.no;
+      refreshSlots();
+      schedulePoll(true);
+    } catch (e) {
+      const m = String(e?.message || '');
+      sendError = m.includes('too_many') ? t('errMany') : m.includes('bad_table') ? t('errTable') : t('errNet');
+    } finally {
+      sending = false;
+      renderBar();
+      renderSheet();
+    }
+  }
+
+  // Статус своих заказов спрашиваем каждые 15 секунд, пока страница открыта.
+  let pollTimer = null;
+  async function pollStatuses() {
+    const list = activeSent().slice(-5);
+    if (!ONLINE || !list.length) return;
+    let changed = false;
+    await Promise.all(list.map(async (s) => {
+      try {
+        const row = await rpc('order_status', { p_id: s.id });
+        const next = row?.status || 'gone'; // gone — заказ старше суток или удалён
+        if (next !== s.status) { s.status = next; changed = true; }
+      } catch { /* нет сети — спросим в следующий раз */ }
+    }));
+    if (changed) {
+      store.set('sent', sent);
+      renderBar();
+      if (sheet?.type === 'order') renderSheet();
+    }
+  }
+  function schedulePoll(soon) {
+    clearTimeout(pollTimer);
+    if (!ONLINE || !activeSent().length) return;
+    pollTimer = setTimeout(async () => {
+      if (!document.hidden) await pollStatuses();
+      schedulePoll();
+    }, soon ? 2000 : 15000);
+  }
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) { pollStatuses(); schedulePoll(); }
+  });
+
   function renderBar() {
     const { count, sum } = totals();
     const bar = $('#order-bar');
-    bar.hidden = count === 0;
-    bar.innerHTML = `<span class="bar-left"><span class="badge">${count}</span>${esc(t('order'))}</span><span class="bar-sum">${money(sum)}</span>`;
-    document.body.classList.toggle('has-bar', count > 0);
+    const live = activeSent();
+    if (count > 0) {
+      bar.classList.remove('status-bar');
+      bar.innerHTML = `<span class="bar-left"><span class="badge">${count}</span>${esc(t('order'))}</span><span class="bar-sum">${money(sum)}</span>`;
+    } else if (live.length) {
+      const last = live[live.length - 1];
+      bar.classList.add('status-bar');
+      bar.innerHTML = `<span class="bar-left">🧾 ${esc(t('orderNo')(last.no))}</span><span class="st st-${esc(last.status)}">${esc(t('statuses')[last.status] || '')}</span>`;
+    }
+    bar.hidden = count === 0 && !live.length;
+    document.body.classList.toggle('has-bar', !bar.hidden);
   }
 
   function refreshSlots() {
@@ -376,9 +553,61 @@
     const n = Math.max(0, qty(id) + delta);
     if (n) order[id] = n; else delete order[id];
     store.set('order', order);
+    justSent = null;
+    sendError = '';
     refreshSlots();
     renderBar();
     if (sheet?.type === 'order') renderSheet();
+  }
+
+  function orderSheetHtml() {
+    const rows = Object.entries(order);
+    const out = [`<h2 class="sheet-title" id="sheet-title">${esc(t('order'))}</h2>`];
+    if (table) out.push(`<p class="table-big">${esc(t('table'))} ${esc(table)}</p>`);
+    if (justSent != null) {
+      out.push(`<div class="sent-ok" role="status"><strong>✅ ${esc(t('sentTitle')(justSent))}</strong><span>${esc(t('sentHint'))}</span></div>`);
+    }
+
+    if (rows.length) {
+      if (!ONLINE) out.push(`<p class="hint">${esc(t('waiter'))}</p>`);
+      out.push(`<ul class="order-list">${rows.map(([id, n]) => {
+        const d = byId[id];
+        return `<li>
+          <span class="o-emoji" aria-hidden="true">${esc(d.emoji || '🍽️')}</span>
+          <span class="o-name">${esc(L(d.name))}<small>${money(d.price)}</small></span>
+          ${control(id)}
+          <span class="o-sum">${money(d.price * n)}</span>
+        </li>`;
+      }).join('')}</ul>`);
+      out.push(`<div class="order-total"><span>${esc(t('total'))}</span><strong>${money(totals().sum)}</strong></div>`);
+
+      if (ONLINE) {
+        const r = M.restaurant;
+        if (r.open && r.close && !isOpenNow(r)) {
+          out.push(`<p class="send-error">${esc(t('closedOpens')(clock(r.open)))}</p>`);
+        } else {
+          if (!table) {
+            out.push(`<label class="field"><span>${esc(t('tableAsk'))}</span>
+              <input id="table-input" type="text" inputmode="numeric" maxlength="10" autocomplete="off" value="${esc(tableDraft)}"></label>`);
+          }
+          out.push(`<label class="field"><span>${esc(t('note'))}</span>
+            <textarea id="note-input" rows="2" maxlength="300">${esc(noteDraft)}</textarea></label>`);
+          if (sendError) out.push(`<p class="send-error" role="alert">${esc(sendError)}</p>`);
+          out.push(`<button type="button" class="send-btn" data-act="send"${sending ? ' disabled' : ''}>${esc(sending ? t('sending') : t('send'))}</button>`);
+        }
+      }
+      out.push(`<button type="button" class="ghost" data-act="clear">${esc(t('clear'))}</button>`);
+    } else if (justSent == null) {
+      out.push(`<p class="hint">${esc(t('orderEmpty'))}</p>`);
+    }
+
+    const mine = sent.filter((s) => s.status !== 'gone').slice().reverse();
+    if (ONLINE && mine.length) {
+      out.push(`<h4>${esc(t('myOrders'))}</h4><ul class="sent-list">${mine.map((s) => `
+        <li><span class="sent-name">${esc(t('orderNo')(s.no))}<small>${esc(itemsSummary(s.items))}</small></span>
+        <span class="st st-${esc(s.status)}">${esc(t('statuses')[s.status] || s.status)}</span></li>`).join('')}</ul>`);
+    }
+    return out.join('');
   }
 
   // ---------- Шторка ----------
@@ -415,28 +644,7 @@
       return;
     }
 
-    const rows = Object.entries(order);
-    if (!rows.length) {
-      body.innerHTML = `<h2 class="sheet-title" id="sheet-title">${esc(t('order'))}</h2><p class="hint">${esc(t('orderEmpty'))}</p>`;
-      return;
-    }
-    body.innerHTML = `
-      <h2 class="sheet-title" id="sheet-title">${esc(t('order'))}</h2>
-      ${table ? `<p class="table-big">${esc(t('table'))} ${esc(table)}</p>` : ''}
-      <p class="hint">${esc(t('waiter'))}</p>
-      <ul class="order-list">
-        ${rows.map(([id, n]) => {
-          const d = byId[id];
-          return `<li>
-            <span class="o-emoji" aria-hidden="true">${esc(d.emoji || '🍽️')}</span>
-            <span class="o-name">${esc(L(d.name))}<small>${money(d.price)}</small></span>
-            ${control(id)}
-            <span class="o-sum">${money(d.price * n)}</span>
-          </li>`;
-        }).join('')}
-      </ul>
-      <div class="order-total"><span>${esc(t('total'))}</span><strong>${money(totals().sum)}</strong></div>
-      <button type="button" class="ghost" data-act="clear">${esc(t('clear'))}</button>`;
+    body.innerHTML = orderSheetHtml();
   }
 
   function openSheet(next) {
@@ -460,6 +668,7 @@
   function closeSheet() {
     if (!sheet) return;
     sheet = null;
+    justSent = null;
     const el = $('#sheet');
     const bd = $('#backdrop');
     el.classList.remove('open');
@@ -486,6 +695,7 @@
       const a = act.dataset.act;
       if (a === 'inc') change(act.dataset.id, 1);
       else if (a === 'dec') change(act.dataset.id, -1);
+      else if (a === 'send') sendOrder();
       else if (a === 'clear') {
         order = {};
         store.set('order', order);
@@ -532,6 +742,11 @@
   $('#backdrop').addEventListener('click', closeSheet);
   $('#sheet-close').addEventListener('click', closeSheet);
 
+  document.addEventListener('input', (e) => {
+    if (e.target.id === 'note-input') noteDraft = e.target.value;
+    else if (e.target.id === 'table-input') tableDraft = e.target.value;
+  });
+
   $('#search').addEventListener('input', (e) => {
     query = norm(e.target.value.trim());
     renderMenu();
@@ -555,4 +770,6 @@
   applyTheme();
   renderAll();
   setInterval(renderStatic, 60 * 1000); // метка «Открыто / Закрыто» обновляется сама
+  pollStatuses();
+  schedulePoll();
 })();

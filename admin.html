@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Заказы — админка</title>
+  <meta name="theme-color" content="#FBF6EE">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧾</text></svg>">
+  <link rel="stylesheet" href="styles.css?v=6">
+  <link rel="stylesheet" href="admin.css?v=6">
+</head>
+<body class="admin">
+  <header class="a-top">
+    <div class="a-brand">
+      <span class="logo" aria-hidden="true">🧾</span>
+      <div>
+        <h1>Заказы</h1>
+        <p id="a-sub"></p>
+      </div>
+    </div>
+    <div class="a-actions" id="a-actions" hidden>
+      <button type="button" class="pill" id="sound-btn"></button>
+      <button type="button" class="pill" id="logout-btn">Выйти</button>
+    </div>
+  </header>
+
+  <div class="a-banner" id="a-banner" hidden></div>
+  <main class="a-main" id="a-main"></main>
+
+  <script src="config.js?v=6"></script>
+  <script src="data.js?v=6"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+  <script src="admin.js?v=6"></script>
+</body>
+</html>

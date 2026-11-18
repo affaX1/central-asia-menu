@@ -1,0 +1,74 @@
+/* Админка: использует цвета из styles.css, тут только своё. */
+body.admin { min-height: 100vh; }
+
+.a-top {
+  max-width: 1200px; margin: 0 auto; padding: 16px;
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px;
+}
+.a-brand { display: flex; align-items: center; gap: 12px; min-width: 0; flex: 1 1 200px; }
+.a-brand h1 { font-size: 22px; }
+.a-brand p { margin: 2px 0 0; color: var(--muted); font-size: 14px; }
+.a-actions { display: flex; gap: 8px; flex: none; }
+
+.a-banner {
+  max-width: 1200px; margin: 0 auto 8px; padding: 0 16px;
+}
+.a-banner > * {
+  width: 100%; padding: 12px 16px; border: 0; border-radius: 14px; text-align: start;
+  background: hsl(42 90% 88%); color: hsl(32 80% 26%); font-weight: 700; font-size: 15px;
+}
+:root[data-theme="dark"] .a-banner > * { background: hsl(40 35% 24%); color: hsl(42 90% 80%); }
+
+.a-main { max-width: 1200px; margin: 0 auto; padding: 0 16px 40px; }
+
+/* ---------- Вход ---------- */
+.a-card {
+  max-width: 420px; margin: 24px auto; padding: 24px;
+  border-radius: var(--radius); border: 1px solid var(--line); background: var(--surface); box-shadow: var(--shadow);
+}
+.a-card h2 { margin: 0 0 6px; font-size: 20px; }
+.a-card p { margin: 0 0 10px; color: var(--muted); }
+.a-card ol { margin: 8px 0 0; padding-inline-start: 20px; color: var(--text); }
+.a-card li { margin: 4px 0; }
+.a-card .send-btn { margin-top: 16px; }
+
+/* ---------- Сводка ---------- */
+.a-stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-bottom: 14px; }
+@media (min-width: 720px) { .a-stats { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.a-stat { padding: 12px 14px; border-radius: 14px; border: 1px solid var(--line); background: var(--surface); }
+.a-stat b { display: block; font-size: 22px; overflow-wrap: anywhere; }
+.a-stat span { color: var(--muted); font-size: 13px; }
+.a-stat.hot { border-color: var(--accent); background: var(--accent-soft); }
+.a-stat.hot b, .a-stat.hot span { color: var(--accent); }
+
+.a-tabs { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+.a-tabs .chip { height: 40px; }
+.a-live { margin-inline-start: auto; align-self: center; font-size: 13px; color: var(--muted); }
+.a-live::before { content: "●"; margin-inline-end: 6px; color: hsl(135 45% 40%); }
+.a-live.off::before { color: var(--accent); }
+
+/* ---------- Карточки заказов ---------- */
+.a-grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr)); align-items: start; }
+.a-order {
+  display: flex; flex-direction: column; gap: 10px; padding: 14px;
+  border-radius: var(--radius); border: 1px solid var(--line); background: var(--surface); box-shadow: var(--shadow);
+}
+.a-order.is-new { border: 2px solid var(--accent); animation: a-pulse 1.6s ease-in-out infinite; }
+@keyframes a-pulse { 50% { box-shadow: 0 0 0 6px var(--accent-soft); } }
+@media (prefers-reduced-motion: reduce) { .a-order.is-new { animation: none; } }
+
+.a-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.a-table { font-size: 22px; font-weight: 800; }
+.a-meta { color: var(--muted); font-size: 13px; }
+.a-items { list-style: none; margin: 0; padding: 0; }
+.a-items li { display: flex; justify-content: space-between; gap: 10px; padding: 5px 0; border-bottom: 1px dashed var(--line); }
+.a-items li:last-child { border-bottom: 0; }
+.a-items b { margin-inline-end: 6px; }
+.a-note { padding: 8px 12px; border-radius: 10px; background: hsl(42 90% 88%); color: hsl(32 80% 26%); font-size: 14px; }
+:root[data-theme="dark"] .a-note { background: hsl(40 35% 24%); color: hsl(42 90% 80%); }
+.a-total { display: flex; justify-content: space-between; font-size: 17px; }
+.a-btns { display: flex; gap: 8px; }
+.a-btns .send-btn { margin: 0; height: 48px; flex: 1; font-size: 16px; }
+.a-btns .ghost { width: auto; height: 48px; padding: 0 14px; }
+.a-empty { padding: 40px 16px; text-align: center; color: var(--muted); }
+.a-err { margin-top: 10px; }
