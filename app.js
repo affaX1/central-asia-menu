@@ -186,7 +186,16 @@
   const t = (k) => T[lang][k];
   // Текст на текущем языке; если перевода нет — английский, потом русский.
   const L = (o) => (o == null ? '' : typeof o === 'string' ? o : o[lang] ?? o.en ?? o.ru ?? Object.values(o)[0] ?? '');
-  const money = (n) => new Intl.NumberFormat(t('locale')).format(n) + ' ' + M.restaurant.currency;
+  // Цена: «RM 28» или «RM 28.90» (сены — только если они есть).
+  const money = (n) => {
+    const v = Math.round(n * 100) / 100;
+    const num = new Intl.NumberFormat(t('locale'), {
+      minimumFractionDigits: Number.isInteger(v) ? 0 : 2,
+      maximumFractionDigits: 2,
+    }).format(v);
+    const c = M.restaurant.currency;
+    return M.restaurant.currencyBefore ? `${c}\u00A0${num}` : `${num}\u00A0${c}`;
+  };
   const amount = (d) => {
     if (!d.weight) return '';
     const unit = d.unit === 'pcs' ? t('pcs')(d.weight) : t(d.unit === 'ml' ? 'ml' : 'g');
