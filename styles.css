@@ -228,7 +228,21 @@ body.has-bar .foot { padding-bottom: 110px; }
   width: 36px; height: 36px; border: 0; border-radius: 999px;
   background: var(--surface-2); font-size: 22px; line-height: 1;
 }
-.sheet-title { margin: 0 44px 6px 0; font-size: 22px; line-height: 1.2; }
+.sheet-title { margin: 0 0 6px; margin-inline-end: 44px; font-size: 22px; line-height: 1.2; }
+
+.lang-list { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 8px; }
+.lang-opt {
+  width: 100%; min-height: 54px; padding: 0 16px;
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  border: 1px solid var(--line); border-radius: 14px; background: var(--surface);
+  font-size: 17px; font-weight: 600; text-align: start;
+}
+.lang-opt.on { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+.lang-code { font-size: 13px; font-weight: 700; color: var(--muted); }
+.lang-opt.on .lang-code { color: var(--accent); font-size: 18px; }
+
+/* Цена и время — всегда цифрами слева направо, даже в арабском */
+.price, .o-sum, .order-total strong, .bar-sum { unicode-bidi: isolate; direction: ltr; }
 .sheet p { margin: 0; }
 .sheet-desc { color: var(--muted); }
 .sheet h4 { margin: 16px 0 4px; font-size: 12px; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }

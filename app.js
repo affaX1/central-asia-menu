@@ -6,6 +6,7 @@
   // ---------- Тексты интерфейса ----------
   const T = {
     ru: {
+      langName: 'Русский', locale: 'ru-RU', dir: 'ltr',
       menuWord: 'Меню',
       search: 'Найти блюдо',
       order: 'Мой заказ',
@@ -16,21 +17,46 @@
       remove: 'Убрать одну',
       waiter: 'Покажите этот список официанту — он примет заказ.',
       orderEmpty: 'Пока пусто. Добавляйте блюда кнопкой +',
-      g: 'г', ml: 'мл', pcs: 'шт.', kcal: 'ккал',
+      g: 'г', ml: 'мл', kcal: 'ккал', pcs: () => 'шт.',
       daily: 'Ежедневно',
       table: 'Стол',
-      openUntil: 'Открыто до',
-      closedOpens: 'Закрыто · откроемся в',
+      openUntil: (x) => `Открыто до ${x}`,
+      closedOpens: (x) => `Закрыто · откроемся в ${x}`,
       ingredients: 'Состав',
       allergens: 'Аллергены',
       close: 'Закрыть',
       theme: 'Сменить тему',
-      langName: 'Русский',
+      language: 'Язык',
       tags: { hit: 'Хит', new: 'Новинка', spicy: 'Острое', veg: 'Без мяса' },
       allergenNames: { gluten: 'глютен', milk: 'молоко', eggs: 'яйца', fish: 'рыба', shellfish: 'морепродукты', nuts: 'орехи', soy: 'соя', sesame: 'кунжут' },
-      locale: 'ru-RU',
+    },
+    uz: {
+      langName: "O'zbekcha", locale: 'uz-Latn-UZ', dir: 'ltr',
+      menuWord: 'Menyu',
+      search: 'Taom qidirish',
+      order: 'Mening buyurtmam',
+      total: 'Jami',
+      clear: 'Tozalash',
+      nothing: "Hech narsa topilmadi. Boshqa so'z bilan qidirib ko'ring.",
+      add: "Qo'shish",
+      remove: 'Bittasini olib tashlash',
+      waiter: "Ushbu ro'yxatni ofitsiantga ko'rsating — u buyurtmani qabul qiladi.",
+      orderEmpty: "Hozircha bo'sh. Taomlarni + tugmasi bilan qo'shing",
+      g: 'g', ml: 'ml', kcal: 'kkal', pcs: () => 'dona',
+      daily: 'Har kuni',
+      table: 'Stol',
+      openUntil: (x) => `Ochiq · ${x} gacha`,
+      closedOpens: (x) => `Yopiq · soat ${x} da ochiladi`,
+      ingredients: 'Tarkibi',
+      allergens: 'Allergenlar',
+      close: 'Yopish',
+      theme: "Mavzuni o'zgartirish",
+      language: 'Til',
+      tags: { hit: 'Xit', new: 'Yangi', spicy: 'Achchiq', veg: "Go'shtsiz" },
+      allergenNames: { gluten: 'kleykovina', milk: 'sut', eggs: 'tuxum', fish: 'baliq', shellfish: 'dengiz mahsulotlari', nuts: "yong'oq", soy: 'soya', sesame: 'kunjut' },
     },
     en: {
+      langName: 'English', locale: 'en-US', dir: 'ltr',
       menuWord: 'Menu',
       search: 'Find a dish',
       order: 'My order',
@@ -41,19 +67,69 @@
       remove: 'Remove one',
       waiter: 'Show this list to your waiter to place the order.',
       orderEmpty: 'Nothing here yet. Add dishes with the + button',
-      g: 'g', ml: 'ml', pcs: 'pcs', kcal: 'kcal',
+      g: 'g', ml: 'ml', kcal: 'kcal', pcs: (n) => (n === 1 ? 'pc' : 'pcs'),
       daily: 'Daily',
       table: 'Table',
-      openUntil: 'Open until',
-      closedOpens: 'Closed · opens at',
+      openUntil: (x) => `Open until ${x}`,
+      closedOpens: (x) => `Closed · opens at ${x}`,
       ingredients: 'Ingredients',
       allergens: 'Allergens',
       close: 'Close',
       theme: 'Switch theme',
-      langName: 'English',
+      language: 'Language',
       tags: { hit: 'Popular', new: 'New', spicy: 'Spicy', veg: 'Vegetarian' },
       allergenNames: { gluten: 'gluten', milk: 'milk', eggs: 'eggs', fish: 'fish', shellfish: 'shellfish', nuts: 'nuts', soy: 'soy', sesame: 'sesame' },
-      locale: 'en-US',
+    },
+    ar: {
+      // Цифры оставляем привычные (0–9), как на ценниках и в часах работы.
+      langName: 'العربية', locale: 'ar-u-nu-latn', dir: 'rtl',
+      menuWord: 'القائمة',
+      search: 'ابحث عن طبق',
+      order: 'طلبي',
+      total: 'المجموع',
+      clear: 'مسح الطلب',
+      nothing: 'لا توجد نتائج. جرّب كلمة أخرى.',
+      add: 'إضافة',
+      remove: 'إزالة واحد',
+      waiter: 'اعرض هذه القائمة على النادل ليأخذ طلبك.',
+      orderEmpty: 'لا شيء بعد. أضف الأطباق بزر +',
+      g: 'غ', ml: 'مل', kcal: 'سعرة', pcs: (n) => (n >= 3 && n <= 10 ? 'قطع' : 'قطعة'),
+      daily: 'يوميًا',
+      table: 'طاولة',
+      openUntil: (x) => `مفتوح حتى ${x}`,
+      closedOpens: (x) => `مغلق · نفتح الساعة ${x}`,
+      ingredients: 'المكونات',
+      allergens: 'مسببات الحساسية',
+      close: 'إغلاق',
+      theme: 'تغيير المظهر',
+      language: 'اللغة',
+      tags: { hit: 'الأكثر طلبًا', new: 'جديد', spicy: 'حار', veg: 'نباتي' },
+      allergenNames: { gluten: 'غلوتين', milk: 'حليب', eggs: 'بيض', fish: 'سمك', shellfish: 'مأكولات بحرية', nuts: 'مكسرات', soy: 'صويا', sesame: 'سمسم' },
+    },
+    ms: {
+      langName: 'Bahasa Melayu', locale: 'ms-MY', dir: 'ltr',
+      menuWord: 'Menu',
+      search: 'Cari hidangan',
+      order: 'Pesanan saya',
+      total: 'Jumlah',
+      clear: 'Kosongkan',
+      nothing: 'Tiada hasil. Cuba perkataan lain.',
+      add: 'Tambah',
+      remove: 'Buang satu',
+      waiter: 'Tunjukkan senarai ini kepada pelayan untuk membuat pesanan.',
+      orderEmpty: 'Masih kosong. Tambah hidangan dengan butang +',
+      g: 'g', ml: 'ml', kcal: 'kcal', pcs: () => 'biji',
+      daily: 'Setiap hari',
+      table: 'Meja',
+      openUntil: (x) => `Buka hingga ${x}`,
+      closedOpens: (x) => `Tutup · dibuka pada ${x}`,
+      ingredients: 'Bahan-bahan',
+      allergens: 'Alergen',
+      close: 'Tutup',
+      theme: 'Tukar tema',
+      language: 'Bahasa',
+      tags: { hit: 'Popular', new: 'Baharu', spicy: 'Pedas', veg: 'Vegetarian' },
+      allergenNames: { gluten: 'gluten', milk: 'susu', eggs: 'telur', fish: 'ikan', shellfish: 'kerang-kerangan', nuts: 'kacang', soy: 'soya', sesame: 'bijan' },
     },
   };
 
@@ -69,8 +145,13 @@
 
   // ---------- Состояние ----------
   const byId = Object.fromEntries(M.dishes.map((d) => [d.id, d]));
-  let lang = store.get('lang', M.languages[0]);
-  if (!M.languages.includes(lang) || !T[lang]) lang = M.languages[0];
+  // Язык: что гость выбрал сам → язык его телефона → первый из списка.
+  const LANGS = M.languages.filter((l) => T[l]);
+  let lang = store.get('lang', null);
+  if (!LANGS.includes(lang)) {
+    const phone = (navigator.languages || [navigator.language || '']).map((l) => String(l).slice(0, 2).toLowerCase());
+    lang = phone.find((l) => LANGS.includes(l)) || LANGS[0];
+  }
   let order = store.get('order', {});
   if (!order || typeof order !== 'object') order = {};
   for (const id of Object.keys(order)) {
@@ -103,12 +184,12 @@
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
   const norm = (s) => String(s || '').toLowerCase().replace(/ё/g, 'е');
   const t = (k) => T[lang][k];
-  const L = (o) => (o == null ? '' : typeof o === 'string' ? o : o[lang] ?? o[M.languages[0]] ?? '');
+  // Текст на текущем языке; если перевода нет — английский, потом русский.
+  const L = (o) => (o == null ? '' : typeof o === 'string' ? o : o[lang] ?? o.en ?? o.ru ?? Object.values(o)[0] ?? '');
   const money = (n) => new Intl.NumberFormat(t('locale')).format(n) + ' ' + M.restaurant.currency;
   const amount = (d) => {
     if (!d.weight) return '';
-    let unit = t(['ml', 'pcs'].includes(d.unit) ? d.unit : 'g');
-    if (d.unit === 'pcs' && d.weight === 1 && lang === 'en') unit = 'pc';
+    const unit = d.unit === 'pcs' ? t('pcs')(d.weight) : t(d.unit === 'ml' ? 'ml' : 'g');
     return d.weight + ' ' + unit;
   };
 
@@ -133,7 +214,7 @@
 
   function matches(d) {
     if (!query) return true;
-    const hay = norm(M.languages.map((l) => `${d.name?.[l] || ''} ${d.desc?.[l] || ''}`).join(' '));
+    const hay = norm(LANGS.map((l) => `${d.name?.[l] || ''} ${d.desc?.[l] || ''}`).join(' '));
     return query.split(/\s+/).every((w) => hay.includes(w));
   }
 
@@ -141,6 +222,7 @@
   function renderStatic() {
     const r = M.restaurant;
     document.documentElement.lang = lang;
+    document.documentElement.dir = t('dir'); // арабский — справа налево
     document.title = `${L(r.name)} — ${t('menuWord')}`;
     $('#r-name').textContent = L(r.name);
     $('#r-tagline').textContent = L(r.tagline);
@@ -150,21 +232,20 @@
     if (table) info.push(`<span class="status table">🪑 ${esc(t('table'))} ${esc(table)}</span>`);
     if (r.open && r.close) {
       const open = isOpenNow(r);
-      info.push(`<span class="status ${open ? 'on' : 'off'}">${esc(open ? `${t('openUntil')} ${clock(r.close)}` : `${t('closedOpens')} ${clock(r.open)}`)}</span>`);
-      info.push(`<span>🕒 ${esc(`${t('daily')} ${clock(r.open)}–${clock(r.close)}`)}</span>`);
+      info.push(`<span class="status ${open ? 'on' : 'off'}">${esc(open ? t('openUntil')(clock(r.close)) : t('closedOpens')(clock(r.open)))}</span>`);
+      info.push(`<span>🕒 ${esc(t('daily'))} <bdi dir="ltr">${esc(`${clock(r.open)}–${clock(r.close)}`)}</bdi></span>`);
     } else if (r.hours) {
       info.push(`<span>🕒 ${esc(L(r.hours))}</span>`);
     }
     if (r.address) info.push(`<span>📍 ${esc(L(r.address))}</span>`);
-    if (r.phone) info.push(`<a href="tel:${esc(r.phone.replace(/[^\d+]/g, ''))}">📞 ${esc(r.phone)}</a>`);
+    if (r.phone) info.push(`<a href="tel:${esc(r.phone.replace(/[^\d+]/g, ''))}">📞 <bdi dir="ltr">${esc(r.phone)}</bdi></a>`);
     $('#r-info').innerHTML = info.join('');
 
     $('#search').placeholder = t('search');
-    const next = M.languages[(M.languages.indexOf(lang) + 1) % M.languages.length];
     const langBtn = $('#lang-btn');
-    langBtn.hidden = M.languages.length < 2;
-    langBtn.textContent = next.toUpperCase();
-    langBtn.setAttribute('aria-label', T[next]?.langName || next);
+    langBtn.hidden = LANGS.length < 2;
+    langBtn.innerHTML = `<span aria-hidden="true">🌐</span> ${esc(lang.toUpperCase())}`;
+    langBtn.setAttribute('aria-label', `${t('language')}: ${t('langName')}`);
     $('#theme-btn').setAttribute('aria-label', t('theme'));
     $('#sheet-close').setAttribute('aria-label', t('close'));
     $('#foot').textContent = L(r.footer);
@@ -273,7 +354,7 @@
     const { count, sum } = totals();
     const bar = $('#order-bar');
     bar.hidden = count === 0;
-    bar.innerHTML = `<span class="bar-left"><span class="badge">${count}</span>${esc(t('order'))}</span><span>${money(sum)}</span>`;
+    bar.innerHTML = `<span class="bar-left"><span class="badge">${count}</span>${esc(t('order'))}</span><span class="bar-sum">${money(sum)}</span>`;
     document.body.classList.toggle('has-bar', count > 0);
   }
 
@@ -295,6 +376,17 @@
   function renderSheet() {
     if (!sheet) return;
     const body = $('#sheet-body');
+
+    if (sheet.type === 'lang') {
+      body.innerHTML = `
+        <h2 class="sheet-title" id="sheet-title">🌐 ${esc(t('language'))}</h2>
+        <ul class="lang-list">
+          ${LANGS.map((l) => `<li><button type="button" class="lang-opt${l === lang ? ' on' : ''}" data-lang="${esc(l)}" dir="ltr" aria-pressed="${l === lang}">
+            <span lang="${esc(l)}">${esc(T[l].langName)}</span><span class="lang-code">${l === lang ? '✓' : esc(l.toUpperCase())}</span>
+          </button></li>`).join('')}
+        </ul>`;
+      return;
+    }
 
     if (sheet.type === 'dish') {
       const d = byId[sheet.id];
@@ -395,6 +487,15 @@
       return;
     }
 
+    const langOpt = e.target.closest('[data-lang]');
+    if (langOpt) {
+      lang = langOpt.dataset.lang;
+      store.set('lang', lang);
+      closeSheet();
+      renderAll();
+      return;
+    }
+
     const chip = e.target.closest('.chip');
     if (chip) {
       const sec = document.getElementById('cat-' + chip.dataset.cat);
@@ -427,11 +528,7 @@
     renderMenu();
   });
 
-  $('#lang-btn').addEventListener('click', () => {
-    lang = M.languages[(M.languages.indexOf(lang) + 1) % M.languages.length];
-    store.set('lang', lang);
-    renderAll();
-  });
+  $('#lang-btn').addEventListener('click', () => openSheet({ type: 'lang' }));
 
   $('#theme-btn').addEventListener('click', () => {
     theme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
