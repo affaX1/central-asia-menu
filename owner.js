@@ -94,7 +94,7 @@
         if (words.length && !items.length) return '';
         return `<section class="panel">
           <div class="panel-head">
-            <h3>${esc(tr(c.name))}<small>${items.length}</small></h3>
+            <h3>${esc(tr(c.name))}<small>${items.length}</small>${c.avail_from ? `<span class="state-badge muted">${icon('clock', 'sm')}${esc(c.avail_from)}–${esc(c.avail_to)}</span>` : ''}</h3>
             ${c.hidden ? '<span class="state-badge muted">скрыта от гостей</span>' : ''}
             <div class="row-btns">
               <button type="button" class="btn small ghost" data-act="cat-up" data-id="${esc(c.id)}" aria-label="Выше"${i === 0 ? ' disabled' : ''}>${icon('arrow-up', 'sm')}</button>
@@ -357,6 +357,12 @@
         <h2 id="modal-title">${isNew ? 'Новая категория' : 'Категория'}</h2>
         ${langFields('name', c.name, { label: 'Название', required: true })}
         <div style="margin-top:14px">${sw('name="shown"', !c.hidden, 'Показывать гостям')}</div>
+        <p class="section-label">Время подачи (необязательно)</p>
+        <p class="help" style="margin:0 0 8px">Например, «Завтрак» с 06:00 до 11:00. В эти часы категория стоит первой в меню, в другое время гость видит её, но заказать не может. Пусто — весь день.</p>
+        <div class="form-grid">
+          <label class="field"><span>С</span><input name="avail_from" type="time" value="${esc(c.avail_from || '')}"></label>
+          <label class="field"><span>До</span><input name="avail_to" type="time" value="${esc(c.avail_to || '')}"></label>
+        </div>
         <p class="notice bad" id="cat-err" role="alert" hidden></p>
         <div class="modal-foot">
           <button type="submit" class="btn">${icon('check', 'sm')}Сохранить</button>
@@ -381,10 +387,14 @@
       const f = new FormData(e.target);
       const name = readLang(f, 'name');
       if (!name.ru) return err('Впишите название на русском.');
+      const af = String(f.get('avail_from') || '').slice(0, 5);
+      const at = String(f.get('avail_to') || '').slice(0, 5);
+      if (!!af !== !!at) return err('Укажите оба времени — «с» и «до», или оставьте оба пустыми.');
+      if (af && af === at) return err('Время «с» и «до» совпадает.');
       try {
         const saved = await api.saveCategory({
           id: c.id || slug(name.en || name.ru, new Set(cats.map((x) => x.id))),
-          name, hidden: !f.get('shown'), sort: c.sort,
+          name, hidden: !f.get('shown'), sort: c.sort, avail_from: af || null, avail_to: at || null,
         });
         cats = cats.filter((x) => x.id !== saved.id).concat(saved);
         S.closeModal();
@@ -403,7 +413,7 @@
     sorted.forEach((c, k) => { c.sort = (k + 1) * 10; });
     [sorted[i].sort, sorted[j].sort] = [sorted[j].sort, sorted[i].sort];
     try {
-      await Promise.all(sorted.map((c) => api.saveCategory({ id: c.id, name: c.name, hidden: c.hidden, sort: c.sort })));
+      await Promise.all(sorted.map((c) => api.saveCategory({ id: c.id, name: c.name, hidden: c.hidden, sort: c.sort, avail_from: c.avail_from || null, avail_to: c.avail_to || null })));
       cats = sorted;
       render();
     } catch (ex) { S.toast(S.errText(ex), true); await loadMenu(); render(); }

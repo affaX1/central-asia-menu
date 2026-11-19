@@ -258,7 +258,7 @@
       ${shown.length ? shownCats.map((c) => {
         const items = shown.filter((d) => d.category_id === c.id);
         if (!items.length) return '';
-        return `<section class="panel"><div class="panel-head"><h3>${esc(tr(c.name))}<small>${items.length}</small></h3></div>
+        return `<section class="panel"><div class="panel-head"><h3>${esc(tr(c.name))}<small>${items.length}</small>${c.avail_from ? `<span class="state-badge muted">${icon('clock', 'sm')}${esc(c.avail_from)}–${esc(c.avail_to)}</span>` : ''}</h3></div>
           <ul class="rows">${items.map((d) => `
             <li class="${d.available ? '' : 'is-off'}" data-dish="${esc(d.id)}" role="button" tabindex="0" style="cursor:pointer">
               ${photo(d)}

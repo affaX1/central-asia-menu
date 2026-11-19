@@ -60,6 +60,7 @@
       statusHint: { new: 'Заказ сохранён. Ждём, когда официант его примет.', accepted: 'Официант принял ваш заказ.', cooking: 'Повар уже готовит ваш заказ.', ready: 'Заказ готов — официант сейчас принесёт.', served: 'Приятного аппетита!', cancelled: 'Заказ отменён. Пожалуйста, обратитесь к официанту.' },
       statusStale: 'Не удалось обновить статус — проверим ещё раз через несколько секунд.',
       myOrders: 'Мои заказы', orderMore: 'Заказать ещё', note: 'Комментарий',
+      servedAt: (a, b) => `Подаётся ${a}–${b}`, fromTime: (a) => `с ${a}`, notNowRow: (a, b) => `Подаётся с ${a} до ${b}`, nowServing: 'Сейчас',
       readyToast: 'Ваш заказ готов — официант уже несёт!', stepAccepted: 'Принят', stepCooking: 'Готовится', stepReady: 'Готово',
       tableBill: 'Счёт стола', tableBillHint: 'Все неоплаченные заказы вашего стола — ваши и друзей.', tableBillEmpty: 'Неоплаченных заказов за столом нет.', tableTotal: 'Всего за стол',
       reqTitle: 'Что нужно?', reqCome: 'Просто подойти', reqs: { water: 'Вода', napkins: 'Салфетки', cutlery: 'Приборы', ice: 'Лёд', clear: 'Убрать со стола' }, reqPending: 'уже попросили',
@@ -127,6 +128,7 @@
       statusHint: { new: 'Buyurtma saqlandi. Ofitsiant qabul qilishini kutmoqdamiz.', accepted: 'Ofitsiant buyurtmangizni qabul qildi.', cooking: 'Oshpaz buyurtmangizni tayyorlamoqda.', ready: 'Buyurtma tayyor — ofitsiant hozir olib keladi.', served: 'Yoqimli ishtaha!', cancelled: 'Buyurtma bekor qilindi. Iltimos, ofitsiantga murojaat qiling.' },
       statusStale: "Holatni yangilab bo'lmadi — bir necha soniyadan keyin yana tekshiramiz.",
       myOrders: 'Buyurtmalarim', orderMore: 'Yana buyurtma berish', note: 'Izoh',
+      servedAt: (a, b) => `${a}–${b} da beriladi`, fromTime: (a) => `${a} dan`, notNowRow: (a, b) => `${a} dan ${b} gacha beriladi`, nowServing: 'Hozir',
       readyToast: 'Buyurtmangiz tayyor — ofitsiant olib kelmoqda!', stepAccepted: 'Qabul qilindi', stepCooking: 'Tayyorlanmoqda', stepReady: 'Tayyor',
       tableBill: 'Stol hisobi', tableBillHint: "Stolingizdagi barcha to'lanmagan buyurtmalar — sizniki va do'stlaringizniki.", tableBillEmpty: "Stolda to'lanmagan buyurtma yo'q.", tableTotal: 'Stol bo‘yicha jami',
       reqTitle: 'Nima kerak?', reqCome: 'Shunchaki keling', reqs: { water: 'Suv', napkins: "Salfetka", cutlery: 'Qoshiq-sanchqi', ice: 'Muz', clear: "Stolni yig'ishtirish" }, reqPending: "so'raldi",
@@ -194,6 +196,7 @@
       statusHint: { new: 'Your order is saved and waiting for a waiter to accept it.', accepted: 'A waiter has accepted your order.', cooking: 'The chef is cooking your order.', ready: 'Your order is ready — the waiter is bringing it.', served: 'Enjoy your meal!', cancelled: 'The order was cancelled. Please talk to your waiter.' },
       statusStale: "Couldn't refresh the status — we'll check again in a few seconds.",
       myOrders: 'My orders', orderMore: 'Order more', note: 'Note',
+      servedAt: (a, b) => `Served ${a}–${b}`, fromTime: (a) => `from ${a}`, notNowRow: (a, b) => `Served from ${a} to ${b}`, nowServing: 'Now',
       readyToast: 'Your order is ready — the waiter is bringing it!', stepAccepted: 'Accepted', stepCooking: 'Cooking', stepReady: 'Ready',
       tableBill: 'Table bill', tableBillHint: "All unpaid orders at your table — yours and your friends'.", tableBillEmpty: 'No unpaid orders at this table.', tableTotal: 'Table total',
       reqTitle: 'What do you need?', reqCome: 'Just come over', reqs: { water: 'Water', napkins: 'Napkins', cutlery: 'Cutlery', ice: 'Ice', clear: 'Clear the table' }, reqPending: 'requested',
@@ -262,6 +265,7 @@
       statusHint: { new: 'تم حفظ طلبك وننتظر أن يقبله النادل.', accepted: 'قبل النادل طلبك.', cooking: 'الطاهي يحضّر طلبك الآن.', ready: 'طلبك جاهز — سيُحضره النادل الآن.', served: 'بالهناء والشفاء!', cancelled: 'أُلغي الطلب. يرجى التحدث إلى النادل.' },
       statusStale: 'تعذّر تحديث الحالة — سنحاول مجددًا بعد ثوانٍ.',
       myOrders: 'طلباتي', orderMore: 'اطلب المزيد', note: 'ملاحظة',
+      servedAt: (a, b) => `يُقدَّم ${a}–${b}`, fromTime: (a) => `من ${a}`, notNowRow: (a, b) => `يُقدَّم من ${a} إلى ${b}`, nowServing: 'الآن',
       readyToast: 'طلبك جاهز — النادل في الطريق!', stepAccepted: 'قُبل', stepCooking: 'قيد التحضير', stepReady: 'جاهز',
       tableBill: 'فاتورة الطاولة', tableBillHint: 'كل الطلبات غير المدفوعة على طاولتك — طلباتك وطلبات أصدقائك.', tableBillEmpty: 'لا توجد طلبات غير مدفوعة على الطاولة.', tableTotal: 'إجمالي الطاولة',
       reqTitle: 'ماذا تحتاج؟', reqCome: 'فقط تعال', reqs: { water: 'ماء', napkins: 'مناديل', cutlery: 'أدوات المائدة', ice: 'ثلج', clear: 'تنظيف الطاولة' }, reqPending: 'تم الطلب',
@@ -329,6 +333,7 @@
       statusHint: { new: 'Pesanan anda disimpan dan menunggu pelayan menerimanya.', accepted: 'Pelayan telah menerima pesanan anda.', cooking: 'Tukang masak sedang menyediakan pesanan anda.', ready: 'Pesanan anda siap — pelayan sedang membawanya.', served: 'Selamat menjamu selera!', cancelled: 'Pesanan dibatalkan. Sila berjumpa pelayan.' },
       statusStale: 'Status gagal dikemas kini — kami akan cuba lagi sebentar lagi.',
       myOrders: 'Pesanan saya', orderMore: 'Pesan lagi', note: 'Nota',
+      servedAt: (a, b) => `Dihidang ${a}–${b}`, fromTime: (a) => `dari ${a}`, notNowRow: (a, b) => `Dihidang dari ${a} hingga ${b}`, nowServing: 'Sekarang',
       readyToast: 'Pesanan anda siap — pelayan sedang membawanya!', stepAccepted: 'Diterima', stepCooking: 'Dimasak', stepReady: 'Siap',
       tableBill: 'Bil meja', tableBillHint: 'Semua pesanan belum dibayar di meja anda — milik anda dan rakan.', tableBillEmpty: 'Tiada pesanan belum dibayar di meja ini.', tableTotal: 'Jumlah meja',
       reqTitle: 'Apa yang anda perlukan?', reqCome: 'Datang sahaja', reqs: { water: 'Air', napkins: 'Tisu', cutlery: 'Sudu garpu', ice: 'Ais', clear: 'Kemas meja' }, reqPending: 'sudah diminta',
@@ -377,7 +382,7 @@
         halal: !!r.halal, halalNote: nonEmpty(r.halalNote),
         defaultLanguage: b.defaultLanguage,
       },
-      categories: b.categories.map((c) => ({ id: c.id, name: c.name })),
+      categories: b.categories.map((c) => ({ id: c.id, name: c.name, from: c.from || null, to: c.to || null })),
       dishes: b.dishes.filter((d) => !d.hidden).map((d) => ({
         id: d.id, category: d.category, name: d.name, desc: nonEmpty(d.desc), ingredients: nonEmpty(d.ingredients),
         price: Number(d.price), weight: d.weight ?? null, unit: d.unit || 'g', kcal: d.kcal ?? null, photo: d.photo || null,
@@ -400,7 +405,7 @@
         halal: !!st.halal, halalNote: nonEmpty(st.halal_note),
         defaultLanguage: st.default_language,
       },
-      categories: shown.map((c) => ({ id: c.id, name: c.name })),
+      categories: shown.map((c) => ({ id: c.id, name: c.name, from: c.avail_from || null, to: c.avail_to || null })),
       dishes: dishes.filter((d) => !d.hidden && ids.has(d.category_id))
         .sort((a, b) => a.sort - b.sort || a.id.localeCompare(b.id))
         .map((d) => ({
@@ -503,7 +508,16 @@
     if (lang !== 'en') return `${String(h).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
     return `${h % 12 || 12}${mm ? ':' + String(mm).padStart(2, '0') : ''} ${h < 12 ? 'AM' : 'PM'}`;
   };
-  const orderable = (d) => !!d && d.available;
+  // время подачи категории (например, завтрак 06:00–11:00) — по часам ресторана
+  const catOf = (d) => (M?.categories || []).find((c) => c.id === d?.category);
+  function catOpen(c) {
+    if (!c?.from || !c?.to) return true;
+    const m = SCH.localNow(R().timezone, new Date()).min;
+    const f = SCH.mins(c.from);
+    const to = SCH.mins(c.to);
+    return to > f ? m >= f && m < to : m >= f || m < to;
+  }
+  const orderable = (d) => !!d && d.available && catOpen(catOf(d));
   const smooth = () => (matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth');
   const itemName = (id) => L(byId[id]?.name) || L((seen[id] || Object.entries(seen).find(([k]) => parseKey(k).id === id)?.[1])?.name) || '…';
 
@@ -651,12 +665,22 @@
   }
 
   // ---------- Карточки ----------
+  // заглушка без фото: своя картинка у каждой категории (казан, пиала, шампур…) — не фото еды
+  const PH = [['kazan', /plov|плов|palov|osh|بلوف/i], ['bowl', /soup|суп|шурп|sho'?rva|sup|شورب/i], ['skewer', /grill|шашлык|кебаб|мангал|kabob|sate|مشاوي/i],
+    ['samsa', /bakery|samsa|самс|выпеч|лепёш|non|roti|معجنات/i], ['salad', /salad|салат|سلط/i], ['sweet', /dessert|десерт|сладк|shirin|pencuci|حلوي/i],
+    ['tea', /drink|напит|чай|tea|ichimlik|minuman|مشروب/i], ['egg', /breakfast|завтрак|nonushta|sarapan|فطور/i], ['manty', /main|горяч|manty|issiq|utama|رئيسي/i]];
+  function phKind(d) {
+    const c = catOf(d);
+    const hay = `${c?.id || ''} ${Object.values(c?.name || {}).join(' ')}`;
+    return (PH.find(([, re]) => re.test(hay)) || ['dish'])[0];
+  }
   function photo(d, cls = '', flag = false) {
+    const kind = d?.photo ? '' : phKind(d);
     const img = d?.photo
-      ? `<img src="${esc(d.photo)}" alt="${esc(L(d.name))}" loading="lazy" decoding="async" width="800" height="600">`
-      : icon('dish');
+      ? `<img src="${esc(d.photo)}" alt="${esc(L(d.name))}" loading="lazy" decoding="async" width="800" height="600" onload="this.dataset.ok=1" onerror="this.dataset.ok=1">`
+      : icon(kind === 'dish' ? 'dish' : `ph-${kind}`);
     const sold = flag && d && !d.available ? `<span class="sold-flag">${esc(t('soldOut'))}</span>` : '';
-    return `<div class="photo ${cls}${d?.photo ? ' has-img' : ''}">${img}${sold}</div>`;
+    return `<div class="photo ${cls}${d?.photo ? ' has-img' : ` ph ph-${kind}`}">${img}${sold}</div>`;
   }
 
   function tagsHtml(d) {
@@ -665,7 +689,9 @@
   }
 
   function control(id) {
-    if (!orderable(byId[id])) return `<span class="sold">${esc(t('soldOut'))}</span>`;
+    const dd = byId[id];
+    if (dd?.available && !catOpen(catOf(dd))) return `<span class="sold later">${esc(t('fromTime')(clock(catOf(dd).from)))}</span>`;
+    if (!orderable(dd)) return `<span class="sold">${esc(t('soldOut'))}</span>`;
     if (hasOptions(byId[id])) {
       const c = dishCount(id);
       return `<button type="button" class="add${c ? ' has-n' : ''}" data-act="pick" data-id="${esc(id)}" aria-label="${esc(`${t('chooseOptions')}: ${itemName(id)}`)}">${c ? `<span class="add-n">${c}</span>` : ''}${icon('plus')}</button>`;
@@ -725,9 +751,12 @@
       return;
     }
 
+    // категория со временем подачи, которая сейчас подаётся (например, завтрак утром) — первой
     const groups = M.categories
-      .map((c) => ({ c, items: M.dishes.filter((d) => d.category === c.id && matches(d)) }))
-      .filter((g) => g.items.length);
+      .map((c, i) => ({ c, i, items: M.dishes.filter((d) => d.category === c.id && matches(d)) }))
+      .filter((g) => g.items.length)
+      .sort((a, b) => ((b.c.from && catOpen(b.c)) - (a.c.from && catOpen(a.c))) || a.i - b.i);
+    lastOpenSig = M.categories.map((c) => catOpen(c)).join();
 
     cats.innerHTML = groups.map(({ c }) => `<button type="button" class="chip" data-cat="${esc(c.id)}">${esc(L(c.name))}</button>`).join('');
 
@@ -741,13 +770,15 @@
     } else {
       main.innerHTML = offline + hitsHtml() + groups.map(({ c, items }) => `
         <section class="cat" id="cat-${esc(c.id)}" data-cat="${esc(c.id)}" aria-labelledby="h-${esc(c.id)}">
-          <div class="cat-title"><h2 id="h-${esc(c.id)}">${esc(L(c.name))}</h2><span>${items.length}</span></div>
+          <div class="cat-title"><h2 id="h-${esc(c.id)}">${esc(L(c.name))}</h2><span>${items.length}</span>${c.from ? `<span class="cat-time${catOpen(c) ? ' now' : ''}">${icon('clock', 'sm')}${esc(catOpen(c) ? `${t('nowServing')} · ${clock(c.from)}–${clock(c.to)}` : t('servedAt')(clock(c.from), clock(c.to)))}</span>` : ''}</div>
           <div class="grid">${items.map(card).join('')}</div>
         </section>`).join('');
     }
     activeCat = null;
     onScroll();
   }
+
+  let lastOpenSig = '';
 
   // ---------- «Хиты» и «С этим берут» ----------
   let stats = store.get('stats', { popular: [], pairs: {} }) || { popular: [], pairs: {} };
@@ -822,6 +853,17 @@
     }
     if (cur !== activeCat) setActive(cur);
   }
+  // как в iOS: при прокрутке вниз плашка заказа становится компактнее, вверх — обычной
+  let lastY = window.scrollY;
+  window.addEventListener('scroll', () => {
+    const y = window.scrollY;
+    const bar = $('#order-bar');
+    if (Math.abs(y - lastY) > 6) {
+      bar?.classList.toggle('compact', y > lastY && y > 200);
+      document.body.classList.toggle('scrolled', y > 120);
+      lastY = y;
+    }
+  }, { passive: true });
   let ticking = false;
   window.addEventListener('scroll', () => {
     if (ticking) return;
@@ -927,7 +969,7 @@
     out.push(`<ul class="order-list">${ls.map(({ key, id, n, d, ok, unit, names }) => `
       <li class="${ok ? '' : 'gone'}">
         ${photo(d)}
-        <span class="o-name"><b>${esc(itemName(id))}</b>${names.length ? `<em class="o-opts">${esc(names.join(', '))}</em>` : ''}<small>${ok ? `${money(unit)} × ${n}` : esc(t('soldOutRow'))}</small></span>
+        <span class="o-name"><b>${esc(itemName(id))}</b>${names.length ? `<em class="o-opts">${esc(names.join(', '))}</em>` : ''}<small>${ok ? `${money(unit)} × ${n}` : esc(d?.available && !catOpen(catOf(d)) ? t('notNowRow')(clock(catOf(d).from), clock(catOf(d).to)) : t('soldOutRow'))}</small></span>
         <span class="o-sum">${ok ? money(unit * n) : ''}</span>
         <div class="o-ctl">${ok ? lineControl(key) : '<span></span>'}
           <button type="button" class="o-remove" data-act="del" data-key="${esc(key)}">${icon('trash', 'sm')}${esc(t('removeItem'))}</button></div>
@@ -1262,7 +1304,7 @@
     } catch (e) {
       const m = String(e?.message || '');
       if (e?.net) sendError = t('errNetwork');
-      else if (/price_changed|unavailable|options/.test(m)) { await refreshMenu(true); sendError = t('errChanged'); }
+      else if (/price_changed|unavailable|options|not_now/.test(m)) { await refreshMenu(true); sendError = t('errChanged'); }
       else if (/bad_table/.test(m)) { tableState = 'invalid'; table = ''; store.set('table', null); sendError = ''; }
       else if (/closed|orders_off/.test(m)) { await refreshMenu(true); sendError = ''; }
       else if (/too_many/.test(m)) sendError = t('errTooMany');
@@ -1807,7 +1849,11 @@
 
   applyTheme();
   renderAll();
-  setInterval(() => { if (M) renderHeader(); }, 60 * 1000); // «Открыто / Закрыто» обновляется само
+  setInterval(() => {   // «Открыто / Закрыто» и завтрак по часам обновляются сами
+    if (!M) return;
+    renderHeader();
+    if (M.categories.map((c) => catOpen(c)).join() !== lastOpenSig) { renderMenu(); refreshSlots(); renderBar(); }
+  }, 60 * 1000);
   renderFilterBtn();
   if (ONLINE) {
     refreshMenu();

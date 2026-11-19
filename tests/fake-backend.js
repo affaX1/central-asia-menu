@@ -22,7 +22,7 @@
       tables: [1, 2, 3].map((n) => ({ id: 'tbl-' + n, label: String(n), token: ('a' + n).padEnd(20, '0'), active: true, sort: n })),
       orders: [],
       seq: 0,
-      categories: M.categories.map((c, i) => ({ id: c.id, name: c.name, sort: (i + 1) * 10, hidden: false })),
+      categories: M.categories.map((c, i) => ({ id: c.id, name: c.name, sort: (i + 1) * 10, hidden: false, avail_from: null, avail_to: null })),
       dishes: M.dishes.map((d, i) => ({
         id: d.id, category_id: d.category, name: d.name, desc: d.desc || {}, ingredients: d.ingredients || {},
         price: d.price, weight: d.weight ?? null, unit: d.unit || 'g', kcal: d.kcal ?? null, photo_url: null,
@@ -64,6 +64,12 @@
     const dish = d.dishes.find((x) => x.id === it.id && !x.hidden && shownCats.has(x.category_id));
     if (!(it.qty >= 1 && it.qty <= 50)) throw new Error('bad_items');
     if (!dish || !dish.available) throw new Error('unavailable:' + it.id);
+    const cat = d.categories.find((c) => c.id === dish.category_id);
+    if (cat?.avail_from && cat?.avail_to) {
+      const m = window.MenuSchedule.localNow(d.settings.timezone, new Date()).min;
+      const f = window.MenuSchedule.mins(cat.avail_from); const t2 = window.MenuSchedule.mins(cat.avail_to);
+      if (!(t2 > f ? m >= f && m < t2 : m >= f || m < t2)) throw new Error('not_now:' + it.id);
+    }
     const sel = [...(it.opts || [])].sort();
     let unit = Number(dish.price);
     const snap = [];

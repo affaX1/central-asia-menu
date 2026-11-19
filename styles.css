@@ -645,3 +645,54 @@ html { scroll-behavior: smooth; }
 .call-btn { min-width: 0; }
 .call-btn span { white-space: normal; overflow: visible; text-overflow: clip; line-height: 1.15; text-align: center; }
 .sheet-grab::before { width: 44px; background: color-mix(in srgb, var(--text) 30%, transparent); box-shadow: 0 0 0 1px color-mix(in srgb, var(--surface) 60%, transparent); }
+
+/* ---------- завтрак и время подачи ---------- */
+.cat-time { display: inline-flex; align-items: center; gap: 5px; margin-inline-start: 8px; padding: 4px 10px; border-radius: 999px; background: var(--surface-2); color: var(--muted); font-size: 12.5px; font-weight: 700; align-self: center; }
+.cat-time.now { background: var(--ok-soft); color: var(--ok); }
+.cat-time .ic { width: 14px; height: 14px; }
+.sold.later { background: var(--warn-soft); color: var(--warn); }
+
+/* ---------- аппетитные заглушки: у каждой категории своя картинка и тёплый оттенок ---------- */
+.photo.ph { background: radial-gradient(120% 90% at 30% 20%, var(--ph-a), var(--ph-b)); }
+.photo.ph > .ic { width: 42%; height: 42%; max-width: 72px; max-height: 72px; color: var(--ph-c); stroke-width: 1.4; }
+.sheet .photo.big.ph > .ic { max-width: 110px; max-height: 110px; }
+.ph-kazan { --ph-a: #FCEBC9; --ph-b: #F1D29C; --ph-c: #B7792A; }
+.ph-bowl { --ph-a: #FBE3D6; --ph-b: #F0C3AA; --ph-c: #B5583A; }
+.ph-skewer { --ph-a: #F8DCCF; --ph-b: #E9B79F; --ph-c: #A9482F; }
+.ph-samsa { --ph-a: #FBEBD2; --ph-b: #EFCF9E; --ph-c: #AD7330; }
+.ph-salad { --ph-a: #E9F2DC; --ph-b: #CFE2B5; --ph-c: #5E8A3A; }
+.ph-sweet { --ph-a: #FBE6E0; --ph-b: #F0C9BC; --ph-c: #B0604D; }
+.ph-tea { --ph-a: #F3E6D2; --ph-b: #E2C9A4; --ph-c: #8D6436; }
+.ph-egg { --ph-a: #FFF3D2; --ph-b: #F8DE96; --ph-c: #B98A1E; }
+.ph-manty { --ph-a: #F7E9DA; --ph-b: #E8CFB0; --ph-c: #9E6C3C; }
+.ph-dish { --ph-a: #F6EADB; --ph-b: #EBD8BF; --ph-c: #9A7B5A; }
+:root[data-theme="dark"] .photo.ph { background: radial-gradient(120% 90% at 30% 20%, color-mix(in srgb, var(--ph-b) 26%, var(--surface)), color-mix(in srgb, var(--ph-c) 22%, var(--surface))); }
+:root[data-theme="dark"] .photo.ph > .ic { color: color-mix(in srgb, var(--ph-a) 80%, white); }
+.photo img { opacity: 0; transition: opacity .35s ease, transform .5s cubic-bezier(.2, .8, .2, 1); transform: scale(1.03); }
+.photo img[data-ok] { opacity: 1; transform: none; }
+
+/* ---------- «Хиты» крупнее ---------- */
+.mini { flex-basis: 172px; }
+.mini .photo { height: 118px; }
+
+/* ---------- верх и низ как в iOS: матовое стекло ---------- */
+.cats {
+  background: color-mix(in srgb, var(--bg) 74%, transparent);
+  -webkit-backdrop-filter: saturate(1.8) blur(20px); backdrop-filter: saturate(1.8) blur(20px);
+  border-bottom: .5px solid color-mix(in srgb, var(--line) 80%, transparent);
+}
+/* приложение на весь экран (с главного экрана): стекло и под часами */
+body.scrolled::before { content: ''; position: fixed; top: 0; left: 0; right: 0; z-index: 11; height: env(safe-area-inset-top); background: color-mix(in srgb, var(--bg) 74%, transparent); -webkit-backdrop-filter: saturate(1.8) blur(20px); backdrop-filter: saturate(1.8) blur(20px); pointer-events: none; }
+.cats { top: env(safe-area-inset-top); }
+/* снизу: меню мягко уходит под стекло под плашкой заказа */
+body.has-bar::after {
+  content: ''; position: fixed; left: 0; right: 0; bottom: 0; z-index: 19; pointer-events: none;
+  height: calc(118px + var(--safe-b));
+  background: linear-gradient(to top, color-mix(in srgb, var(--bg) 88%, transparent) 30%, color-mix(in srgb, var(--bg) 0%, transparent));
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+  -webkit-mask-image: linear-gradient(to top, #000 45%, transparent); mask-image: linear-gradient(to top, #000 45%, transparent);
+}
+.order-bar { transition: transform .32s cubic-bezier(.2, .8, .2, 1), min-height .32s cubic-bezier(.2, .8, .2, 1), padding .32s cubic-bezier(.2, .8, .2, 1), font-size .32s, box-shadow .3s, opacity .2s; }
+.order-bar.compact { min-height: 50px; padding-block: 5px; font-size: 15px; transform: translateX(-50%) translateY(4px) scale(.97); }
+.order-bar.compact .bar-sum { padding-block: 7px; }
+@media (prefers-reduced-motion: reduce) { .order-bar.compact { transform: translateX(-50%); } }
