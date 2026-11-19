@@ -1011,12 +1011,13 @@
   const timeOf = (iso) => new Intl.DateTimeFormat(t('locale'), { hour: '2-digit', minute: '2-digit', hour12: lang === 'en' }).format(new Date(iso));
   // гость видит три состояния: отправлен → принят официантом (кухонные этапы тоже считаются принятым) / отменён
   // гость видит путь заказа: отправлен → принят → готовится → готово (несут) → подано / отменён
-  const guestStatus = (s) => (['new', 'accepted', 'cooking', 'ready', 'served', 'cancelled'].includes(s) ? s : 'accepted');
-  const STEP = { new: 0, accepted: 1, cooking: 2, ready: 3, served: 4 };
+  // в ресторане гость сидит за столом: ему важно только «приняли или нет».
+  // Кухонные этапы (готовится / готово) — внутреннее дело зала, гостю это «Принят».
+  const guestStatus = (s) => (['new', 'served', 'cancelled'].includes(s) ? s : 'accepted');
 
   const shownStatus = {};   // что гость уже видел — новый статус «подпрыгивает»
   let renderedTrack = null; // какую шторку заказа уже показали — появление играет один раз
-  const STATUS_ICON = { new: 'clock', accepted: 'check', cooking: 'flame', ready: 'dish', served: 'check', cancelled: 'x' };
+  const STATUS_ICON = { new: 'clock', accepted: 'check', served: 'check', cancelled: 'x' };
   // фаза бесконечной анимации привязана к часам: перерисовка не сбивает пульс
   const phase = (ms) => `--ph:-${Date.now() % ms}ms`;
   function trackSheetHtml(id) {
@@ -1031,11 +1032,7 @@
     setTimeout(() => { if (tracked[id]) shownStatus[id] = guestStatus(tracked[id].status); }, 0);
     const sentNow = justSent === id && gs === 'new';
     const ic = sentNow ? 'check' : STATUS_ICON[gs];
-    const step = Math.min(3, STEP[gs] ?? 0);
-    const p = step / 3;
-    const p0 = enter ? 0 : changed ? Math.min(3, STEP[before] ?? 0) / 3 : p;
-    const steps = [t('statuses').new, t('stepAccepted'), t('stepCooking'), t('stepReady')];
-    const kind = gs === 'new' || gs === 'cancelled' || gs === 'cooking' ? gs : 'ok';
+    const kind = gs === 'new' || gs === 'cancelled' ? gs : 'ok';
     return `<div class="track${enter ? ' enter' : ''}">
       <h2 class="sheet-title tr-a" id="sheet-title" style="--i:0">${esc(t('orderNo')(o.no))}</h2>
       <p class="track-meta tr-a" style="--i:1"><span class="table-tag">${icon('table')}${esc(t('table'))} ${esc(o.table_label)}</span><span class="tm-time">${icon('clock', 'sm')}${esc(timeOf(o.created_at))}</span>${o.paid_at ? `<span class="badge ok paid-tag">${icon('check', 'sm')}${esc(t('paid'))}</span>` : ''}</p>
@@ -1043,11 +1040,6 @@
         <span class="track-icon" style="${phase(2000)}">${icon(ic)}</span>
         <div><b>${esc(t('statuses')[gs])}</b><span>${esc(t('statusHint')[gs])}</span></div>
       </div>
-      ${gs === 'cancelled' ? '' : `<div class="tline tr-a" style="--i:3;--p:${p};--p0:${p0}" role="list">
-        <div class="tl-rail" aria-hidden="true"><i class="tl-fill"></i></div>
-        ${steps.map((n, i) => `<div class="tl-step ${i < step || gs === 'served' ? 'done' : i === step ? 'now' : 'wait'}${i <= step && (enter || (changed && i > Math.min(3, STEP[before] ?? 0))) ? ' fresh' : ''}" role="listitem" style="--d:${enter ? 250 + i * 180 : 500}ms">
-          <span class="tl-dot" style="${phase(1800)}">${i < step || (i === step && gs !== 'cooking') ? icon('check') : i === step ? '<i class="tl-live"></i>' : ''}</span><span class="tl-name">${esc(n)}</span></div>`).join('')}
-      </div>`}
       ${trackStale ? `<p class="notice info">${icon('alert')}<span>${esc(t('statusStale'))}</span></p>` : ''}
       ${o.edited_at ? `<p class="notice info">${icon('refresh')}<span>${esc(t('edited')(timeOf(o.edited_at)))}</span></p>` : ''}
       <ul class="order-list track-list tr-a" style="--i:4">${(o.items || []).map((i) => {
@@ -1345,7 +1337,6 @@
         const row = Array.isArray(rows) ? rows[0] : rows;
         if (!row) { gone.push(o.id); return; }  // сервер не знает такой заказ (старше 3 дней или другая база)
         if (JSON.stringify(tracked[o.id]) !== JSON.stringify(row)) {
-          if (row.status === 'ready' && tracked[o.id] && tracked[o.id].status !== 'ready') readyAlert();
           tracked[o.id] = row;
           changed = true;
         }
@@ -1365,26 +1356,6 @@
       renderBar();
       if (sheet?.type === 'track' || sheet?.type === 'order') renderSheet();
     }
-  }
-  // заказ готов: вибрация (Android), короткий звук (если гость уже нажимал на страницу) и сообщение
-  let beep = null;
-  ['pointerdown', 'keydown'].forEach((ev) => document.addEventListener(ev, () => {
-    try { if (!beep) beep = new (window.AudioContext || window.webkitAudioContext)(); if (beep.state === 'suspended') beep.resume(); } catch { /* без звука */ }
-  }, { capture: true, passive: true }));
-  function readyAlert() {
-    try { navigator.vibrate?.([300, 120, 300]); } catch { /* нет вибрации */ }
-    try {
-      if (beep && beep.state === 'running') {
-        const t0 = beep.currentTime;
-        [0, 0.2].forEach((dt) => {
-          const o = beep.createOscillator(); const g = beep.createGain();
-          o.frequency.value = 880; g.gain.setValueAtTime(0.0001, t0 + dt);
-          g.gain.exponentialRampToValueAtTime(0.3, t0 + dt + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t0 + dt + 0.18);
-          o.connect(g).connect(beep.destination); o.start(t0 + dt); o.stop(t0 + dt + 0.2);
-        });
-      }
-    } catch { /* без звука */ }
-    toast(t('readyToast'), 'good');
   }
   function schedulePoll(soon) {
     clearTimeout(pollTimer);
