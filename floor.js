@@ -157,7 +157,7 @@
       return `<section class="calls">${list.map((c) => `
         <div class="call ${c.kind === 'bill' ? 'is-bill' : ''}">
           ${icon(c.kind === 'bill' ? 'list' : 'bell')}
-          <div class="grow"><b>${esc(t('b_call_one', c.table_label, c.kind === 'bill'))}${c.kind === 'bill' && c.pay_method ? ` (${esc(t('pay_guest')[c.pay_method])})` : ''}</b>
+          <div class="grow"><b>${esc(t('b_call_one', c.table_label, c.kind === 'bill'))}${c.kind === 'bill' && c.pay_method ? ` (${esc(t('pay_guest')[c.pay_method])})` : ''}${c.reason ? ` — ${esc(t('reasons')[c.reason] || c.reason)}` : ''}</b>
             <small>${esc(ago(c.created_at))}</small></div>
           ${c.kind === 'bill' && c.table_id ? `<button type="button" class="btn small" data-fl-table="${esc(c.table_id)}">${esc(t('open_bill'))}</button>` : ''}
           <button type="button" class="btn small ${c.kind === 'bill' ? 'ghost' : ''}" data-fl-done="${esc(c.id)}"${busy.has(c.id) ? ' disabled' : ''}>${icon('check', 'sm')}${esc(t(c.kind === 'bill' ? 'call_done' : 'call_go'))}</button>
@@ -283,7 +283,8 @@
           <span class="grow"></span>
           <button type="button" class="btn small" data-fl-compose="${esc(id)}">${icon('plus', 'sm')}${esc(t('new_order'))}</button>
         </div>
-        ${waiter ? `<p class="notice">${icon('bell')}<span>${esc(t('guest_calls', ago(waiter.created_at)))} <button type="button" class="link-btn" data-fl-done="${esc(waiter.id)}">${esc(t('mark_came'))}</button></span></p>` : ''}
+        ${openCalls().filter((c) => c.table_id === id && c.kind === 'waiter' && c.reason).map((c) => `<p class="notice">${icon('bell')}<span><b>${esc(t('reasons')[c.reason] || c.reason)}</b> · ${esc(ago(c.created_at))} <button type="button" class="link-btn" data-fl-done="${esc(c.id)}">${esc(t('call_done'))}</button></span></p>`).join('')}
+        ${waiter && !waiter.reason ? `<p class="notice">${icon('bell')}<span>${esc(t('guest_calls', ago(waiter.created_at)))} <button type="button" class="link-btn" data-fl-done="${esc(waiter.id)}">${esc(t('mark_came'))}</button></span></p>` : ''}
         ${bill ? `<p class="notice">${icon('list')}<span>${esc(t('guest_bill', bill.pay_method ? t('pay_guest')[bill.pay_method] : ''))}</span></p>` : ''}
         ${os.length ? `
           ${multi ? `<p class="section-label">${esc(t('who_pays'))}</p>` : ''}

@@ -59,7 +59,7 @@
   const num = (x) => String(r2(Number(x) || 0)).replace('.', ',');
 
   // ---------------- ОТЧЁТЫ ----------------
-  const R = { period: '7', from: '', to: '', orders: [], bills: [], loaded: '', loading: false, error: '' };
+  const R = { period: '7', from: '', to: '', orders: [], bills: [], reviews: [], loaded: '', loading: false, error: '' };
 
   async function loadReports(api) {
     const [f, t] = periodRange(R.period, R.from, R.to);
@@ -68,9 +68,11 @@
     R.loading = true;
     R.error = '';
     try {
-      const [o, b] = await Promise.all([api.orders(f.toISOString(), t.toISOString()), api.bills(f.toISOString(), t.toISOString())]);
+      const [o, b, rv] = await Promise.all([api.orders(f.toISOString(), t.toISOString()), api.bills(f.toISOString(), t.toISOString()),
+        api.reviews ? api.reviews(f.toISOString(), t.toISOString()).catch(() => []) : []]);
       R.orders = o;
       R.bills = b;
+      R.reviews = rv;
       R.loaded = key;
     } catch (ex) { R.error = S.errText(ex); }
     R.loading = false;
@@ -165,11 +167,27 @@
           ${tipsBy.length ? `<p class="section-label">Чаевые</p>${hbars(tipsBy, money, (r) => `счетов: ${r.n}`)}` : ''}
         </div></section>
       </div>
+      ${reviewsHtml()}
       <div class="btn-row">
         <button type="button" class="btn ghost" data-rp-csv="orders">${icon('download', 'sm')}Заказы в Excel</button>
         <button type="button" class="btn ghost" data-rp-csv="dishes">${icon('download', 'sm')}Блюда в Excel</button>
         <button type="button" class="btn ghost" data-rp-csv="bills">${icon('download', 'sm')}Счета в Excel</button>
       </div>`;
+  }
+
+  function reviewsHtml() {
+    const list = R.reviews || [];
+    if (!list.length) return `<section class="panel"><div class="panel-head"><h3>Отзывы гостей</h3></div><div class="panel-body"><p class="a-empty" style="padding:10px 0">За этот период отзывов нет. Гости оставляют их на экране своего заказа после подачи.</p></div></section>`;
+    const avg = Math.round((list.reduce((s, r) => s + r.rating, 0) / list.length) * 10) / 10;
+    const by = [5, 4, 3, 2, 1].map((n) => ({ k: `${n} ★`, v: list.filter((r) => r.rating === n).length }));
+    const stars = (n) => '★'.repeat(n) + '☆'.repeat(5 - n);
+    return `<section class="panel"><div class="panel-head"><h3>Отзывы гостей<small>${list.length}</small></h3></div><div class="panel-body">
+      <p class="rv-avg"><b>${String(avg).replace('.', ',')}</b> из 5 · ${list.length} ${list.length % 10 === 1 && list.length % 100 !== 11 ? 'отзыв' : list.length % 10 >= 2 && list.length % 10 <= 4 && (list.length % 100 < 10 || list.length % 100 >= 20) ? 'отзыва' : 'отзывов'}</p>
+      ${hbars(by, (v) => String(v))}
+      <ul class="rv-list">${list.slice(0, 30).map((r) => `<li><div><span class="rv-stars" aria-label="${r.rating} из 5">${stars(r.rating)}</span>
+        <small>${esc(new Date(r.created_at).toLocaleString('ru-RU', { dateStyle: 'short', timeStyle: 'short' }))} · стол ${esc(r.table_label || '?')} · заказ №${esc(r.order_no || '?')}${r.lang ? ` · ${esc(String(r.lang).toUpperCase())}` : ''}</small></div>
+        ${r.comment ? `<p>${esc(r.comment)}</p>` : ''}</li>`).join('')}</ul>
+    </div></section>`;
   }
 
   function toolbar() {

@@ -55,11 +55,19 @@
       sentTitle: (n) => `Заказ №${n} отправлен`,
       orderNo: (n) => `Заказ №${n}`,
       sentAt: (x) => `Отправлен в ${x}`,
-      statuses: { new: 'Отправлен', accepted: 'Принят официантом', cancelled: 'Отменён' },
+      statuses: { new: 'Отправлен', accepted: 'Принят официантом', cooking: 'Готовится', ready: 'Готово — несут', served: 'Подано', cancelled: 'Отменён' },
       meatNames: { beef: 'Говядина', lamb: 'Баранина', horse: 'Конина', chicken: 'Курица', fish: 'Рыба', seafood: 'Морепродукты' }, halal: 'Халяль', meatLabel: 'Мясо',
-      statusHint: { new: 'Заказ сохранён. Ждём, когда официант его примет.', accepted: 'Официант принял ваш заказ.', cancelled: 'Заказ отменён. Пожалуйста, обратитесь к официанту.' },
+      statusHint: { new: 'Заказ сохранён. Ждём, когда официант его примет.', accepted: 'Официант принял ваш заказ.', cooking: 'Повар уже готовит ваш заказ.', ready: 'Заказ готов — официант сейчас принесёт.', served: 'Приятного аппетита!', cancelled: 'Заказ отменён. Пожалуйста, обратитесь к официанту.' },
       statusStale: 'Не удалось обновить статус — проверим ещё раз через несколько секунд.',
       myOrders: 'Мои заказы', orderMore: 'Заказать ещё', note: 'Комментарий',
+      readyToast: 'Ваш заказ готов — официант уже несёт!', stepAccepted: 'Принят', stepCooking: 'Готовится', stepReady: 'Готово',
+      tableBill: 'Счёт стола', tableBillHint: 'Все неоплаченные заказы вашего стола — ваши и друзей.', tableBillEmpty: 'Неоплаченных заказов за столом нет.', tableTotal: 'Всего за стол',
+      reqTitle: 'Что нужно?', reqCome: 'Просто подойти', reqs: { water: 'Вода', napkins: 'Салфетки', cutlery: 'Приборы', ice: 'Лёд', clear: 'Убрать со стола' }, reqPending: 'уже попросили',
+      filter: 'Фильтры', fVeg: 'Без мяса', fSpicy: 'Острое', fNo: 'Без', fReset: 'Сбросить', fShow: (n) => `Показать (${n})`, fNote: 'Состав и аллергены — по данным ресторана. Если у вас аллергия, уточните у официанта.',
+      hits: 'Хиты', pairs: 'С этим берут', upsell: 'Добавить к заказу?',
+      rateTitle: 'Как вам у нас?', ratePh: 'Что понравилось или что улучшить?', rateSend: 'Отправить отзыв', rateThanks: 'Спасибо за отзыв!', rateStar: (n) => `${n} из 5`,
+      repeat: 'Повторить заказ', repeatDone: (n) => `Добавлено в список: ${n}`, repeatSome: 'Некоторых блюд сейчас нет — их не добавили.',
+      prep: (n) => `≈ ${n} мин`, photoOf: (a, b) => `${a} из ${b}`,
       callWaiter: 'Позвать официанта', askBill: 'Попросить счёт', waiterComing: 'Официант уже идёт', billComing: 'Счёт уже несут',
       callSent: 'Официант получил сигнал и скоро подойдёт.', billSent: 'Официант принесёт счёт.', callErr: 'Не получилось отправить сигнал. Позовите официанта рукой или попробуйте ещё раз.',
       payHow: 'Как будете платить?', payCash: 'Наличными', payCard: 'Картой', payQr: 'По QR-коду',
@@ -114,11 +122,19 @@
       sentTitle: (n) => `Buyurtma №${n} yuborildi`,
       orderNo: (n) => `Buyurtma №${n}`,
       sentAt: (x) => `${x} da yuborilgan`,
-      statuses: { new: 'Yuborildi', accepted: 'Ofitsiant qabul qildi', cancelled: 'Bekor qilindi' },
+      statuses: { new: 'Yuborildi', accepted: 'Ofitsiant qabul qildi', cooking: 'Tayyorlanmoqda', ready: 'Tayyor — olib kelinmoqda', served: 'Berildi', cancelled: 'Bekor qilindi' },
       meatNames: { beef: "Mol go'shti", lamb: "Qo'y go'shti", horse: "Ot go'shti", chicken: 'Tovuq', fish: 'Baliq', seafood: 'Dengiz mahsulotlari' }, halal: 'Halol', meatLabel: "Go'sht",
-      statusHint: { new: 'Buyurtma saqlandi. Ofitsiant qabul qilishini kutmoqdamiz.', accepted: 'Ofitsiant buyurtmangizni qabul qildi.', cancelled: 'Buyurtma bekor qilindi. Iltimos, ofitsiantga murojaat qiling.' },
+      statusHint: { new: 'Buyurtma saqlandi. Ofitsiant qabul qilishini kutmoqdamiz.', accepted: 'Ofitsiant buyurtmangizni qabul qildi.', cooking: 'Oshpaz buyurtmangizni tayyorlamoqda.', ready: 'Buyurtma tayyor — ofitsiant hozir olib keladi.', served: 'Yoqimli ishtaha!', cancelled: 'Buyurtma bekor qilindi. Iltimos, ofitsiantga murojaat qiling.' },
       statusStale: "Holatni yangilab bo'lmadi — bir necha soniyadan keyin yana tekshiramiz.",
       myOrders: 'Buyurtmalarim', orderMore: 'Yana buyurtma berish', note: 'Izoh',
+      readyToast: 'Buyurtmangiz tayyor — ofitsiant olib kelmoqda!', stepAccepted: 'Qabul qilindi', stepCooking: 'Tayyorlanmoqda', stepReady: 'Tayyor',
+      tableBill: 'Stol hisobi', tableBillHint: "Stolingizdagi barcha to'lanmagan buyurtmalar — sizniki va do'stlaringizniki.", tableBillEmpty: "Stolda to'lanmagan buyurtma yo'q.", tableTotal: 'Stol bo‘yicha jami',
+      reqTitle: 'Nima kerak?', reqCome: 'Shunchaki keling', reqs: { water: 'Suv', napkins: "Salfetka", cutlery: 'Qoshiq-sanchqi', ice: 'Muz', clear: "Stolni yig'ishtirish" }, reqPending: "so'raldi",
+      filter: 'Filtrlar', fVeg: "Go'shtsiz", fSpicy: 'Achchiq', fNo: 'Siz', fReset: 'Tozalash', fShow: (n) => `Ko'rsatish (${n})`, fNote: "Tarkib va allergenlar — restoran maʼlumotlari bo'yicha. Allergiyangiz bo'lsa, ofitsiantdan so'rang.",
+      hits: 'Xitlar', pairs: 'Bu bilan olishadi', upsell: "Buyurtmaga qo'shasizmi?",
+      rateTitle: 'Sizga yoqdimi?', ratePh: 'Nima yoqdi yoki nimani yaxshilash kerak?', rateSend: 'Fikr yuborish', rateThanks: 'Fikringiz uchun rahmat!', rateStar: (n) => `5 dan ${n}`,
+      repeat: 'Buyurtmani takrorlash', repeatDone: (n) => `Ro'yxatga qo'shildi: ${n}`, repeatSome: "Ayrim taomlar hozir yo'q — ular qo'shilmadi.",
+      prep: (n) => `≈ ${n} daq`, photoOf: (a, b) => `${b} dan ${a}`,
       callWaiter: 'Ofitsiantni chaqirish', askBill: "Hisobni so'rash", waiterComing: 'Ofitsiant kelmoqda', billComing: 'Hisob olib kelinmoqda',
       callSent: 'Ofitsiant signalni oldi va tez orada keladi.', billSent: 'Ofitsiant hisobni olib keladi.', callErr: "Signal yuborilmadi. Ofitsiantni qo'l bilan chaqiring yoki qayta urinib ko'ring.",
       payHow: "Qanday to'laysiz?", payCash: 'Naqd pul', payCard: 'Karta', payQr: 'QR-kod orqali',
@@ -173,11 +189,19 @@
       sentTitle: (n) => `Order #${n} sent`,
       orderNo: (n) => `Order #${n}`,
       sentAt: (x) => `Sent at ${x}`,
-      statuses: { new: 'Sent', accepted: 'Accepted by waiter', cancelled: 'Cancelled' },
+      statuses: { new: 'Sent', accepted: 'Accepted by waiter', cooking: 'Cooking', ready: 'Ready — on its way', served: 'Served', cancelled: 'Cancelled' },
       meatNames: { beef: 'Beef', lamb: 'Lamb', horse: 'Horse meat', chicken: 'Chicken', fish: 'Fish', seafood: 'Seafood' }, halal: 'Halal', meatLabel: 'Meat',
-      statusHint: { new: 'Your order is saved and waiting for a waiter to accept it.', accepted: 'A waiter has accepted your order.', cancelled: 'The order was cancelled. Please talk to your waiter.' },
+      statusHint: { new: 'Your order is saved and waiting for a waiter to accept it.', accepted: 'A waiter has accepted your order.', cooking: 'The chef is cooking your order.', ready: 'Your order is ready — the waiter is bringing it.', served: 'Enjoy your meal!', cancelled: 'The order was cancelled. Please talk to your waiter.' },
       statusStale: "Couldn't refresh the status — we'll check again in a few seconds.",
       myOrders: 'My orders', orderMore: 'Order more', note: 'Note',
+      readyToast: 'Your order is ready — the waiter is bringing it!', stepAccepted: 'Accepted', stepCooking: 'Cooking', stepReady: 'Ready',
+      tableBill: 'Table bill', tableBillHint: "All unpaid orders at your table — yours and your friends'.", tableBillEmpty: 'No unpaid orders at this table.', tableTotal: 'Table total',
+      reqTitle: 'What do you need?', reqCome: 'Just come over', reqs: { water: 'Water', napkins: 'Napkins', cutlery: 'Cutlery', ice: 'Ice', clear: 'Clear the table' }, reqPending: 'requested',
+      filter: 'Filters', fVeg: 'Meat-free', fSpicy: 'Spicy', fNo: 'No', fReset: 'Reset', fShow: (n) => `Show (${n})`, fNote: 'Ingredients and allergens are as provided by the restaurant. If you have an allergy, please check with your waiter.',
+      hits: 'Popular', pairs: 'Goes well with', upsell: 'Add to your order?',
+      rateTitle: 'How was everything?', ratePh: 'What did you like, or what could be better?', rateSend: 'Send review', rateThanks: 'Thank you for your feedback!', rateStar: (n) => `${n} of 5`,
+      repeat: 'Order again', repeatDone: (n) => `Added to your list: ${n}`, repeatSome: "Some dishes aren't available right now — they were skipped.",
+      prep: (n) => `≈ ${n} min`, photoOf: (a, b) => `${a} of ${b}`,
       callWaiter: 'Call waiter', askBill: 'Ask for the bill', waiterComing: 'Waiter is coming', billComing: 'Bill is on its way',
       callSent: 'The waiter got your call and will be with you shortly.', billSent: 'The waiter will bring your bill.', callErr: "Couldn't send the call. Please wave to a waiter or try again.",
       payHow: 'How would you like to pay?', payCash: 'Cash', payCard: 'Card', payQr: 'QR code',
@@ -233,11 +257,19 @@
       sentTitle: (n) => `تم إرسال الطلب رقم ${n}`,
       orderNo: (n) => `الطلب رقم ${n}`,
       sentAt: (x) => `أُرسل الساعة ${x}`,
-      statuses: { new: 'أُرسل', accepted: 'قبله النادل', cancelled: 'أُلغي' },
+      statuses: { new: 'أُرسل', accepted: 'قبله النادل', cooking: 'قيد التحضير', ready: 'جاهز — في الطريق', served: 'قُدِّم', cancelled: 'أُلغي' },
       meatNames: { beef: 'لحم بقري', lamb: 'لحم ضأن', horse: 'لحم خيل', chicken: 'دجاج', fish: 'سمك', seafood: 'مأكولات بحرية' }, halal: 'حلال', meatLabel: 'اللحم',
-      statusHint: { new: 'تم حفظ طلبك وننتظر أن يقبله النادل.', accepted: 'قبل النادل طلبك.', cancelled: 'أُلغي الطلب. يرجى التحدث إلى النادل.' },
+      statusHint: { new: 'تم حفظ طلبك وننتظر أن يقبله النادل.', accepted: 'قبل النادل طلبك.', cooking: 'الطاهي يحضّر طلبك الآن.', ready: 'طلبك جاهز — سيُحضره النادل الآن.', served: 'بالهناء والشفاء!', cancelled: 'أُلغي الطلب. يرجى التحدث إلى النادل.' },
       statusStale: 'تعذّر تحديث الحالة — سنحاول مجددًا بعد ثوانٍ.',
       myOrders: 'طلباتي', orderMore: 'اطلب المزيد', note: 'ملاحظة',
+      readyToast: 'طلبك جاهز — النادل في الطريق!', stepAccepted: 'قُبل', stepCooking: 'قيد التحضير', stepReady: 'جاهز',
+      tableBill: 'فاتورة الطاولة', tableBillHint: 'كل الطلبات غير المدفوعة على طاولتك — طلباتك وطلبات أصدقائك.', tableBillEmpty: 'لا توجد طلبات غير مدفوعة على الطاولة.', tableTotal: 'إجمالي الطاولة',
+      reqTitle: 'ماذا تحتاج؟', reqCome: 'فقط تعال', reqs: { water: 'ماء', napkins: 'مناديل', cutlery: 'أدوات المائدة', ice: 'ثلج', clear: 'تنظيف الطاولة' }, reqPending: 'تم الطلب',
+      filter: 'تصفية', fVeg: 'بدون لحم', fSpicy: 'حار', fNo: 'بدون', fReset: 'إعادة ضبط', fShow: (n) => `عرض (${n})`, fNote: 'المكونات ومسببات الحساسية حسب بيانات المطعم. إن كانت لديك حساسية فاسأل النادل.',
+      hits: 'الأكثر طلبًا', pairs: 'يُطلب معه', upsell: 'هل تضيف إلى طلبك؟',
+      rateTitle: 'كيف كانت تجربتك؟', ratePh: 'ما الذي أعجبك أو ما الذي يمكن تحسينه؟', rateSend: 'إرسال التقييم', rateThanks: 'شكرًا على رأيك!', rateStar: (n) => `${n} من 5`,
+      repeat: 'كرر الطلب', repeatDone: (n) => `أُضيف إلى القائمة: ${n}`, repeatSome: 'بعض الأطباق غير متوفرة الآن — لم تُضف.',
+      prep: (n) => `≈ ${n} د`, photoOf: (a, b) => `${a} من ${b}`,
       callWaiter: 'استدعاء النادل', askBill: 'طلب الفاتورة', waiterComing: 'النادل في الطريق', billComing: 'الفاتورة في الطريق',
       callSent: 'وصل طلبك إلى النادل وسيأتي قريبًا.', billSent: 'سيُحضر النادل الفاتورة.', callErr: 'تعذّر إرسال الطلب. يرجى الإشارة إلى النادل أو المحاولة مجددًا.',
       payHow: 'كيف تودّ الدفع؟', payCash: 'نقدًا', payCard: 'بالبطاقة', payQr: 'رمز QR',
@@ -292,11 +324,19 @@
       sentTitle: (n) => `Pesanan #${n} dihantar`,
       orderNo: (n) => `Pesanan #${n}`,
       sentAt: (x) => `Dihantar pada ${x}`,
-      statuses: { new: 'Dihantar', accepted: 'Diterima oleh pelayan', cancelled: 'Dibatalkan' },
+      statuses: { new: 'Dihantar', accepted: 'Diterima oleh pelayan', cooking: 'Sedang dimasak', ready: 'Siap — sedang dihantar', served: 'Dihidang', cancelled: 'Dibatalkan' },
       meatNames: { beef: 'Daging lembu', lamb: 'Daging kambing', horse: 'Daging kuda', chicken: 'Ayam', fish: 'Ikan', seafood: 'Makanan laut' }, halal: 'Halal', meatLabel: 'Daging',
-      statusHint: { new: 'Pesanan anda disimpan dan menunggu pelayan menerimanya.', accepted: 'Pelayan telah menerima pesanan anda.', cancelled: 'Pesanan dibatalkan. Sila berjumpa pelayan.' },
+      statusHint: { new: 'Pesanan anda disimpan dan menunggu pelayan menerimanya.', accepted: 'Pelayan telah menerima pesanan anda.', cooking: 'Tukang masak sedang menyediakan pesanan anda.', ready: 'Pesanan anda siap — pelayan sedang membawanya.', served: 'Selamat menjamu selera!', cancelled: 'Pesanan dibatalkan. Sila berjumpa pelayan.' },
       statusStale: 'Status gagal dikemas kini — kami akan cuba lagi sebentar lagi.',
       myOrders: 'Pesanan saya', orderMore: 'Pesan lagi', note: 'Nota',
+      readyToast: 'Pesanan anda siap — pelayan sedang membawanya!', stepAccepted: 'Diterima', stepCooking: 'Dimasak', stepReady: 'Siap',
+      tableBill: 'Bil meja', tableBillHint: 'Semua pesanan belum dibayar di meja anda — milik anda dan rakan.', tableBillEmpty: 'Tiada pesanan belum dibayar di meja ini.', tableTotal: 'Jumlah meja',
+      reqTitle: 'Apa yang anda perlukan?', reqCome: 'Datang sahaja', reqs: { water: 'Air', napkins: 'Tisu', cutlery: 'Sudu garpu', ice: 'Ais', clear: 'Kemas meja' }, reqPending: 'sudah diminta',
+      filter: 'Penapis', fVeg: 'Tanpa daging', fSpicy: 'Pedas', fNo: 'Tanpa', fReset: 'Set semula', fShow: (n) => `Tunjuk (${n})`, fNote: 'Bahan dan alergen mengikut maklumat restoran. Jika anda alah, sila tanya pelayan.',
+      hits: 'Popular', pairs: 'Sesuai dengan', upsell: 'Tambah ke pesanan?',
+      rateTitle: 'Bagaimana pengalaman anda?', ratePh: 'Apa yang anda suka, atau apa yang boleh diperbaiki?', rateSend: 'Hantar ulasan', rateThanks: 'Terima kasih atas ulasan anda!', rateStar: (n) => `${n} daripada 5`,
+      repeat: 'Pesan semula', repeatDone: (n) => `Ditambah ke senarai: ${n}`, repeatSome: 'Sesetengah hidangan tiada sekarang — tidak ditambah.',
+      prep: (n) => `≈ ${n} min`, photoOf: (a, b) => `${a} daripada ${b}`,
       callWaiter: 'Panggil pelayan', askBill: 'Minta bil', waiterComing: 'Pelayan sedang datang', billComing: 'Bil sedang dibawa',
       callSent: 'Pelayan telah menerima panggilan anda dan akan datang sebentar lagi.', billSent: 'Pelayan akan membawa bil anda.', callErr: 'Panggilan tidak dapat dihantar. Sila lambai pelayan atau cuba lagi.',
       payHow: 'Bagaimana anda mahu membayar?', payCash: 'Tunai', payCard: 'Kad', payQr: 'Kod QR',
@@ -342,7 +382,7 @@
         id: d.id, category: d.category, name: d.name, desc: nonEmpty(d.desc), ingredients: nonEmpty(d.ingredients),
         price: Number(d.price), weight: d.weight ?? null, unit: d.unit || 'g', kcal: d.kcal ?? null, photo: d.photo || null,
         tags: d.tags || [], allergens: d.allergens || [], meat: d.meat || [], available: d.available !== false,
-        options: Array.isArray(d.options) ? d.options : [],
+        options: Array.isArray(d.options) ? d.options : [], prepMin: d.prepMin || null, pairs: d.pairs || [],
       })),
     };
   }
@@ -367,7 +407,7 @@
           id: d.id, category: d.category_id, name: d.name, desc: nonEmpty(d.desc), ingredients: nonEmpty(d.ingredients),
           price: Number(d.price), weight: d.weight, unit: d.unit, kcal: d.kcal, photo: d.photo_url || null,
           tags: d.tags || [], allergens: d.allergens || [], meat: d.meat || [], available: d.available,
-          options: Array.isArray(d.options) ? d.options : [],
+          options: Array.isArray(d.options) ? d.options : [], prepMin: d.prep_min || null, pairs: Array.isArray(d.pairs) ? d.pairs : [],
         })),
     };
   }
@@ -514,7 +554,16 @@
     </dl>${total}`;
   }
 
+  // фильтры гостя: без мяса / острое / без аллергена (по данным ресторана)
+  let filters = (() => { try { return JSON.parse(sessionStorage.getItem('menu:filters') || '{}') || {}; } catch { return {}; } })();
+  const filterCount = () => (filters.veg ? 1 : 0) + (filters.spicy ? 1 : 0) + (filters.no || []).length;
+  const passFilters = (d) => (!filters.veg || (d.tags || []).includes('veg'))
+    && (!filters.spicy || (d.tags || []).includes('spicy'))
+    && !(filters.no || []).some((a) => (d.allergens || []).includes(a));
+  function saveFilters() { try { sessionStorage.setItem('menu:filters', JSON.stringify(filters)); } catch { /* ok */ } }
+
   function matches(d) {
+    if (!passFilters(d)) return false;
     if (!query) return true;
     const hay = norm(LANGS.map((l) => `${d.name?.[l] || ''} ${d.desc?.[l] || ''}`).join(' '));
     return query.split(/\s+/).every((w) => hay.includes(w));
@@ -577,7 +626,7 @@
     const st = statusInfo();
     const badges = [];
     if (table && tableState !== 'invalid') badges.push(`<span class="badge">${icon('table', 'sm')}${esc(t('table'))} ${esc(table)}</span>`);
-    badges.push(`<span class="badge ${st.open ? 'ok' : 'off'}"><span class="dot"></span>${esc(st.text)}</span>`);
+    badges.push(`<button type="button" class="badge ${st.open ? 'ok' : 'off'}" data-sheet="hours" aria-label="${esc(`${st.text}. ${t('hours')}`)}"><span class="dot"></span>${esc(st.text)}${icon('chevron', 'sm chev')}</button>`);
     if (r.halal) {
       badges.push(r.halalNote
         ? `<button type="button" class="badge halal" data-sheet="halal">${icon('check', 'sm')}${esc(t('halal'))}</button>`
@@ -585,11 +634,7 @@
     }
 
     const links = [];
-    const hl = hoursLine();
-    if (hl) {
-      links.push(`<button type="button" class="info-link" data-sheet="hours">${icon('clock')}
-        <span class="grow"><bdi>${esc(hl)}</bdi></span>${icon('chevron', 'chev')}</button>`);
-    }
+    // часы работы открываются нажатием на «Открыто / Закрыто» — отдельной строки нет, меню видно раньше
     const addr = L(r.address);
     if (addr) {
       const q = r.address?.en || r.address?.ms || addr;
@@ -657,7 +702,7 @@
           <h3>${esc(L(d.name))}</h3>
           ${compo || (desc ? `<p class="desc">${esc(desc)}</p>` : '<p class="desc"></p>')}
           <div class="card-foot">
-            <div class="price-wrap"><span class="price">${money(d.price)}</span><span class="amount">${esc(amount(d))}</span></div>
+            <div class="price-wrap"><span class="price">${money(d.price)}</span><span class="amount">${esc([amount(d), d.prepMin ? t('prep')(d.prepMin) : ''].filter(Boolean).join(' · '))}</span></div>
             <div class="slot" data-slot="${esc(d.id)}">${control(d.id)}</div>
           </div>
         </div>
@@ -694,7 +739,7 @@
       main.innerHTML = `${offline}<div class="state">${icon('search')}<h2>${esc(t('nothing'))}</h2>
         <p>${esc(t('nothingHint'))}</p><button type="button" class="btn ghost" data-act="show-all">${esc(t('showAll'))}</button></div>`;
     } else {
-      main.innerHTML = offline + groups.map(({ c, items }) => `
+      main.innerHTML = offline + hitsHtml() + groups.map(({ c, items }) => `
         <section class="cat" id="cat-${esc(c.id)}" data-cat="${esc(c.id)}" aria-labelledby="h-${esc(c.id)}">
           <div class="cat-title"><h2 id="h-${esc(c.id)}">${esc(L(c.name))}</h2><span>${items.length}</span></div>
           <div class="grid">${items.map(card).join('')}</div>
@@ -702,6 +747,56 @@
     }
     activeCat = null;
     onScroll();
+  }
+
+  // ---------- «Хиты» и «С этим берут» ----------
+  let stats = store.get('stats', { popular: [], pairs: {} }) || { popular: [], pairs: {} };
+  async function loadStats() {
+    if (!ONLINE) return;
+    try {
+      const r = await rpc('menu_stats', {});
+      const v = Array.isArray(r) ? r[0] : r;
+      if (v && Array.isArray(v.popular)) {
+        const changed = JSON.stringify(v) !== JSON.stringify(stats);
+        stats = v;
+        store.set('stats', stats);
+        if (changed) renderMenu();
+      }
+    } catch { /* без рекомендаций */ }
+  }
+  function hitsList() {
+    const ids = [...(stats.popular || []), ...(M?.dishes || []).filter((d) => (d.tags || []).includes('hit')).map((d) => d.id)];
+    return [...new Set(ids)].map((id) => byId[id]).filter((d) => d && d.available).slice(0, 8);
+  }
+  function miniCard(d) {
+    return `<article class="mini" data-open="${esc(d.id)}" tabindex="0" role="button" aria-label="${esc(L(d.name))}">
+      ${photo(d, 'mini-photo')}<b>${esc(L(d.name))}</b>
+      <div class="mini-foot"><span class="price">${money(d.price)}</span><div class="slot" data-slot="${esc(d.id)}">${control(d.id)}</div></div></article>`;
+  }
+  function hitsHtml() {
+    if (query || filterCount()) return '';
+    const list = hitsList();
+    if (list.length < 3) return '';
+    return `<section class="hits" aria-labelledby="h-hits"><div class="cat-title"><h2 id="h-hits">${esc(t('hits'))}</h2></div>
+      <div class="hits-row">${list.map(miniCard).join('')}</div></section>`;
+  }
+  // к блюду: сначала то, что указал ресторан, потом что чаще берут вместе
+  function pairsFor(ids, limit = 3) {
+    const have = new Set(ids);
+    const out = [];
+    for (const id of ids) {
+      const d = byId[id];
+      for (const p of [...(d?.pairs || []), ...((stats.pairs || {})[id] || [])]) {
+        if (!have.has(p) && byId[p]?.available && !out.includes(p)) out.push(p);
+      }
+    }
+    return out.slice(0, limit).map((id) => byId[id]);
+  }
+  function pairsHtml(list, title) {
+    if (!list.length) return '';
+    return `<h4>${esc(title)}</h4><ul class="pair-list">${list.map((d) => `<li data-open="${esc(d.id)}" role="button" tabindex="0">
+      ${photo(d, 'pair-photo')}<span class="grow"><b>${esc(L(d.name))}</b><small>${money(d.price)}</small></span>
+      <span class="slot" data-slot="${esc(d.id)}">${control(d.id)}</span></li>`).join('')}</ul>`;
   }
 
   // ---------- Активная категория при прокрутке ----------
@@ -839,6 +934,7 @@
       out.push(`<label class="note-field"><span>${esc(t('noteLabel'))}</span>
         <textarea id="note-input" rows="2" maxlength="300" placeholder="${esc(t('notePh'))}">${esc(note)}</textarea></label>`);
     }
+    out.push(pairsHtml(pairsFor(ls.map((l) => l.id), 3), t('upsell')));
     out.push(chargesHtml(charges(totals().sum), true));
     out.push(`<button type="button" class="link-clear" data-act="clear">${icon('trash', 'sm')}${esc(t('clear'))}</button>`);
 
@@ -870,25 +966,28 @@
 
   const timeOf = (iso) => new Intl.DateTimeFormat(t('locale'), { hour: '2-digit', minute: '2-digit', hour12: lang === 'en' }).format(new Date(iso));
   // гость видит три состояния: отправлен → принят официантом (кухонные этапы тоже считаются принятым) / отменён
-  const guestStatus = (s) => (s === 'new' ? 'new' : s === 'cancelled' ? 'cancelled' : 'accepted');
+  // гость видит путь заказа: отправлен → принят → готовится → готово (несут) → подано / отменён
+  const guestStatus = (s) => (['new', 'accepted', 'cooking', 'ready', 'served', 'cancelled'].includes(s) ? s : 'accepted');
+  const STEP = { new: 0, accepted: 1, cooking: 2, ready: 3, served: 4 };
 
   function trackSheetHtml(id) {
     const o = tracked[id];
     const mine = myOrders.find((x) => x.id === id);
     if (!o || !mine) return `<div class="state">${icon('alert')}<p>${esc(t('errServer'))}</p></div>`;
     const gs = guestStatus(o.status);
-    const ic = gs === 'accepted' ? 'check' : gs === 'cancelled' ? 'x' : 'clock';
+    const ic = gs === 'cancelled' ? 'x' : gs === 'new' ? 'clock' : 'check';
+    const step = STEP[gs] ?? 0;
+    const steps = [['new', t('statuses').new], ['accepted', t('stepAccepted')], ['cooking', t('stepCooking')], ['ready', t('stepReady')]];
     return `
       ${justSent === id && gs === 'new' ? `<p class="sent-ok" role="status">${icon('check')}<span>${esc(t('sentTitle')(o.no))}</span></p>` : ''}
       <h2 class="sheet-title" id="sheet-title">${esc(t('orderNo')(o.no))}</h2>
       <p class="track-meta"><span class="table-tag">${icon('table')}${esc(t('table'))} ${esc(o.table_label)}</span><span>${esc(t('sentAt')(timeOf(o.created_at)))}</span>${o.paid_at ? `<span class="badge ok paid-tag">${icon('check', 'sm')}${esc(t('paid'))}</span>` : ''}</p>
-      <div class="track-card is-${gs}" aria-live="polite">
+      <div class="track-card is-${gs === 'new' || gs === 'cancelled' ? gs : 'accepted'}" aria-live="polite">
         <span class="track-icon">${icon(ic)}</span>
         <div><b>${esc(t('statuses')[gs])}</b><span>${esc(t('statusHint')[gs])}</span></div>
       </div>
-      ${gs === 'cancelled' ? '' : `<ol class="steps2">
-        <li class="done">${icon('check', 'sm')}<span>${esc(t('statuses').new)}</span></li>
-        <li class="${gs === 'accepted' ? 'done' : 'wait'}">${gs === 'accepted' ? icon('check', 'sm') : '<i></i>'}<span>${esc(t('statuses').accepted)}</span></li>
+      ${gs === 'cancelled' ? '' : `<ol class="steps4">${steps.map(([k, n], i) => `
+        <li class="${i <= step ? 'done' : 'wait'}${i === step && gs !== 'served' ? ' now' : ''}">${i <= step ? icon('check', 'sm') : '<i></i>'}<span>${esc(n)}</span></li>`).join('')}
       </ol>`}
       ${trackStale ? `<p class="notice info">${icon('alert')}<span>${esc(t('statusStale'))}</span></p>` : ''}
       ${o.edited_at ? `<p class="notice info">${icon('refresh')}<span>${esc(t('edited')(timeOf(o.edited_at)))}</span></p>` : ''}
@@ -899,7 +998,62 @@
       }).join('')}</ul>
       ${o.note ? `<p class="notice info">${icon('list')}<span><b>${esc(t('note'))}:</b> ${esc(o.note)}</span></p>` : ''}
       ${chargesHtml({ sub: o.subtotal ?? o.total, service: o.service || 0, tax: o.tax || 0, total: o.total }, false)}
-      <button type="button" class="btn ghost block" data-act="more">${esc(t('orderMore'))}</button>`;
+      ${reviewHtml(id, o)}
+      <div class="track-actions">
+        <button type="button" class="btn ghost" data-act="more">${esc(t('orderMore'))}</button>
+        ${gs !== 'cancelled' ? `<button type="button" class="btn soft" data-act="repeat" data-id="${esc(id)}">${icon('refresh', 'sm')}${esc(t('repeat'))}</button>` : ''}
+      </div>`;
+  }
+
+  // ---------- Отзыв и «Повторить заказ» ----------
+  let reviewed = store.get('reviewed', {}) || {};
+  let reviewDraft = { rating: 0, text: '' };
+  let reviewBusy = false;
+  function reviewHtml(id, o) {
+    if (!ONLINE || (!['served', 'ready', 'cooking'].includes(o.status) && !o.paid_at)) return '';
+    if (reviewed[id]) return `<p class="notice ok">${icon('check')}<span>${esc(t('rateThanks'))}</span></p>`;
+    const r = reviewDraft.rating;
+    return `<section class="review" aria-labelledby="rv-t"><h4 id="rv-t">${esc(t('rateTitle'))}</h4>
+      <div class="stars" role="radiogroup" aria-label="${esc(t('rateTitle'))}">${[1, 2, 3, 4, 5].map((n) => `<button type="button" class="star${n <= r ? ' on' : ''}" data-act="rate" data-n="${n}" role="radio" aria-checked="${n === r}" aria-label="${esc(t('rateStar')(n))}"><svg class="ic" aria-hidden="true"><use href="#i-star"/></svg></button>`).join('')}</div>
+      ${r ? `<textarea id="review-text" rows="2" maxlength="500" placeholder="${esc(t('ratePh'))}">${esc(reviewDraft.text)}</textarea>
+        <button type="button" class="btn block" data-act="review-send" data-id="${esc(id)}"${reviewBusy ? ' disabled' : ''}>${esc(t('rateSend'))}</button>` : ''}
+    </section>`;
+  }
+  async function sendReview(id) {
+    const mine = myOrders.find((x) => x.id === id);
+    if (!mine || !reviewDraft.rating || reviewBusy) return;
+    reviewBusy = true;
+    renderSheet();
+    try {
+      await rpc('leave_review', { p_order: id, p_token: mine.token, p_rating: reviewDraft.rating, p_comment: reviewDraft.text.trim() || null, p_lang: lang });
+      reviewed[id] = reviewDraft.rating;
+      store.set('reviewed', reviewed);
+      reviewDraft = { rating: 0, text: '' };
+      toast(t('rateThanks'), 'good');
+    } catch { toast(t('errServer'), 'bad'); }
+    reviewBusy = false;
+    renderSheet();
+  }
+  document.addEventListener('input', (e) => { if (e.target.id === 'review-text') reviewDraft.text = e.target.value; });
+  function repeatOrder(id) {
+    const o = tracked[id];
+    if (!o) return;
+    let added = 0;
+    let skipped = 0;
+    for (const i of o.items || []) {
+      const d = byId[i.id];
+      const opts = (i.opts || []).map((x) => `${x.g}:${x.c}`);
+      if (!orderable(d) || !optInfo(d, opts).ok) { skipped += 1; continue; }
+      const key = makeKey(d.id, opts);
+      order[key] = Math.min(99, (order[key] || 0) + Number(i.qty));
+      remember(key);
+      added += Number(i.qty);
+    }
+    store.set('order', order);
+    refreshSlots();
+    renderBar();
+    if (added) { openSheet({ type: 'order' }); toast(skipped ? t('repeatSome') : t('repeatDone')(added), skipped ? '' : 'good'); }
+    else toast(t('repeatSome'), 'bad');
   }
 
   // ---------- Выбор вариантов блюда ----------
@@ -938,7 +1092,7 @@
   });
 
   // ---------- Позвать официанта / попросить счёт ----------
-  let openCalls = { waiter: false, bill: false };
+  let openCalls = { waiter: false, bill: false, reasons: [] };
   let calling = false;
   let callsTimer = null;
   function renderTableActions() {
@@ -950,14 +1104,15 @@
     el.innerHTML = `<button type="button" class="call-btn${openCalls.waiter ? ' on' : ''}" data-act="call-waiter"${calling ? ' disabled' : ''}>${icon(openCalls.waiter ? 'check' : 'bell')}<span>${esc(openCalls.waiter ? t('waiterComing') : t('callWaiter'))}</span></button>
       <button type="button" class="call-btn${openCalls.bill ? ' on' : ''}" data-act="call-bill"${calling ? ' disabled' : ''}>${icon(openCalls.bill ? 'check' : 'list')}<span>${esc(openCalls.bill ? t('billComing') : t('askBill'))}</span></button>`;
   }
-  async function callStaff(kind, method) {
+  async function callStaff(kind, method, reason) {
     if (calling || !ONLINE || !tableToken) return;
     calling = true;
     renderTableActions();
     try {
-      await rpc('call_staff', { p_table: tableToken, p_kind: kind, p_method: method || null });
+      await rpc('call_staff', { p_table: tableToken, p_kind: kind, p_method: method || null, p_reason: reason || null });
       openCalls[kind] = true;
-      if (sheet?.type === 'bill') closeSheet();
+      if (reason && !openCalls.reasons.includes(reason)) openCalls.reasons.push(reason);
+      if (sheet?.type === 'bill' || sheet?.type === 'waiter') closeSheet();
       toast(t(kind === 'bill' ? 'billSent' : 'callSent'), 'good');
       scheduleCalls();
     } catch (e) {
@@ -974,7 +1129,7 @@
     try {
       const rows = await rpc('table_calls', { p_table: tableToken });
       const list = Array.isArray(rows) ? rows : [];
-      openCalls = { waiter: list.some((c) => c.kind === 'waiter'), bill: list.some((c) => c.kind === 'bill') };
+      openCalls = { waiter: list.some((c) => c.kind === 'waiter'), bill: list.some((c) => c.kind === 'bill'), reasons: list.map((c) => c.reason).filter(Boolean) };
       renderTableActions();
     } catch { /* нет связи — оставляем как было */ }
   }
@@ -983,6 +1138,70 @@
     if (!openCalls.waiter && !openCalls.bill) return;
     callsTimer = setTimeout(async () => { if (!document.hidden) await pollCalls(); scheduleCalls(); }, 15000);
   }
+
+  async function openBill() {
+    openSheet({ type: 'bill', tableBill: undefined });
+    try {
+      const rows = await rpc('table_bill', { p_table: tableToken });
+      if (sheet?.type === 'bill') { sheet.tableBill = Array.isArray(rows) ? rows : []; renderSheet(); }
+    } catch { if (sheet?.type === 'bill') { sheet.tableBill = null; renderSheet(); } }
+  }
+  function renderFilterBtn() {
+    const b = $('#filter-btn');
+    if (!b) return;
+    const n = filterCount();
+    b.classList.toggle('on', !!n);
+    b.innerHTML = `${icon('filter')}${n ? `<span class="f-n">${n}</span>` : ''}`;
+    b.setAttribute('aria-label', `${t('filter')}${n ? ` (${n})` : ''}`);
+  }
+
+  // ---------- Фото блюда на весь экран ----------
+  let viewer = null;   // { ids, i }
+  function openViewer(id) {
+    const d = byId[id];
+    if (!d?.photo) return;
+    const ids = M.dishes.filter((x) => x.photo && x.category === d.category).map((x) => x.id);
+    viewer = { ids, i: Math.max(0, ids.indexOf(id)) };
+    paintViewer();
+  }
+  function paintViewer() {
+    let el = $('#viewer');
+    if (!viewer) { el?.remove(); return; }
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'viewer';
+      el.className = 'viewer';
+      el.setAttribute('role', 'dialog');
+      el.setAttribute('aria-modal', 'true');
+      document.body.appendChild(el);
+      let x0 = null;
+      el.addEventListener('touchstart', (e) => { x0 = e.touches[0].clientX; }, { passive: true });
+      el.addEventListener('touchend', (e) => {
+        if (x0 == null) return;
+        const dx = e.changedTouches[0].clientX - x0; x0 = null;
+        if (Math.abs(dx) > 50) stepViewer((dx < 0) === (t('dir') !== 'rtl') ? 1 : -1);
+      });
+      el.addEventListener('click', (e) => {
+        if (e.target.closest('[data-v="prev"]')) stepViewer(-1);
+        else if (e.target.closest('[data-v="next"]')) stepViewer(1);
+        else if (!e.target.closest('img')) closeViewer();
+      });
+    }
+    const d = byId[viewer.ids[viewer.i]];
+    const many = viewer.ids.length > 1;
+    el.innerHTML = `<button type="button" class="v-close" aria-label="${esc(t('close'))}" data-v="close">${icon('x')}</button>
+      <figure><img src="${esc(d.photo)}" alt="${esc(L(d.name))}"><figcaption><b>${esc(L(d.name))}</b><span>${money(d.price)}</span>${many ? `<small>${esc(t('photoOf')(viewer.i + 1, viewer.ids.length))}</small>` : ''}</figcaption></figure>
+      ${many ? `<button type="button" class="v-nav v-prev" data-v="prev" aria-label="‹">${icon('chevron')}</button><button type="button" class="v-nav v-next" data-v="next" aria-label="›">${icon('chevron')}</button>` : ''}`;
+    el.querySelector('.v-close').focus({ preventScroll: true });
+  }
+  function stepViewer(dir) { if (!viewer) return; viewer.i = (viewer.i + dir + viewer.ids.length) % viewer.ids.length; paintViewer(); }
+  function closeViewer() { viewer = null; paintViewer(); }
+  document.addEventListener('keydown', (e) => {
+    if (!viewer) return;
+    if (e.key === 'Escape') { e.stopImmediatePropagation(); closeViewer(); }
+    else if (e.key === 'ArrowRight') stepViewer(t('dir') === 'rtl' ? -1 : 1);
+    else if (e.key === 'ArrowLeft') stepViewer(t('dir') === 'rtl' ? 1 : -1);
+  }, true);
 
   // ---------- Отправка заказа ----------
   function uuid() {
@@ -1066,7 +1285,11 @@
         const rows = await rpc('get_order', { p_id: o.id, p_token: o.token });
         const row = Array.isArray(rows) ? rows[0] : rows;
         if (!row) { gone.push(o.id); return; }  // сервер не знает такой заказ (старше 3 дней или другая база)
-        if (JSON.stringify(tracked[o.id]) !== JSON.stringify(row)) { tracked[o.id] = row; changed = true; }
+        if (JSON.stringify(tracked[o.id]) !== JSON.stringify(row)) {
+          if (row.status === 'ready' && tracked[o.id] && tracked[o.id].status !== 'ready') readyAlert();
+          tracked[o.id] = row;
+          changed = true;
+        }
       } catch { ok = false; }
     }));
     if (gone.length) {
@@ -1084,10 +1307,30 @@
       if (sheet?.type === 'track' || sheet?.type === 'order') renderSheet();
     }
   }
+  // заказ готов: вибрация (Android), короткий звук (если гость уже нажимал на страницу) и сообщение
+  let beep = null;
+  ['pointerdown', 'keydown'].forEach((ev) => document.addEventListener(ev, () => {
+    try { if (!beep) beep = new (window.AudioContext || window.webkitAudioContext)(); if (beep.state === 'suspended') beep.resume(); } catch { /* без звука */ }
+  }, { capture: true, passive: true }));
+  function readyAlert() {
+    try { navigator.vibrate?.([300, 120, 300]); } catch { /* нет вибрации */ }
+    try {
+      if (beep && beep.state === 'running') {
+        const t0 = beep.currentTime;
+        [0, 0.2].forEach((dt) => {
+          const o = beep.createOscillator(); const g = beep.createGain();
+          o.frequency.value = 880; g.gain.setValueAtTime(0.0001, t0 + dt);
+          g.gain.exponentialRampToValueAtTime(0.3, t0 + dt + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t0 + dt + 0.18);
+          o.connect(g).connect(beep.destination); o.start(t0 + dt); o.stop(t0 + dt + 0.2);
+        });
+      }
+    } catch { /* без звука */ }
+    toast(t('readyToast'), 'good');
+  }
   function schedulePoll(soon) {
     clearTimeout(pollTimer);
     if (!ONLINE || !myOrders.length) return;
-    const active = myOrders.some((o) => tracked[o.id]?.status === 'new');
+    const active = myOrders.some((o) => ['new', 'accepted', 'cooking', 'ready'].includes(tracked[o.id]?.status) && !tracked[o.id]?.paid_at);
     pollTimer = setTimeout(async () => {
       if (!document.hidden) await pollOrders();
       schedulePoll();
@@ -1152,7 +1395,7 @@
     if (sheet.type === 'dish') {
       const d = byId[sheet.id];
       if (!d) { closeSheet(); return; }
-      const meta = [amount(d), d.kcal ? `${d.kcal} ${t('kcal')}` : ''].filter(Boolean).join(' · ');
+      const meta = [amount(d), d.kcal ? `${d.kcal} ${t('kcal')}` : '', d.prepMin ? t('prep')(d.prepMin) : ''].filter(Boolean).join(' · ');
       const allergens = (d.allergens || []).map((a) => t('allergenNames')[a] || a).join(', ');
       const pick = hasOptions(d) && orderable(d);
       if (pick && !sheet.pick) {
@@ -1187,12 +1430,47 @@
         <div class="sheet-foot">
           <div class="price-wrap"><span class="price big">${money(d.price)}</span><span class="amount">${esc(meta)}</span></div>
           <div class="slot" data-slot="${esc(d.id)}">${control(d.id)}</div>
-        </div>`}`;
+        </div>`}
+        ${pairsHtml(pairsFor([d.id]), t('pairs'))}`;
+      if (d.photo) body.querySelector('.photo.big')?.setAttribute('data-zoom', d.id);
+      return;
+    }
+
+    if (sheet.type === 'waiter') {
+      const pend = openCalls.reasons || [];
+      body.innerHTML = `<h2 class="sheet-title" id="sheet-title">${esc(t('reqTitle'))}</h2>
+        <div class="req-grid">
+          <button type="button" class="req-opt req-come" data-act="req" data-reason="">${icon('bell')}<span>${esc(t('reqCome'))}</span>${openCalls.waiter && !pend.length ? `<small>${esc(t('reqPending'))}</small>` : ''}</button>
+          ${Object.entries(t('reqs')).map(([k, n]) => `<button type="button" class="req-opt${pend.includes(k) ? ' on' : ''}" data-act="req" data-reason="${k}"><span>${esc(n)}</span>${pend.includes(k) ? `<small>${esc(t('reqPending'))}</small>` : ''}</button>`).join('')}
+        </div>`;
+      return;
+    }
+
+    if (sheet.type === 'filters') {
+      const n = M.dishes.filter(passFilters).length;
+      const all = Object.keys(t('allergenNames'));
+      body.innerHTML = `<h2 class="sheet-title" id="sheet-title">${esc(t('filter'))}</h2>
+        <div class="f-chips">
+          <button type="button" class="f-chip${filters.veg ? ' on' : ''}" data-act="f" data-f="veg" aria-pressed="${!!filters.veg}">${esc(t('fVeg'))}</button>
+          <button type="button" class="f-chip${filters.spicy ? ' on' : ''}" data-act="f" data-f="spicy" aria-pressed="${!!filters.spicy}">${esc(t('fSpicy'))}</button>
+        </div>
+        <h4>${esc(t('allergens'))}</h4>
+        <div class="f-chips">${all.map((a) => { const on = (filters.no || []).includes(a); return `<button type="button" class="f-chip${on ? ' on' : ''}" data-act="f" data-f="no:${a}" aria-pressed="${on}">${esc(t('fNo'))} ${esc(t('allergenNames')[a])}</button>`; }).join('')}</div>
+        <p class="hint-note">${esc(t('fNote'))}</p>
+        <div class="sheet-actions"><div class="btn-pair">
+          <button type="button" class="btn ghost" data-act="f-reset"${filterCount() ? '' : ' disabled'}>${esc(t('fReset'))}</button>
+          <button type="button" class="btn" data-act="f-done">${esc(t('fShow')(n))}</button></div></div>`;
       return;
     }
 
     if (sheet.type === 'bill') {
+      const tb = sheet.tableBill;
+      const tot = (tb || []).reduce((x, o) => x + Number(o.total), 0);
       body.innerHTML = `<h2 class="sheet-title" id="sheet-title">${esc(t('askBill'))}</h2>
+        ${tb === undefined ? `<p class="sheet-desc">…</p>` : tb === null ? '' : tb.length ? `
+          <h4>${esc(t('tableBill'))}</h4><p class="hint-note" style="margin-top:2px">${esc(t('tableBillHint'))}</p>
+          <ul class="order-list track-list">${tb.map((o) => `<li><span class="o-name"><b>${esc(t('orderNo')(o.no))}</b><small>${esc((o.items || []).map((i) => `${i.qty}× ${L(i.name) || i.id}`).join(', '))}</small></span><span class="o-sum">${money(o.total)}</span></li>`).join('')}</ul>
+          <div class="order-total"><span>${esc(t('tableTotal'))}</span><strong>${money(tot)}</strong></div>` : `<p class="hint-note">${esc(t('tableBillEmpty'))}</p>`}
         <p class="sheet-desc">${esc(t('payHow'))}</p>
         <div class="pay-list">${[['cash', t('payCash')], ['card', t('payCard')], ['qr', t('payQr')]].map(([m, n]) => `
           <button type="button" class="pay-opt" data-act="pay" data-method="${m}"><span>${esc(n)}</span>${icon('chevron', 'chev')}</button>`).join('')}</div>`;
@@ -1356,8 +1634,20 @@
       else if (a === 'pick') openSheet({ type: 'dish', id: act.dataset.id });
       else if (a === 'pick-inc' || a === 'pick-dec') { if (sheet?.pick) { sheet.pick.qty = Math.min(99, Math.max(1, sheet.pick.qty + (a === 'pick-inc' ? 1 : -1))); updatePick(); } }
       else if (a === 'pick-add') addPicked();
-      else if (a === 'call-waiter') callStaff('waiter');
-      else if (a === 'call-bill') openSheet({ type: 'bill' });
+      else if (a === 'call-waiter') openSheet({ type: 'waiter' });
+      else if (a === 'req') callStaff('waiter', null, act.dataset.reason || null);
+      else if (a === 'call-bill') openBill();
+      else if (a === 'filters') openSheet({ type: 'filters' });
+      else if (a === 'f') {
+        const f = act.dataset.f;
+        if (f === 'veg' || f === 'spicy') filters[f] = !filters[f];
+        else { const al = f.slice(3); filters.no = (filters.no || []).includes(al) ? filters.no.filter((x) => x !== al) : [...(filters.no || []), al]; }
+        saveFilters(); renderSheet(); renderMenu(); renderFilterBtn();
+      } else if (a === 'f-reset') { filters = {}; saveFilters(); renderSheet(); renderMenu(); renderFilterBtn(); }
+      else if (a === 'f-done') closeSheet();
+      else if (a === 'rate') { reviewDraft.rating = Number(act.dataset.n); renderSheet(); }
+      else if (a === 'review-send') sendReview(act.dataset.id);
+      else if (a === 'repeat') repeatOrder(act.dataset.id);
       else if (a === 'pay') callStaff('bill', act.dataset.method);
       else if (a === 'clear') {
         order = {};
@@ -1411,6 +1701,8 @@
       return;
     }
 
+    const zoom = e.target.closest('[data-zoom]');
+    if (zoom) { openViewer(zoom.dataset.zoom); return; }
     const open = e.target.closest('[data-open]');
     if (open) openSheet({ type: 'dish', id: open.dataset.open });
   });
@@ -1467,6 +1759,7 @@
   });
 
   function renderAll() {
+    renderFilterBtn();
     renderHeader();
     renderTableActions();
     renderMenu();
@@ -1477,8 +1770,10 @@
   applyTheme();
   renderAll();
   setInterval(() => { if (M) renderHeader(); }, 60 * 1000); // «Открыто / Закрыто» обновляется само
+  renderFilterBtn();
   if (ONLINE) {
     refreshMenu();
+    setTimeout(loadStats, 1200);
     checkTable();
     pollOrders().then(() => schedulePoll());
     setInterval(() => { if (!document.hidden) refreshMenu(); }, 60 * 1000);

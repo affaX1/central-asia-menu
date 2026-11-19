@@ -459,3 +459,16 @@ body.signed #a-user .lang-pick select { width: 100%; }
 .st-row > span { font-weight: 700; }
 .st-row small { flex-basis: 100%; color: var(--muted); }
 .st-row select { min-height: 42px; padding: 4px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--bg); color: var(--text); font: 600 15px var(--font-body); }
+
+/* «С этим берут» в форме блюда, отзывы в отчётах */
+.pairs-pick { display: flex; flex-wrap: wrap; gap: 6px; max-height: 180px; overflow-y: auto; padding: 8px; border: 1px solid var(--line); border-radius: 12px; background: var(--bg); }
+.pairs-pick label { display: inline-flex; align-items: center; gap: 6px; min-height: 34px; padding: 0 10px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); font-size: 13.5px; font-weight: 600; cursor: pointer; }
+.pairs-pick input { accent-color: var(--accent); }
+.rv-avg { margin: 0 0 10px; font-size: 15px; color: var(--muted); }
+.rv-avg b { font-size: 26px; color: var(--text); }
+.rv-list { list-style: none; margin: 14px 0 0; padding: 0; display: grid; gap: 8px; }
+.rv-list li { padding: 10px 12px; border-radius: 12px; background: var(--surface-2); }
+.rv-list li > div { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; }
+.rv-stars { color: var(--warn); letter-spacing: 1px; font-size: 16px; }
+.rv-list small { color: var(--muted); font-weight: 600; }
+.rv-list p { margin: 6px 0 0; }

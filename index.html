@@ -17,7 +17,7 @@
       document.documentElement.dataset.theme = t;
     } catch (e) {}
   </script>
-  <link rel="stylesheet" href="styles.css?v=20">
+  <link rel="stylesheet" href="styles.css?v=21">
 </head>
 <body>
   <!-- Иконки: одна линейная коллекция для всего сайта -->
@@ -40,6 +40,8 @@
       <symbol id="i-alert" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5v5.2M12 16.2v.1"/></symbol>
       <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3M19.5 4.5v4h-4"/></symbol>
       <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 16.5V11a6 6 0 0 1 12 0v5.5l1.5 2h-15zM10 20.5h4"/></symbol>
+      <symbol id="i-star" viewBox="0 0 24 24"><path d="M12 3.6l2.6 5.3 5.8.8-4.2 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.2-4.1 5.8-.8z"/></symbol>
+      <symbol id="i-filter" viewBox="0 0 24 24"><path d="M4 6h16M7 12h10M10 18h4"/></symbol>
       <symbol id="i-list" viewBox="0 0 24 24"><path d="M6.5 3.5h11v17l-2.75-1.8L12 20.5l-2.75-1.8L6.5 20.5zM9.5 8.5h5M9.5 12h5"/></symbol>
       <symbol id="i-check" viewBox="0 0 24 24"><path d="M5.5 12.5l4.2 4.2 8.8-9.4"/></symbol>
     </defs>
@@ -61,11 +63,14 @@
     </div>
     <div class="info" id="r-info"></div>
     <div class="table-actions" id="table-actions" hidden></div>
-    <label class="search">
-      <svg class="ic" aria-hidden="true"><use href="#i-search"/></svg>
-      <input id="search" type="search" autocomplete="off" enterkeyhint="search">
-      <button type="button" class="search-clear" id="search-clear" hidden><svg class="ic" aria-hidden="true"><use href="#i-x"/></svg></button>
-    </label>
+    <div class="search-row">
+      <label class="search">
+        <svg class="ic" aria-hidden="true"><use href="#i-search"/></svg>
+        <input id="search" type="search" autocomplete="off" enterkeyhint="search">
+        <button type="button" class="search-clear" id="search-clear" hidden><svg class="ic" aria-hidden="true"><use href="#i-x"/></svg></button>
+      </label>
+      <button type="button" class="icon-btn filter-btn" id="filter-btn" data-act="filters"></button>
+    </div>
   </header>
 
   <nav class="cats" id="cats"></nav>
@@ -82,9 +87,9 @@
     <div id="sheet-body"></div>
   </section>
 
-  <script src="config.js?v=20"></script>
-  <script src="data.js?v=20"></script>
-  <script src="schedule.js?v=20"></script>
-  <script src="app.js?v=20"></script>
+  <script src="config.js?v=21"></script>
+  <script src="data.js?v=21"></script>
+  <script src="schedule.js?v=21"></script>
+  <script src="app.js?v=21"></script>
 </body>
 </html>

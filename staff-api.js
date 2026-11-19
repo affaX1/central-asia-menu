@@ -157,6 +157,13 @@
           .order('at', { ascending: false }).limit(1000);
         fail(error); return data || [];
       },
+      // ---------- отзывы гостей (только владелец) ----------
+      async reviews(fromIso, toIso) {
+        const { data, error } = await sb.from('reviews').select('*').gte('created_at', fromIso).lt('created_at', toIso)
+          .order('created_at', { ascending: false }).limit(1000);
+        fail(error); return data || [];
+      },
+      async setTelegramReviews(on) { const { error } = await sb.rpc('set_telegram_reviews', { p_on: on }); fail(error); },
       // ---------- Telegram (только владелец; токен наружу не отдаётся) ----------
       async telegramStatus() {
         const { data, error } = await sb.rpc('telegram_status'); fail(error); return Array.isArray(data) ? data[0] : data;

@@ -26,7 +26,7 @@
       dishes: M.dishes.map((d, i) => ({
         id: d.id, category_id: d.category, name: d.name, desc: d.desc || {}, ingredients: d.ingredients || {},
         price: d.price, weight: d.weight ?? null, unit: d.unit || 'g', kcal: d.kcal ?? null, photo_url: null,
-        tags: d.tags || [], allergens: d.allergens || [], meat: d.meat || [], sort: (i + 1) * 10, hidden: false, available: true, options: [],
+        tags: d.tags || [], allergens: d.allergens || [], meat: d.meat || [], sort: (i + 1) * 10, hidden: false, available: true, options: [], prep_min: null, pairs: [],
       })),
       staff: [
         { user_id: 'u-owner', email: 'owner@example.com', name: 'Владелец', role: 'owner', active: true, created_at: '2026-01-01' },
@@ -250,7 +250,9 @@
       return o;
     },
     async audit(from, to) { await delay(); owner(); const f = new Date(from).getTime(); const t = new Date(to).getTime(); return (db().audit || []).filter((a) => { const x = new Date(a.at).getTime(); return x >= f && x < t; }).sort((a, b) => new Date(b.at) - new Date(a.at)); },
-    async telegramStatus() { await delay(); owner(); const t = db().telegram || {}; return { connected: !!(t.token && t.chats?.length), bot_hint: t.token ? '…' + t.token.slice(-4) : null, chats: (t.chats || []).length, notify_orders: t.orders !== false, notify_calls: t.calls !== false, notify_bills: !!t.bills, net_ok: true }; },
+    async reviews(from, to) { await delay(); owner(); const f = new Date(from).getTime(); const t2 = new Date(to).getTime(); return (db().reviews || []).filter((r) => { const x = new Date(r.created_at).getTime(); return x >= f && x < t2; }).sort((a, c) => new Date(c.created_at) - new Date(a.created_at)); },
+    async setTelegramReviews(on) { await delay(); owner(); const d = db(); d.telegram = { ...(d.telegram || {}), reviews: on }; save(d); },
+    async telegramStatus() { await delay(); owner(); const t = db().telegram || {}; return { connected: !!(t.token && t.chats?.length), bot_hint: t.token ? '…' + t.token.slice(-4) : null, chats: (t.chats || []).length, notify_orders: t.orders !== false, notify_calls: t.calls !== false, notify_bills: !!t.bills, net_ok: true, notify_reviews: t.reviews !== false }; },
     async setTelegram(token, chats, orders, calls, bills) {
       await delay(); owner();
       if (token != null && !/^[0-9]{5,15}:[A-Za-z0-9_-]{30,60}$/.test(token.trim())) throw new Error('bad_token');
@@ -313,17 +315,42 @@
         const tb = d.tables.find((x) => x.token === b.p_table && x.active);
         if (!tb) return fail('bad_table');
         if (!['waiter', 'bill'].includes(b.p_kind)) return fail('bad_request');
+        if (b.p_reason && (b.p_kind !== 'waiter' || !['water', 'napkins', 'cutlery', 'ice', 'clear'].includes(b.p_reason))) return fail('bad_request');
         d.calls = d.calls || [];
-        const open = d.calls.find((c) => c.table_id === tb.id && c.kind === b.p_kind && !c.done_at);
+        const open = d.calls.find((c) => c.table_id === tb.id && c.kind === b.p_kind && !c.done_at && (c.reason || '') === (b.p_reason || ''));
         if (open) { if (b.p_method) open.pay_method = b.p_method; save(d); return reply(200, [{ id: open.id, kind: open.kind, created_at: open.created_at }]); }
-        if (d.calls.filter((c) => c.table_id === tb.id && Date.now() - new Date(c.created_at) < 600000).length >= 6) return fail('too_many');
-        const c = { id: crypto.randomUUID(), table_id: tb.id, table_label: tb.label, kind: b.p_kind, pay_method: b.p_kind === 'bill' ? b.p_method || null : null, created_at: new Date().toISOString(), done_at: null };
+        if (d.calls.filter((c) => c.table_id === tb.id && Date.now() - new Date(c.created_at) < 600000).length >= 10) return fail('too_many');
+        const c = { id: crypto.randomUUID(), table_id: tb.id, table_label: tb.label, kind: b.p_kind, pay_method: b.p_kind === 'bill' ? b.p_method || null : null, reason: b.p_kind === 'waiter' ? b.p_reason || null : null, created_at: new Date().toISOString(), done_at: null };
         d.calls.push(c); save(d);
         return reply(200, [{ id: c.id, kind: c.kind, created_at: c.created_at }]);
       }
       if (name === 'table_calls') {
         const tb = d.tables.find((x) => x.token === b.p_table && x.active);
-        return reply(200, tb ? (d.calls || []).filter((c) => c.table_id === tb.id && !c.done_at).map((c) => ({ kind: c.kind, created_at: c.created_at })) : []);
+        return reply(200, tb ? (d.calls || []).filter((c) => c.table_id === tb.id && !c.done_at).map((c) => ({ kind: c.kind, created_at: c.created_at, reason: c.reason || null })) : []);
+      }
+      if (name === 'table_bill') {
+        const tb = d.tables.find((x) => x.token === b.p_table && x.active);
+        return reply(200, tb ? d.orders.filter((o) => o.table_id === tb.id && !o.paid_at && o.status !== 'cancelled' && Date.now() - new Date(o.created_at) < 12 * 3600000)
+          .sort((a, c) => a.no - c.no).map((o) => ({ no: o.no, status: o.status, items: o.items, subtotal: o.subtotal ?? o.total, service: o.service || 0, tax: o.tax || 0, total: o.total, created_at: o.created_at })) : []);
+      }
+      if (name === 'menu_stats') {
+        const valid = d.orders.filter((o) => o.status !== 'cancelled');
+        const cnt = {}; const pr = {};
+        for (const o of valid) {
+          const ids = [...new Set(o.items.map((i) => i.id))];
+          for (const i of o.items) cnt[i.id] = (cnt[i.id] || 0) + i.qty;
+          for (const a of ids) for (const c of ids) if (a !== c) { pr[a] = pr[a] || {}; pr[a][c] = (pr[a][c] || 0) + 1; }
+        }
+        const pairs = Object.fromEntries(Object.entries(pr).map(([a, m]) => [a, Object.entries(m).filter(([, n]) => n >= 2).sort((x, y) => y[1] - x[1]).slice(0, 3).map(([c]) => c)]).filter(([, l]) => l.length));
+        return reply(200, { popular: Object.entries(cnt).sort((a, c) => c[1] - a[1]).slice(0, 12).map(([id]) => id), pairs });
+      }
+      if (name === 'leave_review') {
+        const o = d.orders.find((x) => x.id === b.p_order && x.guest_token === b.p_token);
+        if (!o) return fail('not_found');
+        if (['new', 'cancelled'].includes(o.status)) return fail('too_early');
+        if (!(b.p_rating >= 1 && b.p_rating <= 5)) return fail('bad_rating');
+        d.reviews = (d.reviews || []).filter((r) => r.order_id !== o.id).concat({ id: crypto.randomUUID(), order_id: o.id, order_no: o.no, table_id: o.table_id, table_label: o.table_label, rating: b.p_rating, comment: b.p_comment, lang: b.p_lang, created_at: new Date().toISOString() });
+        save(d); return reply(200, null);
       }
       if (name === 'place_order') {
         if (!b.p_client_key) return fail('bad_request');

@@ -89,7 +89,7 @@
   }
   function announceCalls(fresh) {
     const c = fresh[fresh.length - 1];
-    bannerMsg = fresh.length > 1 ? t('b_call_many', fresh.length) : t('b_call_one', c.table_label, c.kind === 'bill');
+    bannerMsg = fresh.length > 1 ? t('b_call_many', fresh.length) : `${t('b_call_one', c.table_label, c.kind === 'bill')}${c.reason ? ` — ${t('reasons')[c.reason] || c.reason}` : ''}`;
     bannerTo = 'floor';
     renderBanner();
     buzz(bannerMsg, 'call-' + c.id);

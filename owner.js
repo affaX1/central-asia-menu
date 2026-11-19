@@ -162,6 +162,12 @@
         <div class="checks">${TAGS.map(([v, n]) => `<label><input type="checkbox" name="tags" value="${v}"${d.tags?.includes(v) ? ' checked' : ''}>${n}</label>`).join('')}</div>
         <p class="section-label">Аллергены</p>
         <div class="checks">${ALLERGENS.map(([v, n]) => `<label><input type="checkbox" name="allergens" value="${v}"${d.allergens?.includes(v) ? ' checked' : ''}>${n}</label>`).join('')}</div>
+        <div class="form-grid" style="margin-top:6px">
+          <label class="field"><span>Время готовки, мин (необязательно)</span><input name="prep_min" type="number" min="1" max="240" step="1" inputmode="numeric" value="${esc(d.prep_min ?? '')}" placeholder="например 20"></label>
+        </div>
+        <p class="section-label">«С этим берут» (до 6 блюд, необязательно)</p>
+        <p class="help" style="margin:0 0 8px">Гость увидит их в карточке блюда и в корзине. Если не выбрать — подберём сами по тому, что гости чаще заказывают вместе.</p>
+        <div class="pairs-pick">${dishes.filter((x) => x.id !== d.id).map((x) => `<label><input type="checkbox" name="pairs" value="${esc(x.id)}"${(d.pairs || []).includes(x.id) ? ' checked' : ''}>${esc(tr(x.name))}</label>`).join('')}</div>
         <p class="section-label">Варианты блюда (необязательно)</p>
         <p class="help" style="margin:0 0 8px">Например: «Порция: целая / половина (−10)», «Острота: без / средне / остро», «Добавки: яйцо (+3)». Гость выберет их при заказе, цена посчитается сама. Названия — по-русски и по-английски (на других языках гость увидит английское).</p>
         <div id="opt-editor"></div>
@@ -302,6 +308,10 @@
       if (!f.get('category_id')) return err('Сначала создайте категорию.');
       let options;
       try { options = readOptions(); } catch (ex) { return err(ex.message); }
+      const prepMin = f.get('prep_min') ? Number(f.get('prep_min')) : null;
+      if (prepMin !== null && !(Number.isInteger(prepMin) && prepMin >= 1 && prepMin <= 240)) return err('Время готовки — от 1 до 240 минут.');
+      const pairs = f.getAll('pairs');
+      if (pairs.length > 6) return err('«С этим берут» — не больше 6 блюд.');
 
       const btn = e.target.querySelector('[type="submit"]');
       btn.disabled = true;
@@ -317,7 +327,7 @@
           ingredients: readLang(f, 'ingr'),
           price: Math.round(price * 100) / 100,
           weight, unit: f.get('unit'), kcal,
-          tags: f.getAll('tags'), allergens: f.getAll('allergens'), meat: f.getAll('meat'), options,
+          tags: f.getAll('tags'), allergens: f.getAll('allergens'), meat: f.getAll('meat'), options, prep_min: prepMin, pairs,
           available: !!f.get('available'), hidden: !f.get('shown'),
           sort: Number(f.get('sort')) || 0,
           photo_url: uploaded || (removePhoto ? null : d.photo_url || null),
@@ -633,6 +643,7 @@
           <label><input type="checkbox" name="orders"${st.notify_orders !== false ? ' checked' : ''}>Новые заказы</label>
           <label><input type="checkbox" name="calls"${st.notify_calls !== false ? ' checked' : ''}>Вызовы гостей и просьбы счёта</label>
           <label><input type="checkbox" name="bills"${st.notify_bills ? ' checked' : ''}>Оплаченные счета</label>
+          <label><input type="checkbox" name="reviews"${st.notify_reviews !== false ? ' checked' : ''}>Отзывы гостей</label>
         </div>
         <p class="notice bad" id="tg-err" hidden></p>
         <div class="btn-row">
@@ -666,6 +677,7 @@
       if (!chats.length) { err('Нажмите «Найти мой чат» или впишите номер чата.'); return; }
       try {
         await api.setTelegram(token, chats, form.orders.checked, form.calls.checked, form.bills.checked);
+        await api.setTelegramReviews(form.reviews.checked);
         S.toast('Telegram подключён. Нажмите «Проверить».');
         renderTelegram();
       } catch (ex) {
