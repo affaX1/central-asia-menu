@@ -176,6 +176,8 @@ alter table public.settings add column if not exists service_pct numeric(5, 2) n
 alter table public.settings add column if not exists tax_pct numeric(5, 2) not null default 0 check (tax_pct between 0 and 30);
 alter table public.settings add column if not exists tax_name text not null default 'SST' check (char_length(tax_name) between 1 and 20);
 alter table public.settings add column if not exists tax_on_service boolean not null default true;
+-- реквизиты для чека: юр. название, SSM, номер SST — печатаются под названием, до 5 строк
+alter table public.settings add column if not exists receipt_info text not null default '' check (char_length(receipt_info) <= 300);
 insert into public.settings (id) values (1) on conflict (id) do nothing;
 
 -- часовой пояс должен быть настоящим (Asia/Kuala_Lumpur, Asia/Tashkent…)

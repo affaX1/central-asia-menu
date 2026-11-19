@@ -37,16 +37,26 @@
     doc.write(`<!doctype html><html lang="${esc(S.lang)}"><head><meta charset="utf-8"><title>${esc(title)}</title><style>
       @page { size: 80mm auto; margin: 3mm; }
       * { box-sizing: border-box; }
-      body { margin: 0; width: 74mm; font: 12px/1.35 Helvetica, Arial, sans-serif; color: #000; }
-      h1 { font-size: 15px; margin: 0 0 2px; text-align: center; }
-      .c { text-align: center; } .muted { color: #333; } .big { font-size: 22px; font-weight: 800; }
+      body { margin: 0; width: 74mm; font: 12px/1.4 Helvetica, Arial, sans-serif; color: #000; font-variant-numeric: tabular-nums; }
+      h1 { font-size: 17px; line-height: 1.2; margin: 0 0 3px; text-align: center; text-transform: uppercase; letter-spacing: .04em; }
+      .c { text-align: center; } .muted { color: #222; } .small { font-size: 10.5px; } .big { font-size: 22px; font-weight: 800; }
+      .info { font-size: 10.5px; text-align: center; white-space: pre-line; line-height: 1.35; }
+      .doc { text-align: center; font-size: 15px; font-weight: 800; letter-spacing: .12em; margin: 2px 0; }
+      .doc-sub { text-align: center; font-size: 11px; font-weight: 700; }
       hr { border: 0; border-top: 1px dashed #000; margin: 6px 0; }
-      table { width: 100%; border-collapse: collapse; } td { vertical-align: top; padding: 1px 0; }
-      td.n { white-space: nowrap; padding-right: 4px; font-weight: 700; } td.s { text-align: right; white-space: nowrap; padding-left: 6px; }
+      hr.dbl { border-top: 3px double #000; }
+      table { width: 100%; border-collapse: collapse; } td, th { vertical-align: top; padding: 1px 0; }
+      td.n { white-space: nowrap; padding-right: 4px; font-weight: 700; } td.s, th.s { text-align: right; white-space: nowrap; padding-left: 6px; }
+      .kv td:first-child { color: #222; width: 40%; } .kv td:last-child { text-align: right; font-weight: 700; }
+      .items th { font-size: 10.5px; text-align: left; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; border-bottom: 1px solid #000; padding-bottom: 2px; }
+      .items td { padding-top: 4px; } .items .name { font-weight: 700; } .items .unit { font-size: 11px; color: #222; }
       .opt { font-size: 11px; padding-left: 10px; }
-      .tot td { font-weight: 800; font-size: 15px; padding-top: 3px; }
+      .sums td { padding: 1.5px 0; }
+      .tot td { font-weight: 800; font-size: 18px; padding: 2px 0; }
+      .pay td { font-size: 12px; }
       .note { border: 2px solid #000; padding: 4px 6px; margin-top: 6px; font-size: 14px; font-weight: 700; }
       .k td { font-size: 16px; font-weight: 700; padding: 2px 0; }
+      .stamp { border: 1.5px solid #000; text-align: center; font-weight: 800; font-size: 11px; letter-spacing: .06em; padding: 3px; margin: 6px 0 2px; text-transform: uppercase; }
     </style></head><body>${bodyHtml}</body></html>`);
     doc.close();
     const go = () => {
@@ -67,35 +77,69 @@
       <hr><div class="c muted">${o.accepted_by_name ? `${esc(t('p_accepted', o.accepted_by_name))} · ` : ''}${esc(t('p_printed', hhmm(new Date().toISOString())))}</div>`);
   }
 
-  // чек / предварительный счёт стола: позиции всех заказов, сбор, налог, чаевые, оплата
+  // чек / предварительный счёт стола: шапка с реквизитами, кто/когда, позиции с ценой за штуку,
+  // подытог, сервисный сбор и налог с процентом, ИТОГО, чаевые и чем оплатили
   function printReceipt({ table, orders, bill }) {
     const st = S.settings || {};
     const lines = new Map();
     for (const o of orders) for (const i of o.items || []) {
       const k = `${lineTitle(i)}|${i.price}`;
-      const l = lines.get(k) || { title: lineTitle(i), price: Number(i.price), qty: 0 };
+      const l = lines.get(k) || { title: tr(i.name) || i.id, opts: optNames(i), price: Number(i.price), qty: 0 };
       l.qty += Number(i.qty);
       lines.set(k, l);
     }
     const sum = (f) => r2(orders.reduce((s, o) => s + Number(f(o) || 0), 0));
     const tt = bill || { subtotal: sum(sub), service: sum((o) => o.service), tax: sum((o) => o.tax), total: sum((o) => o.total) };
+    // на чеке — суммы с копейками; валюта только у итога и оплаты
+    const num = (n) => new Intl.NumberFormat(S.locale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(n) || 0);
+    const cur = (n) => (st.currency_before ? `${st.currency || ''} ${num(n)}` : `${num(n)} ${st.currency || ''}`).trim();
+    // процент считаем из того, что реально взяли с этих заказов (ставка могла поменяться)
+    const pct = (part, base) => { const p = base > 0 ? Math.round((part / base) * 1000) / 10 : 0; return p ? `${String(p).replace(/\.0$/, '')}%` : ''; };
+    const subT = Number(tt.subtotal) || 0;
+    const servT = Number(tt.service) || 0;
+    const taxT = Number(tt.tax) || 0;
+    const taxBase = subT + (st.tax_on_service === false ? 0 : servT);
+    const when = new Date(bill?.paid_at || Date.now());
     const addr = tr(st.address);
+    const waiters = [...new Set(orders.map((o) => o.accepted_by_name).filter(Boolean))];
     const pays = bill?.payments?.length ? bill.payments : bill ? [{ method: bill.method, amount: Number(bill.total) + Number(bill.tip || 0) }] : [];
+    const row = (k, v, cls = '') => `<tr${cls ? ` class="${cls}"` : ''}><td>${esc(k)}</td><td class="s">${esc(v)}</td></tr>`;
     printSlip(bill ? t('p_receipt', bill.no) : t('p_prebill'), `
       <h1>${esc(st.name || '')}</h1>
-      ${addr ? `<div class="c muted">${esc(addr)}</div>` : ''}${st.phone ? `<div class="c muted">${esc(st.phone)}</div>` : ''}
-      <hr><div>${esc(bill ? t('p_receipt', bill.no) : t('p_prebill'))} · ${esc(t('table'))} ${esc(table)}</div>
-      <div class="muted">${esc(new Date(bill?.paid_at || Date.now()).toLocaleString(S.locale(), { dateStyle: 'short', timeStyle: 'short' }))} · ${esc(t('p_orders'))} №${esc(orders.map((o) => o.no).join(', №'))}</div>
-      <hr><table>${[...lines.values()].map((l) => `<tr><td class="n">${l.qty}×</td><td>${esc(l.title)}</td><td class="s">${esc(money(l.price * l.qty))}</td></tr>`).join('')}</table>
-      <hr><table>
-        ${Number(tt.service) || Number(tt.tax) ? `<tr><td>${esc(t('sum_items'))}</td><td class="s">${esc(money(tt.subtotal))}</td></tr>` : ''}
-        ${Number(tt.service) ? `<tr><td>${esc(t('sum_service'))}${st.service_pct ? ` ${Number(st.service_pct)}%` : ''}</td><td class="s">${esc(money(tt.service))}</td></tr>` : ''}
-        ${Number(tt.tax) ? `<tr><td>${esc(st.tax_name || t('sum_tax'))}${st.tax_pct ? ` ${Number(st.tax_pct)}%` : ''}</td><td class="s">${esc(money(tt.tax))}</td></tr>` : ''}
-        <tr class="tot"><td>${esc(t('p_total'))}</td><td class="s">${esc(money(tt.total))}</td></tr>
-        ${bill && Number(bill.tip) ? `<tr><td>${esc(t('tip'))}</td><td class="s">${esc(money(bill.tip))}</td></tr>` : ''}
+      ${addr ? `<div class="info">${esc(addr)}</div>` : ''}${st.phone ? `<div class="info">${esc(st.phone)}</div>` : ''}
+      ${st.receipt_info ? `<div class="info">${esc(st.receipt_info)}</div>` : ''}
+      <hr class="dbl">
+      <div class="doc">${esc(bill ? t('p_receipt_h', bill.no) : t('p_bill_h'))}</div>
+      <hr>
+      <table class="kv">
+        ${row(t('table'), table)}
+        ${row(t('p_orders_l'), `№${orders.map((o) => o.no).join(', №')}`)}
+        ${row(t('p_date'), when.toLocaleDateString(S.locale(), { day: '2-digit', month: '2-digit', year: 'numeric' }))}
+        ${row(t('p_time'), when.toLocaleTimeString(S.locale(), { hour: '2-digit', minute: '2-digit' }))}
+        ${waiters.length ? row(t('p_waiter'), waiters.join(', ')) : ''}
+        ${bill?.paid_by_name ? row(t('p_cashier'), bill.paid_by_name) : ''}
       </table>
-      ${bill ? `<div>${esc(t('payment'))}: ${pays.map((p) => `${esc(payName(p.method))} ${esc(money(p.amount))}`).join(', ')}${bill.paid_by_name ? ` · ${esc(bill.paid_by_name)}` : ''}</div>` : `<div class="muted">${esc(t('p_not_receipt'))}</div>`}
-      <hr><div class="c">${esc(t('p_thanks'))}</div>`);
+      <hr>
+      <table class="items">
+        <tr><th>${esc(t('p_item'))}</th><th class="s">${esc(t('p_amount'))}</th></tr>
+        ${[...lines.values()].map((l) => `<tr><td><div class="name">${esc(l.title)}</div>${l.opts.length ? `<div class="opt">${esc(l.opts.join(', '))}</div>` : ''}<div class="unit">${l.qty} × ${esc(num(l.price))}</div></td><td class="s"><b>${esc(num(l.price * l.qty))}</b></td></tr>`).join('')}
+      </table>
+      <hr>
+      <table class="sums">
+        ${row(t('p_subtotal'), num(subT))}
+        ${servT ? row(`${t('sum_service')} ${pct(servT, subT)}`.trim(), num(servT)) : ''}
+        ${taxT ? row(`${st.tax_name || t('sum_tax')} ${pct(taxT, taxBase)}`.trim(), num(taxT)) : ''}
+      </table>
+      <hr class="dbl">
+      <table>${row(t('p_total'), cur(tt.total), 'tot')}</table>
+      <hr class="dbl">
+      ${bill ? `<table class="pay">
+        ${Number(bill.tip) ? row(t('tip'), num(bill.tip)) : ''}
+        ${pays.map((p) => row(`${t('p_paid')}: ${payName(p.method)}`, cur(p.amount))).join('')}
+        ${pays.length > 1 || Number(bill.tip) ? row(t('p_paid_total'), cur(Number(bill.total) + Number(bill.tip || 0)), 'tot') : ''}
+      </table><hr>` : `<div class="stamp">${esc(t('p_not_receipt'))}</div>`}
+      <div class="c" style="font-weight:700;margin-top:4px">${esc(t('p_thanks'))}</div>
+      <div class="c small muted">${esc(t('p_printed', hhmm(new Date().toISOString())))}</div>`);
   }
 
   // ---------- «Зал» ----------

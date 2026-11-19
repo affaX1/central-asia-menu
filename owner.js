@@ -512,6 +512,8 @@
             <label class="field"><span>Название налога</span><input name="tax_name" type="text" maxlength="20" value="${esc(st.tax_name || 'SST')}"></label>
             <div class="field"><span>Налог на сервисный сбор</span>${sw('name="tax_on_service"', st.tax_on_service !== false, 'Считать налог и на сбор')}</div>
           </div>
+          <label class="field"><span>Реквизиты для чека (необязательно)</span><textarea name="receipt_info" rows="3" maxlength="300" placeholder="Например:&#10;Central Asia Sdn Bhd (SSM 202401234567)&#10;SST No: W10-1234-56789012">${esc(st.receipt_info || '')}</textarea>
+            <span class="hint">Печатается вверху чека, под названием. До 5 строк.</span></label>
         </div></section>
 
         <p class="notice bad" id="set-err" role="alert" hidden></p>
@@ -578,6 +580,7 @@
       const taxPct = Number(String(f.get('tax_pct') || 0).replace(',', '.'));
       if (!(servicePct >= 0 && servicePct <= 30) || !(taxPct >= 0 && taxPct <= 30)) return err('Сбор и налог — от 0 до 30%.');
       const taxName = String(f.get('tax_name') || '').trim() || 'SST';
+      const receiptInfo = String(f.get('receipt_info') || '').split('\n').map((x) => x.trim()).filter(Boolean).slice(0, 5).join('\n').slice(0, 300);
       const schedule = [];
       for (let i = 0; i < 7; i++) {
         const open = f.get(`open_${i}`);
@@ -611,6 +614,7 @@
           footer: readLang(f, 'footer'),
           logo_url: uploaded || (removeLogo ? null : st.logo_url || null),
           service_pct: servicePct, tax_pct: taxPct, tax_name: taxName.slice(0, 20), tax_on_service: !!f.get('tax_on_service'),
+          receipt_info: receiptInfo,
         };
         const saved = await api.saveSettings(patch);
         if ((uploaded || removeLogo) && st.logo_url) api.deleteImage(st.logo_url);

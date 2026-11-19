@@ -267,6 +267,18 @@ window.STAFF_T = (() => {
     p_total: { ru: 'ИТОГО', en: 'TOTAL', ms: 'JUMLAH', uz: 'JAMI' },
     p_not_receipt: { ru: 'Не является чеком об оплате', en: 'This is not a payment receipt', ms: 'Ini bukan resit bayaran', uz: 'Bu to‘lov cheki emas' },
     p_thanks: { ru: 'Спасибо! Рахмат!', en: 'Thank you! Rahmat!', ms: 'Terima kasih! Rahmat!', uz: 'Rahmat!' },
+    p_bill_h: { ru: 'СЧЁТ', en: 'BILL', ms: 'BIL', uz: 'HISOB' },
+    p_receipt_h: { ru: (n) => `ЧЕК № ${n}`, en: (n) => `RECEIPT # ${n}`, ms: (n) => `RESIT # ${n}`, uz: (n) => `CHEK № ${n}` },
+    p_date: { ru: 'Дата', en: 'Date', ms: 'Tarikh', uz: 'Sana' },
+    p_time: { ru: 'Время', en: 'Time', ms: 'Masa', uz: 'Vaqt' },
+    p_orders_l: { ru: 'Заказы', en: 'Orders', ms: 'Pesanan', uz: 'Buyurtmalar' },
+    p_waiter: { ru: 'Официант', en: 'Waiter', ms: 'Pelayan', uz: 'Ofitsiant' },
+    p_cashier: { ru: 'Кассир', en: 'Cashier', ms: 'Juruwang', uz: 'Kassir' },
+    p_item: { ru: 'Наименование', en: 'Item', ms: 'Item', uz: 'Nomi' },
+    p_amount: { ru: 'Сумма', en: 'Amount', ms: 'Amaun', uz: 'Summa' },
+    p_subtotal: { ru: 'Подытог', en: 'Subtotal', ms: 'Jumlah kecil', uz: 'Oraliq jami' },
+    p_paid: { ru: 'Оплачено', en: 'Paid', ms: 'Dibayar', uz: 'To‘landi' },
+    p_paid_total: { ru: 'Всего оплачено', en: 'Total paid', ms: 'Jumlah dibayar', uz: 'Jami to‘landi' },
 
     // ---------- кухня ----------
     k_title: { ru: 'Кухня', en: 'Kitchen', ms: 'Dapur', uz: 'Oshxona' },
