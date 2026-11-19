@@ -39,7 +39,10 @@
       emptyMenu: 'Меню скоро появится', emptyMenuHint: 'Ресторан ещё заполняет меню. Спросите официанта.',
       offline: 'Нет связи — показано меню, загруженное ранее.',
       sendOrder: 'Отправить заказ', sending: 'Отправляем…',
-      noteLabel: 'Комментарий к заказу', notePh: 'Например: без лука, острое отдельно',
+      noteLabel: "Пожелания ко всему заказу", notePh: 'Например: без лука, острое отдельно',
+      noteHint: "Аллергия, диабет, ребёнок — официант и повар увидят это сразу.", dishNote: "Пожелание к блюду", dishNotePh: "Своими словами…", noteDone: "Готово",
+      dishChips: ["Поменьше соли", "Поменьше сладкого", "Без сахара", "Не острое", "Острее", "Без лука", "Без зелени", "Без мяса", "Соус отдельно"],
+      orderChips: ["Диабет — без сахара", "Аллергия на орехи", "Аллергия на молочное", "Без лука во всех блюдах", "Ребёнок за столом", "Подать всё сразу"],
       yourTable: 'Ваш стол',
       noTable: 'Чтобы отправить заказ, отсканируйте QR-код на своём столе.',
       badTable: 'Этот QR-код недействителен или стол отключён. Попросите официанта помочь.',
@@ -107,7 +110,10 @@
       emptyMenu: "Menyu tez orada paydo bo'ladi", emptyMenuHint: "Restoran menyuni to'ldirmoqda. Ofitsiantdan so'rang.",
       offline: "Aloqa yo'q — avval yuklangan menyu ko'rsatilmoqda.",
       sendOrder: 'Buyurtmani yuborish', sending: 'Yuborilmoqda…',
-      noteLabel: 'Buyurtmaga izoh', notePh: "Masalan: piyozsiz, achchiq alohida",
+      noteLabel: "Butun buyurtmaga istaklar", notePh: "Masalan: piyozsiz, achchiq alohida",
+      noteHint: "Allergiya, diabet, bola — ofitsiant va oshpaz darhol ko‘radi.", dishNote: "Taomga istak", dishNotePh: "O‘z so‘zlaringiz bilan…", noteDone: "Tayyor",
+      dishChips: ["Tuzi kamroq", "Shirinligi kamroq", "Shakarsiz", "Achchiq emas", "Achchiqroq", "Piyozsiz", "Ko‘katsiz", "Go‘shtsiz", "Sous alohida"],
+      orderChips: ["Qandli diabet — shakarsiz", "Yong‘oqqa allergiya", "Sut mahsulotlariga allergiya", "Hamma taomlar piyozsiz", "Stolda bola bor", "Hammasini birga olib keling"],
       yourTable: 'Stolingiz',
       noTable: "Buyurtma yuborish uchun stolingizdagi QR-kodni skanerlang.",
       badTable: "Bu QR-kod yaroqsiz yoki stol o'chirilgan. Ofitsiantdan yordam so'rang.",
@@ -175,7 +181,10 @@
       emptyMenu: 'The menu is coming soon', emptyMenuHint: 'The restaurant is still filling in the menu. Please ask your waiter.',
       offline: 'No connection — showing the menu loaded earlier.',
       sendOrder: 'Send order', sending: 'Sending…',
-      noteLabel: 'Note for the order', notePh: 'For example: no onion, sauce on the side',
+      noteLabel: "Requests for the whole order", notePh: 'For example: no onion, sauce on the side',
+      noteHint: "Allergy, diabetes, a child — the waiter and the chef will see it right away.", dishNote: "Request for this dish", dishNotePh: "In your own words…", noteDone: "Done",
+      dishChips: ["Less salt", "Less sweet", "No sugar", "Not spicy", "Spicier", "No onion", "No herbs", "No meat", "Sauce on the side"],
+      orderChips: ["Diabetic — no sugar", "Nut allergy", "Dairy allergy", "No onion in any dish", "Child at the table", "Serve everything together"],
       yourTable: 'Your table',
       noTable: 'To send an order, scan the QR code on your table.',
       badTable: 'This QR code is not valid or the table is disabled. Please ask your waiter.',
@@ -244,7 +253,10 @@
       emptyMenu: 'القائمة قريبًا', emptyMenuHint: 'المطعم ما زال يُعدّ القائمة. يرجى سؤال النادل.',
       offline: 'لا يوجد اتصال — تُعرض القائمة المحمّلة سابقًا.',
       sendOrder: 'إرسال الطلب', sending: 'جارٍ الإرسال…',
-      noteLabel: 'ملاحظة على الطلب', notePh: 'مثال: بدون بصل، الصلصة منفصلة',
+      noteLabel: "طلبات لكل الطلب", notePh: 'مثال: بدون بصل، الصلصة منفصلة',
+      noteHint: "حساسية، سكري، طفل — سيراها النادل والطاهي فوراً.", dishNote: "طلب خاص لهذا الطبق", dishNotePh: "بكلماتك…", noteDone: "تم",
+      dishChips: ["ملح أقل", "حلاوة أقل", "بدون سكر", "غير حار", "حار أكثر", "بدون بصل", "بدون أعشاب", "بدون لحم", "الصلصة منفصلة"],
+      orderChips: ["مريض سكري — بدون سكر", "حساسية من المكسرات", "حساسية من الألبان", "بدون بصل في كل الأطباق", "معنا طفل", "قدّموا كل شيء معاً"],
       yourTable: 'طاولتك',
       noTable: 'لإرسال الطلب، امسح رمز QR الموجود على طاولتك.',
       badTable: 'رمز QR هذا غير صالح أو الطاولة معطّلة. يرجى سؤال النادل.',
@@ -312,7 +324,10 @@
       emptyMenu: 'Menu akan datang', emptyMenuHint: 'Restoran sedang menyediakan menu. Sila tanya pelayan.',
       offline: 'Tiada sambungan — menu yang dimuatkan sebelum ini dipaparkan.',
       sendOrder: 'Hantar pesanan', sending: 'Menghantar…',
-      noteLabel: 'Nota pesanan', notePh: 'Contoh: tanpa bawang, sos berasingan',
+      noteLabel: "Permintaan untuk seluruh pesanan", notePh: 'Contoh: tanpa bawang, sos berasingan',
+      noteHint: "Alahan, kencing manis, kanak-kanak — pelayan dan tukang masak akan nampak serta-merta.", dishNote: "Permintaan untuk hidangan ini", dishNotePh: "Dengan kata-kata anda…", noteDone: "Siap",
+      dishChips: ["Kurang garam", "Kurang manis", "Tanpa gula", "Tidak pedas", "Lebih pedas", "Tanpa bawang", "Tanpa daun herba", "Tanpa daging", "Sos berasingan"],
+      orderChips: ["Pesakit kencing manis — tanpa gula", "Alahan kacang", "Alahan susu", "Tanpa bawang dalam semua hidangan", "Ada kanak-kanak", "Hidang semua serentak"],
       yourTable: 'Meja anda',
       noTable: 'Untuk menghantar pesanan, imbas kod QR di meja anda.',
       badTable: 'Kod QR ini tidak sah atau meja telah dinyahaktifkan. Sila minta bantuan pelayan.',
@@ -473,6 +488,19 @@
 
   // Заказы гостя: черновик комментария, защита от повторной отправки, отправленные заказы
   let note = store.get('note', '') || '';
+  // пожелание к конкретному блюду в списке: { ключ строки: «без лука, поменьше соли» }
+  let dishNotes = store.get('dishNotes', {}) || {};
+  let noteOpen = null;   // у какой строки открыт редактор пожелания
+  const saveDishNotes = () => store.set('dishNotes', dishNotes);
+  // быстрые кнопки дописывают/убирают фразу в тексте через запятую
+  const noteTokens = (v) => String(v || '').split(',').map((x) => x.trim()).filter(Boolean);
+  const toggleToken = (v, tok, max) => {
+    const list = noteTokens(v);
+    const i = list.findIndex((x) => x.toLowerCase() === tok.toLowerCase());
+    if (i >= 0) list.splice(i, 1); else list.push(tok);
+    return list.join(', ').slice(0, max);
+  };
+  const hasToken = (v, tok) => noteTokens(v).some((x) => x.toLowerCase() === tok.toLowerCase());
   let sending = false;
   let sendError = '';
   let pendingKey = store.get('pendingKey', null);  // { key, sig } — один ключ на одну попытку заказа
@@ -930,7 +958,7 @@
   function change(key, delta) {
     if (delta > 0 && !orderable(byId[parseKey(key).id])) return;
     const n = Math.min(99, Math.max(0, (order[key] || 0) + delta));
-    if (n) { order[key] = n; remember(key); } else { delete order[key]; delete seen[key]; store.set('seen', seen); }
+    if (n) { order[key] = n; remember(key); } else { delete order[key]; delete seen[key]; store.set('seen', seen); if (dishNotes[key]) { delete dishNotes[key]; saveDishNotes(); } if (noteOpen === key) noteOpen = null; }
     priceChanges = priceChanges.filter((p) => order[p.key]);
     store.set('order', order);
     refreshSlots();
@@ -947,6 +975,20 @@
     if (!R().ordersWhenClosed && !SCH.status(R().schedule, R().timezone).open) return `${t('closedNoOrders')} ${statusInfo().text}.`;
     if (lines().some((l) => !l.ok)) return t('removeSold');
     return '';
+  }
+
+  function dishNoteHtml(key) {
+    const v = dishNotes[key] || '';
+    if (noteOpen === key) {
+      return `<div class="dn-edit">
+        <div class="n-chips" role="group" aria-label="${esc(t('dishNote'))}">${t('dishChips').map((c) => `<button type="button" class="n-chip${hasToken(v, c) ? ' on' : ''}" data-act="dn-chip" data-key="${esc(key)}" data-v="${esc(c)}" aria-pressed="${hasToken(v, c)}">${esc(c)}</button>`).join('')}</div>
+        <div class="dn-row"><input class="dn-input" data-key="${esc(key)}" maxlength="120" aria-label="${esc(t('dishNote'))}" placeholder="${esc(t('dishNotePh'))}" value="${esc(v)}">
+          <button type="button" class="btn small" data-act="dn-done">${esc(t('noteDone'))}</button></div>
+      </div>`;
+    }
+    return v
+      ? `<button type="button" class="dn-show" data-act="dn-open" data-key="${esc(key)}"><span class="dn-mark" aria-hidden="true">!</span><span>${esc(v)}</span></button>`
+      : `<button type="button" class="dn-add" data-act="dn-open" data-key="${esc(key)}">${icon('plus', 'sm')}${esc(t('dishNote'))}</button>`;
   }
 
   function orderSheetHtml() {
@@ -973,10 +1015,13 @@
         <span class="o-sum">${ok ? money(unit * n) : ''}</span>
         <div class="o-ctl">${ok ? lineControl(key) : '<span></span>'}
           <button type="button" class="o-remove" data-act="del" data-key="${esc(key)}">${icon('trash', 'sm')}${esc(t('removeItem'))}</button></div>
+        ${ok && ONLINE ? `<div class="o-dn">${dishNoteHtml(key)}</div>` : ''}
       </li>`).join('')}</ul>`);
     if (ONLINE) {
-      out.push(`<label class="note-field"><span>${esc(t('noteLabel'))}</span>
-        <textarea id="note-input" rows="2" maxlength="300" placeholder="${esc(t('notePh'))}">${esc(note)}</textarea></label>`);
+      out.push(`<section class="note-field" aria-labelledby="note-l"><span id="note-l">${esc(t('noteLabel'))}</span>
+        <small class="note-hint">${esc(t('noteHint'))}</small>
+        <div class="n-chips" role="group" aria-labelledby="note-l">${t('orderChips').map((c) => `<button type="button" class="n-chip${hasToken(note, c) ? ' on' : ''}" data-act="on-chip" data-v="${esc(c)}" aria-pressed="${hasToken(note, c)}">${esc(c)}</button>`).join('')}</div>
+        <textarea id="note-input" rows="2" maxlength="300" aria-labelledby="note-l" placeholder="${esc(t('notePh'))}">${esc(note)}</textarea></section>`);
     }
     out.push(pairsHtml(pairsFor(ls.map((l) => l.id), 3), t('upsell')));
     out.push(chargesHtml(charges(totals().sum), true));
@@ -1045,7 +1090,7 @@
       <ul class="order-list track-list tr-a" style="--i:4">${(o.items || []).map((i) => {
         const on = (i.opts || []).map((x) => L(x.name)).filter(Boolean);
         return `
-        <li><span class="o-name"><b>${esc(L(i.name) || i.id)}</b>${on.length ? `<em class="o-opts">${esc(on.join(', '))}</em>` : ''}<small>${money(i.price)} × ${i.qty}</small></span><span class="o-sum">${money(i.price * i.qty)}</span></li>`;
+        <li><span class="o-name"><b>${esc(L(i.name) || i.id)}</b>${on.length ? `<em class="o-opts">${esc(on.join(', '))}</em>` : ''}${i.note ? `<span class="dn-show static"><span class="dn-mark" aria-hidden="true">!</span><span>${esc(i.note)}</span></span>` : ''}<small>${money(i.price)} × ${i.qty}</small></span><span class="o-sum">${money(i.price * i.qty)}</span></li>`;
       }).join('')}</ul>
       ${o.note ? `<p class="notice info">${icon('list')}<span><b>${esc(t('note'))}:</b> ${esc(o.note)}</span></p>` : ''}
       ${chargesHtml({ sub: o.subtotal ?? o.total, service: o.service || 0, tax: o.tax || 0, total: o.total }, false)}
@@ -1098,8 +1143,10 @@
       const key = makeKey(d.id, opts);
       order[key] = Math.min(99, (order[key] || 0) + Number(i.qty));
       remember(key);
+      if (i.note && !dishNotes[key]) dishNotes[key] = String(i.note).slice(0, 120);
       added += Number(i.qty);
     }
+    saveDishNotes();
     store.set('order', order);
     refreshSlots();
     renderBar();
@@ -1284,7 +1331,7 @@
       }
       const rows = await rpc('place_order', {
         p_table: tableToken,
-        p_items: lines().map((l) => (l.opts.length ? { id: l.id, qty: l.n, price: l.unit, opts: l.opts } : { id: l.id, qty: l.n, price: l.unit })),
+        p_items: lines().map((l) => ({ id: l.id, qty: l.n, price: l.unit, ...(l.opts.length ? { opts: l.opts } : {}), ...(dishNotes[l.key]?.trim() ? { note: dishNotes[l.key].trim().slice(0, 120) } : {}) })),
         p_note: note.trim() || null,
         p_lang: lang,
         p_client_key: pendingKey.key,
@@ -1301,6 +1348,9 @@
       note = '';
       priceChanges = [];
       pendingKey = null;
+      dishNotes = {};
+      noteOpen = null;
+      saveDishNotes();
       ['order', 'seen', 'note', 'pendingKey'].forEach((k) => store.set(k, k === 'order' || k === 'seen' ? {} : k === 'note' ? '' : null));
       refreshSlots();
       justSent = o.id;
@@ -1713,9 +1763,28 @@
       else if (a === 'review-send') sendReview(act.dataset.id);
       else if (a === 'repeat') repeatOrder(act.dataset.id);
       else if (a === 'pay') callStaff('bill', act.dataset.method);
+      else if (a === 'dn-open') { noteOpen = k; renderSheet(); requestAnimationFrame(() => document.querySelector('.dn-input')?.focus({ preventScroll: true })); }
+      else if (a === 'dn-done') { noteOpen = null; renderSheet(); }
+      else if (a === 'dn-chip') {
+        dishNotes[k] = toggleToken(dishNotes[k], act.dataset.v, 120);
+        if (!dishNotes[k]) delete dishNotes[k];
+        saveDishNotes();
+        const on = hasToken(dishNotes[k], act.dataset.v);
+        act.classList.toggle('on', on); act.setAttribute('aria-pressed', String(on));
+        const inp = document.querySelector('.dn-input'); if (inp) inp.value = dishNotes[k] || '';
+      } else if (a === 'on-chip') {
+        note = toggleToken(note, act.dataset.v, 300);
+        store.set('note', note);
+        const on = hasToken(note, act.dataset.v);
+        act.classList.toggle('on', on); act.setAttribute('aria-pressed', String(on));
+        const ta = document.getElementById('note-input'); if (ta) ta.value = note;
+      }
       else if (a === 'clear') {
         order = {};
         seen = {};
+        dishNotes = {};
+        noteOpen = null;
+        saveDishNotes();
         priceChanges = [];
         store.set('order', order);
         store.set('seen', seen);
@@ -1799,6 +1868,14 @@
     if (e.target.id === 'note-input') {
       note = e.target.value.slice(0, 300);
       store.set('note', note);
+      document.querySelectorAll('[data-act="on-chip"]').forEach((b) => { const on = hasToken(note, b.dataset.v); b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on)); });
+    }
+    if (e.target.classList.contains('dn-input')) {
+      const k = e.target.dataset.key;
+      const v = e.target.value.replace(/\s+/g, ' ').slice(0, 120);
+      if (v.trim()) dishNotes[k] = v; else delete dishNotes[k];
+      saveDishNotes();
+      document.querySelectorAll('[data-act="dn-chip"]').forEach((b) => { const on = hasToken(v, b.dataset.v); b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on)); });
     }
   });
   $('#backdrop').addEventListener('click', closeSheet);

@@ -633,6 +633,8 @@ declare
   v_opts jsonb := coalesce(p_item -> 'opts', '[]'::jsonb);
   v_sel text[] := '{}'; v_unit numeric(10, 2); v_snap jsonb := '[]'::jsonb;
   g jsonb; c jsonb; n int;
+  -- пожелание гостя к этому блюду («без лука», «поменьше соли»): одна строка, до 120 символов
+  v_note text := left(nullif(btrim(regexp_replace(coalesce(p_item ->> 'note', ''), '[[:space:]]+', ' ', 'g')), ''), 120);
 begin
   begin
     v_qty := (p_item ->> 'qty')::int;
@@ -671,8 +673,10 @@ begin
   if v_unit < 0 then v_unit := 0; end if;
   if p_check_price and v_unit <> v_seen then raise exception 'price_changed:%', v_id; end if;
 
+  -- одно и то же блюдо с разными пожеланиями — разные строки заказа
   return jsonb_build_object('id', v_id, 'qty', v_qty, 'price', v_unit, 'name', v_dish.name, 'opts', v_snap,
-                            'key', v_id || '|' || array_to_string(v_sel, ','));
+                            'key', v_id || '|' || array_to_string(v_sel, ',') || '|' || coalesce(v_note, ''))
+         || case when v_note is null then '{}'::jsonb else jsonb_build_object('note', v_note) end;
 end $$;
 
 -- ---------- Гость: отправить заказ ----------
@@ -1377,7 +1381,8 @@ $$;
 create or replace function public.tg_lines(p_items jsonb)
 returns text language sql immutable as $$
   select string_agg((i ->> 'qty') || '× ' || coalesce(i -> 'name' ->> 'ru', i -> 'name' ->> 'en', i ->> 'id')
-           || coalesce(' (' || (select string_agg(coalesce(o -> 'name' ->> 'ru', o -> 'name' ->> 'en'), ', ') from jsonb_array_elements(coalesce(i -> 'opts', '[]')) o) || ')', ''), E'\n')
+           || coalesce(' (' || (select string_agg(coalesce(o -> 'name' ->> 'ru', o -> 'name' ->> 'en'), ', ') from jsonb_array_elements(coalesce(i -> 'opts', '[]')) o) || ')', '')
+           || coalesce(E'\n   >> ' || (i ->> 'note'), ''), E'\n')
   from jsonb_array_elements(p_items) i;
 $$;
 
@@ -1406,7 +1411,8 @@ begin
   begin
     select * into v from private.telegram where id = 1;
     select string_agg((i ->> 'qty') || '× ' || coalesce(i -> 'name' ->> 'ru', i -> 'name' ->> 'en', i ->> 'id')
-             || coalesce(' (' || (select string_agg(coalesce(o -> 'name' ->> 'ru', o -> 'name' ->> 'en'), ', ') from jsonb_array_elements(coalesce(i -> 'opts', '[]')) o) || ')', ''), E'\n')
+             || coalesce(' (' || (select string_agg(coalesce(o -> 'name' ->> 'ru', o -> 'name' ->> 'en'), ', ') from jsonb_array_elements(coalesce(i -> 'opts', '[]')) o) || ')', '')
+           || coalesce(E'\n   >> ' || (i ->> 'note'), ''), E'\n')
       into v_lines from jsonb_array_elements(new.items) i;
     if coalesce(v.notify_orders, false) then
       perform private.tg_send('Новый заказ №' || new.no || ' · стол ' || new.table_label

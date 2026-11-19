@@ -95,7 +95,7 @@
     return `<article class="k-card ks-${esc(o.status)}${late}">
       <div class="k-head"><b>${esc(t('table'))} ${esc(o.table_label)}</b><span>№${esc(o.no)}</span></div>
       <div class="k-time">${esc(o.status === 'ready' ? t('k_ready_at', hhmm(o.ready_at || o.updated_at)) : t('k_acc', hhmm(o.accepted_at || o.created_at), wait))}</div>
-      <ul class="k-items">${(o.items || []).map((i) => `<li><b>${esc(i.qty)}×</b><span>${esc(tr(i.name) || i.id)}${optNames(i).length ? `<em>${esc(optNames(i).join(', '))}</em>` : ''}</span></li>`).join('')}</ul>
+      <ul class="k-items">${(o.items || []).map((i) => `<li><b>${esc(i.qty)}×</b><span>${esc(tr(i.name) || i.id)}${optNames(i).length ? `<em>${esc(optNames(i).join(', '))}</em>` : ''}${window.Floor.noteHtml(i)}</span></li>`).join('')}</ul>
       ${o.note ? `<div class="k-note">${icon('alert', 'sm')}${esc(o.note)}</div>` : ''}
       <div class="k-actions">
         ${o.status === 'accepted' ? `<button type="button" class="btn soft" data-k="${esc(o.id)}" data-to="cooking"${b ? ' disabled' : ''}>${icon('flame', 'sm')}${esc(t('k_start'))}</button>` : ''}

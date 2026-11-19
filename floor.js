@@ -20,6 +20,8 @@
   const dayStart = () => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; };
   const r2 = (x) => Math.round(x * 100) / 100;
   const optNames = (i) => (i.opts || []).map((o) => tr(o.name)).filter(Boolean);
+  // пожелание гостя к блюду: заметно, жёлтым, с «!»
+  const noteHtml = (i) => (i.note ? `<span class="i-note"><b aria-hidden="true">!</b>${esc(i.note)}</span>` : '');
   const lineTitle = (i) => { const o = optNames(i); return `${tr(i.name) || i.id}${o.length ? ` (${o.join(', ')})` : ''}`; };
   const sub = (o) => Number(o.subtotal ?? o.total);
   const PAY_KEYS = ['cash', 'card', 'qr', 'other'];
@@ -56,6 +58,7 @@
       .pay td { font-size: 12px; }
       .note { border: 2px solid #000; padding: 4px 6px; margin-top: 6px; font-size: 14px; font-weight: 700; }
       .k td { font-size: 16px; font-weight: 700; padding: 2px 0; }
+      .inote { display: inline-block; margin: 2px 0 2px 6px; padding: 1px 6px; border: 2px solid #000; font-size: 14px; font-weight: 800; }
       .stamp { border: 1.5px solid #000; text-align: center; font-weight: 800; font-size: 11px; letter-spacing: .06em; padding: 3px; margin: 6px 0 2px; text-transform: uppercase; }
     </style></head><body>${bodyHtml}</body></html>`);
     doc.close();
@@ -72,7 +75,7 @@
       <div class="c muted">${esc(t('p_kitchen'))}</div>
       <div class="c big">${esc(t('table'))} ${esc(o.table_label)}</div>
       <div class="c">${esc(t('order_no', o.no))} · ${esc(hhmm(o.created_at))}</div>
-      <hr><table class="k">${(o.items || []).map((i) => `<tr><td class="n">${esc(i.qty)} ×</td><td>${esc(tr(i.name) || i.id)}${optNames(i).length ? `<div class="opt">${esc(optNames(i).join(', '))}</div>` : ''}</td></tr>`).join('')}</table>
+      <hr><table class="k">${(o.items || []).map((i) => `<tr><td class="n">${esc(i.qty)} ×</td><td>${esc(tr(i.name) || i.id)}${optNames(i).length ? `<div class="opt">${esc(optNames(i).join(', '))}</div>` : ''}${i.note ? `<div class="inote">&gt;&gt; ${esc(i.note)}</div>` : ''}</td></tr>`).join('')}</table>
       ${o.note ? `<div class="note">${esc(o.note)}</div>` : ''}
       <hr><div class="c muted">${o.accepted_by_name ? `${esc(t('p_accepted', o.accepted_by_name))} · ` : ''}${esc(t('p_printed', hhmm(new Date().toISOString())))}</div>`);
   }
@@ -250,7 +253,7 @@
       const canServe = ['accepted', 'cooking', 'ready'].includes(o.status);
       return `<article class="fl-order">
         <div class="o-head">${multi ? `<label class="fl-pick"><input type="checkbox" data-fl-pick="${esc(o.id)}"${payState?.ids.has(o.id) ? ' checked' : ''}${o.status === 'new' ? ' disabled' : ''}>` : '<span>'}<b>№${esc(o.no)} · ${esc(hhmm(o.created_at))}</b>${multi ? '</label>' : '</span>'}<span class="st st-${esc(o.status)}">${esc(t('st')[o.status])}</span></div>
-        <ul class="o-items">${(o.items || []).map((i) => `<li><span><b>${esc(i.qty)}×</b> ${esc(tr(i.name) || i.id)}${optNames(i).length ? `<em class="o-opt">${esc(optNames(i).join(', '))}</em>` : ''}</span><span>${money(i.price * i.qty)}</span></li>`).join('')}</ul>
+        <ul class="o-items">${(o.items || []).map((i) => `<li><span><b>${esc(i.qty)}×</b> ${esc(tr(i.name) || i.id)}${optNames(i).length ? `<em class="o-opt">${esc(optNames(i).join(', '))}</em>` : ''}${noteHtml(i)}</span><span>${money(i.price * i.qty)}</span></li>`).join('')}</ul>
         ${o.note ? `<div class="o-note"><b>${esc(t('comment'))}:</b> ${esc(o.note)}</div>` : ''}
         ${o.source === 'staff' && o.created_by_name ? `<div class="o-meta">${esc(t('entered_by', o.created_by_name))}</div>` : ''}
         <div class="fl-order-actions">
@@ -582,7 +585,7 @@
         <p class="notice bad" id="ed-err" hidden></p>
         <div class="modal-foot"><button type="button" class="btn" id="ed-save">${icon('check', 'sm')}Сохранить</button><button type="button" class="btn ghost" data-modal-close>Отмена</button></div>`);
       const paint = () => {
-        m.querySelector('#ed-lines').innerHTML = items.map((i, n) => `<li><div class="grow"><b>${esc(tr(i.name) || i.id)}</b>${optNames(i).length ? `<small>${esc(optNames(i).join(', '))}</small>` : ''}<small>${money(i.price)} за шт.</small></div>
+        m.querySelector('#ed-lines').innerHTML = items.map((i, n) => `<li><div class="grow"><b>${esc(tr(i.name) || i.id)}</b>${optNames(i).length ? `<small>${esc(optNames(i).join(', '))}</small>` : ''}${noteHtml(i)}<small>${money(i.price)} за шт.</small></div>
           <div class="stepper"><button type="button" data-ed-dec="${n}" aria-label="Меньше">${icon('minus', 'sm')}</button><span>${i.qty}</span><button type="button" data-ed-inc="${n}" aria-label="Больше">${icon('plus', 'sm')}</button></div>
           <button type="button" class="btn small danger" data-ed-del="${n}">Убрать</button></li>`).join('') || '<li class="a-empty">Пусто. Чтобы убрать всё, отмените заказ.</li>';
       };
@@ -700,5 +703,5 @@
     };
   }
 
-  window.Floor = { create, printTicket, printReceipt, optNames, lineTitle };
+  window.Floor = { create, printTicket, printReceipt, optNames, lineTitle, noteHtml };
 })();

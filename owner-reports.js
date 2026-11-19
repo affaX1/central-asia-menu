@@ -205,7 +205,7 @@
     if (kind === 'orders') {
       csv(`заказы_${tag}.csv`, ['№', 'Дата и время', 'Стол', 'Статус', 'Позиции', 'Блюда', 'Сбор', 'Налог', 'Итого', 'Оплачен', 'Принял', 'Комментарий'],
         R.orders.map((o) => [o.no, dt(o.created_at), o.table_label, { new: 'новый', accepted: 'принят', cooking: 'готовится', ready: 'готов', served: 'подан', cancelled: 'отменён' }[o.status] || o.status,
-          (o.items || []).map((i) => `${i.qty}× ${tr(i.name) || i.id}${optNames(i).length ? ` (${optNames(i).join(', ')})` : ''}`).join('; '),
+          (o.items || []).map((i) => `${i.qty}× ${tr(i.name) || i.id}${optNames(i).length ? ` (${optNames(i).join(', ')})` : ''}${i.note ? ` [${i.note}]` : ''}`).join('; '),
           num(o.subtotal ?? o.total), num(o.service), num(o.tax), num(o.total), dt(o.paid_at), o.accepted_by_name || '', o.note || '']));
     } else if (kind === 'bills') {
       csv(`счета_${tag}.csv`, ['Чек №', 'Оплачен', 'Стол', 'Заказы', 'Блюда', 'Сбор', 'Налог', 'Итого', 'Чаевые', 'Оплата', 'Части оплаты', 'Кто закрыл'],

@@ -83,7 +83,8 @@
     if (snap.length !== sel.length) throw new Error('options:' + it.id);
     unit = Math.max(0, r2(unit));
     if (checkPrice && unit !== Number(it.price)) throw new Error('price_changed:' + it.id);
-    return { line: { id: dish.id, qty: it.qty, price: unit, name: dish.name, opts: snap }, key: `${dish.id}|${sel.join(',')}` };
+    const note = String(it.note || '').replace(/\s+/g, ' ').trim().slice(0, 120);
+    return { line: { id: dish.id, qty: it.qty, price: unit, name: dish.name, opts: snap, ...(note ? { note } : {}) }, key: `${dish.id}|${sel.join(',')}|${note}` };
   }
   const newToken = () => Array.from(crypto.getRandomValues(new Uint8Array(10)), (b) => b.toString(16).padStart(2, '0')).join('');
   const uid = () => ({ owner: 'u-owner', waiter: 'u-waiter', cook: 'u-cook' })[role()] || 'u-waiter';

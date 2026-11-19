@@ -549,4 +549,14 @@ set role authenticated; set request.jwt.claim.sub = '22222222-2222-2222-2222-222
 select t_fails($$select * from public.staff_place_order((select id from tv where label = 'VIP'), '[{"id":"green-tea","qty":1}]', null, gen_random_uuid())$$, 'not_now:green-tea', 'официант тоже не пробьёт блюдо не в своё время');
 reset role; reset request.jwt.claim.sub;
 update public.categories set avail_from = null, avail_to = null where id = 'drinks';
+-- ============ 20. Пожелание гостя к блюду ============
+create temp table o20 as select * from public.place_order((select token from tv where label = 'VIP'),
+  '[{"id":"green-tea","qty":1,"price":10,"note":"  без   сахара,\n диабет "},{"id":"green-tea","qty":2,"price":10}]', 'аллергия на орехи', 'ru', gen_random_uuid());
+select t_ok((select items -> 0 ->> 'note' from o20) = 'без сахара, диабет', 'пожелание к блюду сохраняется (лишние пробелы и переносы убраны)');
+select t_ok((select jsonb_array_length(items) from o20) = 2 and not ((select items -> 1 from o20) ? 'note'), 'то же блюдо без пожелания — отдельная строка');
+select t_ok(exists (select 1 from net.sent where body ->> 'text' like '%Зелёный чай%>> без сахара, диабет%'), 'пожелание к блюду видно в Telegram');
+set role anon;
+select t_fails($$select * from public.place_order((select token from tv where label = 'VIP'), '[{"id":"green-tea","qty":1,"price":10,"note":"без сахара"},{"id":"green-tea","qty":1,"price":10,"note":" без  сахара "}]', null, 'ru', gen_random_uuid())$$, 'bad_items', 'одинаковое пожелание к одному блюду дважды — нельзя');
+reset role;
+select t_ok(char_length(public.order_line(jsonb_build_object('id', 'green-tea', 'qty', 1, 'price', 10, 'note', repeat('а', 500)), true) ->> 'note') = 120, 'длинное пожелание обрезается до 120 символов');
 \echo ALL DATABASE TESTS PASSED

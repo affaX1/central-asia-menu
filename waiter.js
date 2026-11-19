@@ -145,7 +145,7 @@
       <div class="o-head"><b class="o-table">${esc(t('table'))} ${esc(o.table_label)}</b>
         <span class="st st-${esc(o.status)}">${!['new', 'cancelled'].includes(o.status) ? icon('check', 'sm') : ''}${esc(t('st')[o.status] || o.status)}</span></div>
       <div class="o-meta">${esc(t('order_no', o.no))} · ${esc(hhmm(o.created_at))} · ${esc(ago(o.created_at))}</div>
-      <ul class="o-items">${(o.items || []).map((i) => `<li><span><b>${esc(i.qty)}×</b> ${esc(tr(i.name) || i.id)}${optNames(i).length ? `<em class="o-opt">${esc(optNames(i).join(', '))}</em>` : ''}</span><span>${money(i.price * i.qty)}</span></li>`).join('')}</ul>
+      <ul class="o-items">${(o.items || []).map((i) => `<li><span><b>${esc(i.qty)}×</b> ${esc(tr(i.name) || i.id)}${optNames(i).length ? `<em class="o-opt">${esc(optNames(i).join(', '))}</em>` : ''}${window.Floor.noteHtml(i)}</span><span>${money(i.price * i.qty)}</span></li>`).join('')}</ul>
       ${o.note ? `<div class="o-note"><b>${esc(t('comment'))}:</b> ${esc(o.note)}</div>` : ''}
       ${o.edited_at ? `<div class="o-meta">${esc(t('edited_at', hhmm(o.edited_at)))}</div>` : ''}
       <div class="o-total"><span>${esc(t('total'))}${o.paid_at ? ` · <span class="state-badge ok">${esc(t('paid_tag'))}</span>` : ''}</span><b>${money(o.total)}</b></div>

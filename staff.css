@@ -485,3 +485,8 @@ body.signed #a-user .lang-pick select { width: 100%; }
 .fl-table:active, .o-card .btn:active, .k-card .btn:active { transform: scale(.97); }
 .a-tab { transition: background .2s, color .2s; }
 @media (prefers-reduced-motion: reduce) { .modal-back, .modal, .ask-box { animation: none !important; } }
+
+/* пожелание гостя к блюду — видно сразу */
+.i-note { display: flex; align-items: flex-start; gap: 6px; width: fit-content; max-width: 100%; margin: 4px 0 2px; padding: 4px 10px 4px 6px; border-radius: 10px; background: var(--warn-soft); color: var(--warn); font-size: 14px; font-weight: 800; line-height: 1.35; overflow-wrap: anywhere; }
+.i-note b { flex: none; display: grid; place-items: center; width: 18px; height: 18px; margin: 0 !important; border-radius: 50%; background: var(--warn); color: #fff; font-size: 12px; font-weight: 900; }
+.k-items .i-note { font-size: 16px; }

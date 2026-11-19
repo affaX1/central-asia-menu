@@ -900,7 +900,7 @@
     return `<article class="o-card${o.status === 'new' ? ' is-new' : ''}">
       <div class="o-head"><b class="o-table">${icon('qr', 'sm')}Стол ${esc(o.table_label)}</b><span class="st st-${esc(o.status)}">${esc(ST[o.status] || o.status)}</span></div>
       <div class="o-meta">Заказ №${esc(o.no)} · ${esc(hhmm(o.created_at))} · ${esc(ago(o.created_at))}${o.lang ? ` · язык гостя ${esc(String(o.lang).toUpperCase())}` : ''}${o.accepted_by_name ? ` · принял: ${esc(o.accepted_by_name)}` : ''}</div>
-      <ul class="o-items">${(o.items || []).map((i) => `<li><span><b>${esc(i.qty)}×</b> ${esc(tr(i.name) || i.id)}${window.Floor.optNames(i).length ? `<em class="o-opt">${esc(window.Floor.optNames(i).join(', '))}</em>` : ''}</span><span>${money(i.price * i.qty)}</span></li>`).join('')}</ul>
+      <ul class="o-items">${(o.items || []).map((i) => `<li><span><b>${esc(i.qty)}×</b> ${esc(tr(i.name) || i.id)}${window.Floor.optNames(i).length ? `<em class="o-opt">${esc(window.Floor.optNames(i).join(', '))}</em>` : ''}${window.Floor.noteHtml(i)}</span><span>${money(i.price * i.qty)}</span></li>`).join('')}</ul>
       ${o.note ? `<div class="o-note"><b>Комментарий гостя:</b> ${esc(o.note)}</div>` : ''}
       ${o.edited_at ? `<div class="o-meta">Изменён${o.edited_by_name ? `: ${esc(o.edited_by_name)}` : ''} в ${esc(hhmm(o.edited_at))}</div>` : ''}
       ${Number(o.service) || Number(o.tax) ? `<div class="o-meta">Блюда ${money(o.subtotal ?? o.total)}${Number(o.service) ? ` · сбор ${money(o.service)}` : ''}${Number(o.tax) ? ` · налог ${money(o.tax)}` : ''}</div>` : ''}
