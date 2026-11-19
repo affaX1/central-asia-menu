@@ -527,4 +527,26 @@ reset role;
 select t_ok(exists (select 1 from net.sent where body ->> 'chat_id' = '999000333' and body ->> 'text' = 'Стол 2: просят счёт (карта)')
   and exists (select 1 from net.sent where body ->> 'chat_id' = '555000111' and body ->> 'text' = 'Стол 2: просят счёт (карта)'), '«принесите счёт» пришёл всем официантам, даже если стол чужой');
 select t_ok(not exists (select 1 from net.sent where body ->> 'chat_id' = '999000333' and body ->> 'text' like 'Стол 2: зовут официанта — лёд'), 'обычная просьба («лёд») — только официанту стола');
+
+-- ============ 19. Завтрак: время подачи категории ============
+select t_ok(public.category_open('06:00', '11:00', '2026-11-16 00:30+00'), 'завтрак 06–11: в 08:30 по Куала-Лумпуру — подаётся');
+select t_ok(not public.category_open('06:00', '11:00', '2026-11-16 04:00+00'), 'в 12:00 завтрак уже не подаётся');
+select t_ok(public.category_open('22:00', '02:00', '2026-11-16 17:00+00'), 'ночное меню 22–02: в 01:00 подаётся');
+select t_ok(public.category_open(null, null), 'категория без часов подаётся всегда');
+set role authenticated; set request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
+select t_fails($$update public.categories set avail_from = '25:00', avail_to = '11:00' where id = 'salads'$$, 'check', 'неверное время категории не сохраняется');
+select t_fails($$update public.categories set avail_from = '06:00' where id = 'salads'$$, 'check', 'нужны оба времени — начало и конец');
+-- окно, которое точно закрыто сейчас: 1 минута, час назад
+select t_ok(public.t_rows(format($f$update public.categories set avail_from = %L, avail_to = %L where id = 'drinks'$f$,
+  to_char((now() at time zone 'Asia/Kuala_Lumpur') - interval '1 hour', 'HH24:MI'),
+  to_char((now() at time zone 'Asia/Kuala_Lumpur') - interval '59 minutes', 'HH24:MI'))) = 1, 'владелец ставит время подачи категории');
+reset role; reset request.jwt.claim.sub;
+update public.settings set timezone = 'Asia/Kuala_Lumpur';
+set role anon;
+select t_fails($$select * from public.place_order((select token from tv where label = 'VIP'), '[{"id":"green-tea","qty":1,"price":10}]', null, 'ru', gen_random_uuid())$$, 'not_now:green-tea', 'блюдо не в своё время заказать нельзя');
+reset role;
+set role authenticated; set request.jwt.claim.sub = '22222222-2222-2222-2222-222222222222';
+select t_fails($$select * from public.staff_place_order((select id from tv where label = 'VIP'), '[{"id":"green-tea","qty":1}]', null, gen_random_uuid())$$, 'not_now:green-tea', 'официант тоже не пробьёт блюдо не в своё время');
+reset role; reset request.jwt.claim.sub;
+update public.categories set avail_from = null, avail_to = null where id = 'drinks';
 \echo ALL DATABASE TESTS PASSED

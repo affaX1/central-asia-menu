@@ -203,6 +203,13 @@ create table if not exists public.categories (
   updated_at timestamptz not null default now()
 );
 alter table public.categories drop column if exists emoji;
+-- время подачи категории (например «Завтрак» 06:00–11:00); пусто — весь день. Конец может быть после полуночи.
+alter table public.categories add column if not exists avail_from text;
+alter table public.categories add column if not exists avail_to text;
+alter table public.categories drop constraint if exists categories_avail_check;
+alter table public.categories add constraint categories_avail_check check (
+  (avail_from is null) = (avail_to is null)
+  and (avail_from is null or (avail_from ~ '^([01][0-9]|2[0-3]):[0-5][0-9]$' and avail_to ~ '^([01][0-9]|2[0-3]):[0-5][0-9]$' and avail_from <> avail_to)));
 alter table public.categories drop column if exists hue;
 
 create table if not exists public.dishes (
@@ -560,6 +567,21 @@ begin
   return m >= public.hm(td ->> 'open');
 end $$;
 
+-- ---------- Подаётся ли категория сейчас (по часам категории и часовому поясу ресторана) ----------
+create or replace function public.category_open(p_from text, p_to text, p_at timestamptz default now())
+returns boolean language plpgsql stable security definer set search_path = public as $$
+declare v_tz text; m int; f int; t int;
+begin
+  if p_from is null or p_to is null then return true; end if;
+  select timezone into v_tz from public.settings where id = 1;
+  m := extract(hour from (p_at at time zone v_tz))::int * 60 + extract(minute from (p_at at time zone v_tz))::int;
+  f := public.hm(p_from); t := public.hm(p_to);
+  if t > f then return m >= f and m < t; end if;
+  return m >= f or m < t;   -- через полночь
+end $$;
+revoke all on function public.category_open(text, text, timestamptz) from public;
+grant execute on function public.category_open(text, text, timestamptz) to anon, authenticated;
+
 -- ---------- Права ----------
 alter table public.tables enable row level security;
 alter table public.orders enable row level security;
@@ -623,6 +645,11 @@ begin
   select d.* into v_dish from public.dishes d join public.categories c2 on c2.id = d.category_id
     where d.id = v_id and not d.hidden and not c2.hidden;
   if not found or not v_dish.available then raise exception 'unavailable:%', v_id; end if;
+  -- блюдо из категории со временем подачи (например, завтрак) — только в эти часы
+  if not public.category_open((select avail_from from public.categories where id = v_dish.category_id),
+                              (select avail_to from public.categories where id = v_dish.category_id)) then
+    raise exception 'not_now:%', v_id;
+  end if;
 
   v_unit := v_dish.price;
   -- каждый выбранный вариант должен быть у этого блюда; обязательные группы — выбраны; одиночные — не больше одного
