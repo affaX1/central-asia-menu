@@ -105,7 +105,7 @@
   }
   setInterval(() => {
     if (!api) return;
-    if (orders.some((o) => o.status === 'new' && floor?.isMineOrFree(o.table_id)) || floor?.openCalls().some((c) => floor.isMineOrFree(c.table_id))) ding();
+    if (orders.some((o) => o.status === 'new' && floor?.isMineOrFree(o.table_id)) || floor?.openCalls().some((c) => c.kind === 'bill' || floor.isMineOrFree(c.table_id))) ding();
   }, 30000);
 
   function updateCount() {

@@ -515,4 +515,16 @@ set role authenticated; set request.jwt.claim.sub = '22222222-2222-2222-2222-222
 select t_ok((select count(*) from public.reviews) = 0, 'официант не видит отзывы');
 reset role; reset request.jwt.claim.sub;
 select t_ok(exists (select 1 from net.sent where body ->> 'text' like 'Отзыв · стол 2%★★★★☆%'), 'отзыв ушёл владельцу в Telegram');
+
+-- ============ 18. «Принесите счёт» — всем официантам ============
+insert into auth.users (id, email, email_confirmed_at) values ('55555555-5555-5555-5555-555555555555', 'waiter2@example.com', now());
+insert into public.staff (user_id, email, name, role, active) values ('55555555-5555-5555-5555-555555555555', 'waiter2@example.com', 'Дилшод', 'waiter', true);
+insert into private.staff_tg (user_id, chat_id) values ('55555555-5555-5555-5555-555555555555', '999000333');
+set role anon;
+select public.call_staff((select token from tv where label = '2'), 'bill', 'card');
+select public.call_staff((select token from tv where label = '2'), 'waiter', null, 'ice');
+reset role;
+select t_ok(exists (select 1 from net.sent where body ->> 'chat_id' = '999000333' and body ->> 'text' = 'Стол 2: просят счёт (карта)')
+  and exists (select 1 from net.sent where body ->> 'chat_id' = '555000111' and body ->> 'text' = 'Стол 2: просят счёт (карта)'), '«принесите счёт» пришёл всем официантам, даже если стол чужой');
+select t_ok(not exists (select 1 from net.sent where body ->> 'chat_id' = '999000333' and body ->> 'text' like 'Стол 2: зовут официанта — лёд'), 'обычная просьба («лёд») — только официанту стола');
 \echo ALL DATABASE TESTS PASSED

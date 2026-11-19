@@ -612,3 +612,34 @@ button.badge { border: 0; cursor: pointer; font: inherit; font-size: 13.5px; fon
 .v-next { inset-inline-end: 10px; }
 :root[dir="rtl"] .v-prev .ic { transform: none; }
 :root[dir="rtl"] .v-next .ic { transform: scaleX(-1); }
+
+/* ---------- «Хиты»: лента до самого края экрана ---------- */
+.hits-row { margin-inline: -16px; padding-inline: 16px; scroll-padding-inline: 16px; scroll-behavior: smooth; -webkit-overflow-scrolling: touch; }
+.hits-row::after { content: ''; flex: 0 0 6px; }
+
+/* ---------- плавность ---------- */
+.sheet-grab { position: sticky; top: -22px; z-index: 3; height: 22px; margin: -22px -20px 0; display: grid; place-items: center; touch-action: none; }
+.sheet-grab::before { content: ''; width: 42px; height: 5px; border-radius: 999px; background: var(--line); }
+@media (min-width: 720px) { .sheet-grab { display: none; } }
+.sheet.dragging { transition: none; }
+.sheet-backdrop { transition: opacity .3s ease; }
+.add, .stepper button, .call-btn, .chip, .pay-opt, .req-opt, .f-chip, .mini, .star, .btn { transition: transform .12s ease, background .2s, color .2s, border-color .2s, box-shadow .2s; }
+.add:active, .stepper button:active, .star:active { transform: scale(.88); }
+.call-btn:active, .pay-opt:active, .req-opt:active, .f-chip:active, .chip:active, .btn:active { transform: scale(.97); }
+.mini:active, .card:active { transform: scale(.985); }
+.order-bar.bump { animation: bar-bump .35s cubic-bezier(.3, 1.6, .5, 1); }
+@keyframes bar-bump { 40% { transform: translateX(-50%) scale(1.04); } }
+.order-bar { transition: transform .25s cubic-bezier(.2, .8, .2, 1), opacity .2s, box-shadow .2s; }
+.track-card.pop { animation: card-pop .5s cubic-bezier(.3, 1.5, .5, 1); }
+@keyframes card-pop { 0% { transform: scale(.96); } 60% { transform: scale(1.02); } }
+.steps4 li { transition: background .3s, color .3s, box-shadow .3s; }
+.viewer { animation: fade-in .2s ease; }
+.v-in { animation: v-in .25s cubic-bezier(.2, .8, .2, 1); }
+@keyframes v-in { from { opacity: 0; transform: translateY(10px) scale(.98); } }
+@keyframes fade-in { from { opacity: 0; } }
+.toast { transition: opacity .25s, transform .3s cubic-bezier(.2, .8, .2, 1); }
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) { .order-bar.bump, .track-card.pop, .v-in, .viewer { animation: none !important; } html { scroll-behavior: auto; } }
+
+.table-actions { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+.call-btn { min-width: 0; }

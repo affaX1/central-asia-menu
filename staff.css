@@ -472,3 +472,16 @@ body.signed #a-user .lang-pick select { width: 100%; }
 .rv-stars { color: var(--warn); letter-spacing: 1px; font-size: 16px; }
 .rv-list small { color: var(--muted); font-weight: 600; }
 .rv-list p { margin: 6px 0 0; }
+
+/* ---------- плавность у сотрудников ---------- */
+.modal-back { animation: m-fade .2s ease; }
+.modal { animation: m-up .28s cubic-bezier(.2, .8, .2, 1); }
+@keyframes m-fade { from { opacity: 0; } }
+@keyframes m-up { from { transform: translateY(24px); opacity: .4; } }
+@media (min-width: 720px) { .modal { animation: m-pop .22s cubic-bezier(.2, .8, .2, 1); } @keyframes m-pop { from { transform: scale(.97); opacity: 0; } } }
+.ask-box { animation: m-pop2 .18s cubic-bezier(.2, .8, .2, 1); }
+@keyframes m-pop2 { from { transform: scale(.95); opacity: 0; } }
+.fl-table, .o-card, .k-card, .call { transition: transform .12s ease, box-shadow .2s, background .3s, border-color .3s; }
+.fl-table:active, .o-card .btn:active, .k-card .btn:active { transform: scale(.97); }
+.a-tab { transition: background .2s, color .2s; }
+@media (prefers-reduced-motion: reduce) { .modal-back, .modal, .ask-box { animation: none !important; } }

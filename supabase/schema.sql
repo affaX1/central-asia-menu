@@ -1335,6 +1335,11 @@ returns text[] language sql stable security definer set search_path = public, pr
       where s.active and s.role = 'waiter' and g.chat_id is not null and not exists (select 1 from own)),
     '{}');
 $$;
+create or replace function private.tg_all_waiter_chats()
+returns text[] language sql stable security definer set search_path = public, private as $$
+  select coalesce(array_agg(g.chat_id), '{}') from public.staff s join private.staff_tg g on g.user_id = s.user_id
+  where s.active and s.role = 'waiter' and g.chat_id is not null;
+$$;
 create or replace function private.tg_cook_chats()
 returns text[] language sql stable security definer set search_path = public, private as $$
   select coalesce(array_agg(g.chat_id), '{}') from public.staff s join private.staff_tg g on g.user_id = s.user_id
@@ -1403,7 +1408,8 @@ begin
       else 'зовут официанта' || case new.reason when 'water' then ' — вода' when 'napkins' then ' — салфетки' when 'cutlery' then ' — приборы' when 'ice' then ' — лёд' when 'clear' then ' — убрать со стола' else '' end end;
     begin
       if coalesce(v.notify_calls, false) then perform private.tg_send(v_text); end if;
-      perform private.tg_send_to(private.tg_floor_chats(new.table_id), v_text);
+      -- «принесите счёт» — сразу всем официантам с Telegram; остальное — официанту стола
+      perform private.tg_send_to(case when new.kind = 'bill' then private.tg_all_waiter_chats() else private.tg_floor_chats(new.table_id) end, v_text);
     end;
   exception when others then null;
   end;
@@ -1580,6 +1586,7 @@ revoke all on function public.telegram_status() from public;
 revoke all on function private.tg_send_to(text[], text) from public;
 revoke all on function private.tg_floor_chats(uuid) from public;
 revoke all on function private.tg_cook_chats() from public;
+revoke all on function private.tg_all_waiter_chats() from public;
 revoke all on function private.tg_bot_username() from public;
 revoke all on function public.tg_on_order_status() from public;
 revoke all on function public.tg_lines(jsonb) from public;

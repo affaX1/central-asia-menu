@@ -868,6 +868,8 @@
       bar.innerHTML = `<span class="bar-left">${icon('list')}<span class="bar-txt">${esc(t('orderNo')(last.no))}</span></span><span class="bar-sum st-${esc(st)}">${st === 'accepted' ? icon('check', 'sm') : ''}<span class="bar-txt">${esc(t('statuses')[st])}</span></span>`;
       bar.setAttribute('aria-label', `${t('orderNo')(last.no)}: ${t('statuses')[st]}`);
     }
+    if (count > (renderBar.lastCount || 0) && !bar.hidden) { bar.classList.remove('bump'); void bar.offsetWidth; bar.classList.add('bump'); }
+    renderBar.lastCount = count;
     bar.hidden = !count && !last;
     document.body.classList.toggle('has-bar', !bar.hidden);
   }
@@ -970,7 +972,9 @@
   const guestStatus = (s) => (['new', 'accepted', 'cooking', 'ready', 'served', 'cancelled'].includes(s) ? s : 'accepted');
   const STEP = { new: 0, accepted: 1, cooking: 2, ready: 3, served: 4 };
 
+  const shownStatus = {};   // что гость уже видел — новый статус «подпрыгивает»
   function trackSheetHtml(id) {
+    setTimeout(() => { if (tracked[id]) shownStatus[id] = guestStatus(tracked[id].status); }, 0);
     const o = tracked[id];
     const mine = myOrders.find((x) => x.id === id);
     if (!o || !mine) return `<div class="state">${icon('alert')}<p>${esc(t('errServer'))}</p></div>`;
@@ -982,7 +986,7 @@
       ${justSent === id && gs === 'new' ? `<p class="sent-ok" role="status">${icon('check')}<span>${esc(t('sentTitle')(o.no))}</span></p>` : ''}
       <h2 class="sheet-title" id="sheet-title">${esc(t('orderNo')(o.no))}</h2>
       <p class="track-meta"><span class="table-tag">${icon('table')}${esc(t('table'))} ${esc(o.table_label)}</span><span>${esc(t('sentAt')(timeOf(o.created_at)))}</span>${o.paid_at ? `<span class="badge ok paid-tag">${icon('check', 'sm')}${esc(t('paid'))}</span>` : ''}</p>
-      <div class="track-card is-${gs === 'new' || gs === 'cancelled' ? gs : 'accepted'}" aria-live="polite">
+      <div class="track-card is-${gs === 'new' || gs === 'cancelled' ? gs : 'accepted'}${shownStatus[id] && shownStatus[id] !== gs ? ' pop' : ''}" aria-live="polite">
         <span class="track-icon">${icon(ic)}</span>
         <div><b>${esc(t('statuses')[gs])}</b><span>${esc(t('statusHint')[gs])}</span></div>
       </div>
@@ -1190,7 +1194,7 @@
     const d = byId[viewer.ids[viewer.i]];
     const many = viewer.ids.length > 1;
     el.innerHTML = `<button type="button" class="v-close" aria-label="${esc(t('close'))}" data-v="close">${icon('x')}</button>
-      <figure><img src="${esc(d.photo)}" alt="${esc(L(d.name))}"><figcaption><b>${esc(L(d.name))}</b><span>${money(d.price)}</span>${many ? `<small>${esc(t('photoOf')(viewer.i + 1, viewer.ids.length))}</small>` : ''}</figcaption></figure>
+      <figure class="v-in"><img src="${esc(d.photo)}" alt="${esc(L(d.name))}"><figcaption><b>${esc(L(d.name))}</b><span>${money(d.price)}</span>${many ? `<small>${esc(t('photoOf')(viewer.i + 1, viewer.ids.length))}</small>` : ''}</figcaption></figure>
       ${many ? `<button type="button" class="v-nav v-prev" data-v="prev" aria-label="‹">${icon('chevron')}</button><button type="button" class="v-nav v-next" data-v="next" aria-label="›">${icon('chevron')}</button>` : ''}`;
     el.querySelector('.v-close').focus({ preventScroll: true });
   }
@@ -1515,6 +1519,40 @@
     document.body.classList.remove('locked');
     setTimeout(() => { if (!sheet) { el.hidden = true; bd.hidden = true; } }, 300);
     if (lastFocus && document.contains(lastFocus)) lastFocus.focus({ preventScroll: true });
+  }
+
+  // смахнуть шторку вниз — закрыть (на телефоне): тянем за верх или когда список уже вверху
+  {
+    const el = $('#sheet');
+    let y0 = null; let dy = 0; let t0 = 0; let dragging = false;
+    const phone = () => matchMedia('(max-width: 719.98px)').matches;
+    el.addEventListener('touchstart', (e) => {
+      if (!sheet || !phone() || e.touches.length !== 1) return;
+      const onGrab = e.target.closest('.sheet-grab') || e.touches[0].clientY - el.getBoundingClientRect().top < 56;
+      if (!onGrab && el.scrollTop > 0) return;
+      if (e.target.closest('input, textarea, select, .hits-row, .stepper')) return;
+      y0 = e.touches[0].clientY; dy = 0; t0 = Date.now(); dragging = false;
+    }, { passive: true });
+    el.addEventListener('touchmove', (e) => {
+      if (y0 == null) return;
+      dy = e.touches[0].clientY - y0;
+      if (!dragging && dy > 8 && el.scrollTop <= 0) { dragging = true; el.classList.add('dragging'); }
+      if (!dragging) { if (dy < 0) y0 = null; return; }
+      e.preventDefault();
+      el.style.transform = `translateY(${Math.max(0, dy)}px)`;
+      $('#backdrop').style.opacity = String(Math.max(0, 1 - dy / 400));
+    }, { passive: false });
+    const end = () => {
+      if (y0 == null) return;
+      const fast = dy > 60 && Date.now() - t0 < 250;
+      el.classList.remove('dragging');
+      el.style.transform = '';
+      $('#backdrop').style.opacity = '';
+      if (dragging && (dy > 120 || fast)) closeSheet();
+      y0 = null; dragging = false; dy = 0;
+    };
+    el.addEventListener('touchend', end);
+    el.addEventListener('touchcancel', end);
   }
 
   let toastTimer = null;

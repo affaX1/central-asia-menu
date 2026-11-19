@@ -118,7 +118,8 @@
       const fresh = seenCalls ? open.filter((x) => !seenCalls.has(x.id)) : [];
       seenCalls = new Set([...(seenCalls || []), ...c.map((x) => x.id)]);
       calls = c;
-      const mineFresh = fresh.filter((x) => isMineOrFree(x.table_id));
+      // «принесите счёт» — всем официантам; остальные вызовы — своим и ничьим столам
+      const mineFresh = fresh.filter((x) => x.kind === 'bill' || isMineOrFree(x.table_id));
       if (mineFresh.length) host.onCalls?.(mineFresh);
     }
     const openCalls = () => calls.filter((c) => !c.done_at);
@@ -152,7 +153,8 @@
     }
 
     function callsHtml() {
-      const list = openCalls().filter((c) => !mineOnly || isMineOrFree(c.table_id)).sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+      const list = openCalls().filter((c) => !mineOnly || c.kind === 'bill' || isMineOrFree(c.table_id))
+        .sort((a, b) => (b.kind === 'bill') - (a.kind === 'bill') || new Date(a.created_at) - new Date(b.created_at));
       if (!list.length) return '';
       return `<section class="calls">${list.map((c) => `
         <div class="call ${c.kind === 'bill' ? 'is-bill' : ''}">
