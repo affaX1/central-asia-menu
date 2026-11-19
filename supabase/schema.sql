@@ -255,6 +255,10 @@ begin
   return true;
 end $$;
 alter table public.dishes add column if not exists options jsonb not null default '[]';
+alter table public.dishes add column if not exists prep_min int check (prep_min is null or prep_min between 1 and 240);  -- время готовки, мин
+alter table public.dishes add column if not exists pairs text[] not null default '{}';  -- «С этим берут»: коды других блюд
+alter table public.dishes drop constraint if exists dishes_pairs_check;
+alter table public.dishes add constraint dishes_pairs_check check (cardinality(pairs) <= 6);
 alter table public.dishes drop constraint if exists dishes_options_check;
 alter table public.dishes add constraint dishes_options_check check (public.valid_options(options));
 
@@ -1004,10 +1008,15 @@ create table if not exists public.calls (
   done_by_name text
 );
 create index if not exists calls_open_idx on public.calls (table_id) where done_at is null;
+-- просьба гостя к официанту: вода, салфетки, приборы, лёд, убрать со стола (пусто — просто подойти)
+alter table public.calls add column if not exists reason text;
+alter table public.calls drop constraint if exists calls_reason_check;
+alter table public.calls add constraint calls_reason_check check (reason is null or reason in ('water', 'napkins', 'cutlery', 'ice', 'clear'));
 create index if not exists calls_created_idx on public.calls (created_at desc);
 
 -- Гость: позвать официанта или попросить счёт. Повторное нажатие не создаёт второй вызов.
-create or replace function public.call_staff(p_table text, p_kind text, p_method text default null)
+drop function if exists public.call_staff(text, text, text);
+create or replace function public.call_staff(p_table text, p_kind text, p_method text default null, p_reason text default null)
 returns table (id uuid, kind text, created_at timestamptz)
 language plpgsql security definer set search_path = public as $$
 declare v_tab public.tables%rowtype; v_call public.calls%rowtype;
@@ -1016,26 +1025,29 @@ begin
   if not found then raise exception 'bad_table'; end if;
   if p_kind not in ('waiter', 'bill') then raise exception 'bad_request'; end if;
   if p_method is not null and p_method not in ('cash', 'card', 'qr') then raise exception 'bad_request'; end if;
-  select * into v_call from public.calls c where c.table_id = v_tab.id and c.kind = p_kind and c.done_at is null;
+  if p_reason is not null and (p_kind <> 'waiter' or p_reason not in ('water', 'napkins', 'cutlery', 'ice', 'clear')) then raise exception 'bad_request'; end if;
+  select * into v_call from public.calls c where c.table_id = v_tab.id and c.kind = p_kind and c.done_at is null
+    and coalesce(c.reason, '') = coalesce(p_reason, '');
   if found then
     if p_method is not null and v_call.pay_method is distinct from p_method then
       update public.calls c set pay_method = p_method where c.id = v_call.id;
     end if;
     return query select v_call.id, v_call.kind, v_call.created_at; return;
   end if;
-  if (select count(*) from public.calls c where c.table_id = v_tab.id and c.created_at > now() - interval '10 minutes') >= 6 then
+  if (select count(*) from public.calls c where c.table_id = v_tab.id and c.created_at > now() - interval '10 minutes') >= 10 then
     raise exception 'too_many';
   end if;
-  return query insert into public.calls as c (table_id, table_label, kind, pay_method)
-    values (v_tab.id, v_tab.label, p_kind, case when p_kind = 'bill' then p_method end)
+  return query insert into public.calls as c (table_id, table_label, kind, pay_method, reason)
+    values (v_tab.id, v_tab.label, p_kind, case when p_kind = 'bill' then p_method end, case when p_kind = 'waiter' then p_reason end)
     returning c.id, c.kind, c.created_at;
 end $$;
 
 -- Гость: открытые вызовы своего стола (чтобы показать «официант уже идёт»)
+drop function if exists public.table_calls(text);
 create or replace function public.table_calls(p_table text)
-returns table (kind text, created_at timestamptz)
+returns table (kind text, created_at timestamptz, reason text)
 language sql stable security definer set search_path = public as $$
-  select c.kind, c.created_at from public.calls c join public.tables t on t.id = c.table_id
+  select c.kind, c.created_at, c.reason from public.calls c join public.tables t on t.id = c.table_id
   where t.token = lower(btrim(coalesce(p_table, ''))) and t.active and c.done_at is null;
 $$;
 
@@ -1128,7 +1140,7 @@ revoke all on function public.close_bill(uuid, text, uuid[], numeric, jsonb) fro
 revoke all on function public.claim_table(uuid, boolean) from public;
 revoke all on function public.staff_place_order(uuid, jsonb, text, uuid) from public;
 revoke all on function public.serve_order(uuid) from public;
-revoke all on function public.call_staff(text, text, text) from public;
+revoke all on function public.call_staff(text, text, text, text) from public;
 revoke all on function public.table_calls(text) from public;
 revoke all on function public.done_call(uuid) from public;
 revoke all on function public.edit_order(uuid, jsonb) from public;
@@ -1138,7 +1150,7 @@ grant execute on function public.close_bill(uuid, text, uuid[], numeric, jsonb) 
 grant execute on function public.claim_table(uuid, boolean) to authenticated;
 grant execute on function public.staff_place_order(uuid, jsonb, text, uuid) to authenticated;
 grant execute on function public.serve_order(uuid) to authenticated;
-grant execute on function public.call_staff(text, text, text) to anon, authenticated;
+grant execute on function public.call_staff(text, text, text, text) to anon, authenticated;
 grant execute on function public.table_calls(text) to anon, authenticated;
 grant execute on function public.done_call(uuid) to authenticated;
 grant execute on function public.edit_order(uuid, jsonb) to authenticated;
@@ -1388,7 +1400,7 @@ begin
     select * into v from private.telegram where id = 1;
     declare v_text text := 'Стол ' || new.table_label || ': ' || case when new.kind = 'bill'
       then 'просят счёт' || coalesce(' (' || case new.pay_method when 'cash' then 'наличные' when 'card' then 'карта' else 'QR' end || ')', '')
-      else 'зовут официанта' end;
+      else 'зовут официанта' || case new.reason when 'water' then ' — вода' when 'napkins' then ' — салфетки' when 'cutlery' then ' — приборы' when 'ice' then ' — лёд' when 'clear' then ' — убрать со стола' else '' end end;
     begin
       if coalesce(v.notify_calls, false) then perform private.tg_send(v_text); end if;
       perform private.tg_send_to(private.tg_floor_chats(new.table_id), v_text);
@@ -1600,3 +1612,135 @@ begin
     end loop;
   end if;
 end $$;
+
+-- =====================================================================
+--  ГОСТЬ: СЧЁТ СТОЛА, ОТЗЫВЫ, «С ЭТИМ БЕРУТ»
+-- =====================================================================
+
+-- Гость (по QR своего стола): неоплаченные заказы стола за последние 12 часов — свои и друзей
+create or replace function public.table_bill(p_table text)
+returns table (no bigint, status text, items jsonb, subtotal numeric, service numeric, tax numeric, total numeric, created_at timestamptz)
+language sql stable security definer set search_path = public as $$
+  select o.no, o.status, o.items, coalesce(o.subtotal, o.total), o.service, o.tax, o.total, o.created_at
+  from public.orders o join public.tables t on t.id = o.table_id
+  where t.token = lower(btrim(coalesce(p_table, ''))) and t.active
+    and o.paid_at is null and o.status <> 'cancelled' and o.created_at > now() - interval '12 hours'
+  order by o.no;
+$$;
+
+-- Отзывы гостей: один на заказ (можно поправить), только от того, кто сделал заказ
+create table if not exists public.reviews (
+  id          uuid primary key default gen_random_uuid(),
+  order_id    uuid unique references public.orders (id) on delete set null,
+  order_no    bigint,
+  table_id    uuid references public.tables (id) on delete set null,
+  table_label text,
+  rating      int not null check (rating between 1 and 5),
+  comment     text check (comment is null or char_length(comment) <= 500),
+  lang        text check (lang is null or char_length(lang) <= 5),
+  created_at  timestamptz not null default now(),
+  updated_at  timestamptz not null default now()
+);
+create index if not exists reviews_created_idx on public.reviews (created_at desc);
+
+create or replace function public.leave_review(p_order uuid, p_token uuid, p_rating int, p_comment text, p_lang text)
+returns void language plpgsql security definer set search_path = public as $$
+declare v_o public.orders%rowtype;
+begin
+  select * into v_o from public.orders where id = p_order and guest_token = p_token;
+  if not found then raise exception 'not_found'; end if;
+  if v_o.status in ('new', 'cancelled') then raise exception 'too_early'; end if;
+  if v_o.created_at < now() - interval '2 days' then raise exception 'too_late'; end if;
+  if p_rating is null or p_rating not between 1 and 5 then raise exception 'bad_rating'; end if;
+  insert into public.reviews (order_id, order_no, table_id, table_label, rating, comment, lang)
+  values (v_o.id, v_o.no, v_o.table_id, v_o.table_label, p_rating, left(nullif(btrim(coalesce(p_comment, '')), ''), 500), left(nullif(btrim(coalesce(p_lang, '')), ''), 5))
+  on conflict (order_id) do update set rating = excluded.rating, comment = excluded.comment, updated_at = now();
+end $$;
+
+alter table public.reviews enable row level security;
+revoke all on public.reviews from anon, authenticated;
+grant select on public.reviews to authenticated;
+drop policy if exists reviews_owner_read on public.reviews;
+create policy reviews_owner_read on public.reviews for select to authenticated using (public.is_owner());
+
+-- новый отзыв → владельцу в Telegram
+alter table private.telegram add column if not exists notify_reviews boolean not null default true;
+create or replace function public.tg_on_review()
+returns trigger language plpgsql security definer set search_path = public, private as $$
+declare v private.telegram%rowtype;
+begin
+  begin
+    select * into v from private.telegram where id = 1;
+    if not coalesce(v.notify_reviews, true) then return null; end if;
+    perform private.tg_send('Отзыв · стол ' || coalesce(new.table_label, '?') || ' · заказ №' || coalesce(new.order_no::text, '?') || ': '
+      || repeat('★', new.rating) || repeat('☆', 5 - new.rating) || coalesce(E'\n' || new.comment, ''));
+  exception when others then null;
+  end;
+  return null;
+end $$;
+drop trigger if exists tg_reviews on public.reviews;
+create trigger tg_reviews after insert on public.reviews for each row execute function public.tg_on_review();
+
+-- «С этим берут» и «Хиты»: что чаще заказывают (за 30 дней) и что берут вместе (за 60 дней).
+-- Только счётчики по блюдам — никаких данных о гостях.
+create or replace function public.menu_stats()
+returns jsonb language sql stable security definer set search_path = public as $$
+  with lines as (
+    select o.id as oid, o.created_at, i ->> 'id' as dish, (i ->> 'qty')::int as qty
+    from public.orders o, jsonb_array_elements(o.items) i
+    where o.status <> 'cancelled' and o.created_at > now() - interval '60 days'),
+  pop as (
+    select dish, sum(qty) as n from lines where created_at > now() - interval '30 days' group by dish order by n desc limit 12),
+  pr as (
+    select a.dish as a, b.dish as b, count(distinct a.oid) as n
+    from lines a join lines b on a.oid = b.oid and a.dish <> b.dish group by a.dish, b.dish),
+  top as (
+    select a, b, row_number() over (partition by a order by n desc, b) as rk from pr where n >= 2)
+  select jsonb_build_object(
+    'popular', coalesce((select jsonb_agg(dish order by n desc) from pop), '[]'),
+    'pairs', coalesce((select jsonb_object_agg(a, l) from (select a, jsonb_agg(b order by rk) as l from top where rk <= 3 group by a) x), '{}'));
+$$;
+
+revoke all on function public.table_bill(text) from public;
+revoke all on function public.leave_review(uuid, uuid, int, text, text) from public;
+revoke all on function public.tg_on_review() from public;
+revoke all on function public.menu_stats() from public;
+grant execute on function public.table_bill(text) to anon, authenticated;
+grant execute on function public.leave_review(uuid, uuid, int, text, text) to anon, authenticated;
+grant execute on function public.menu_stats() to anon, authenticated;
+
+-- telegram_status: + галочка «отзывы»
+drop function if exists public.telegram_status();
+create or replace function public.telegram_status()
+returns table (connected boolean, bot_hint text, chats int, notify_orders boolean, notify_calls boolean, notify_bills boolean, net_ok boolean, bot_username text, staff_linked int, notify_reviews boolean)
+language plpgsql security definer set search_path = public, private as $$
+begin
+  if not public.is_owner() then raise exception 'forbidden'; end if;
+  return query select t.bot_token is not null and cardinality(t.chat_ids) > 0,
+    case when t.bot_token is null then null else '…' || right(t.bot_token, 4) end,
+    cardinality(t.chat_ids), t.notify_orders, t.notify_calls, t.notify_bills,
+    to_regprocedure('net.http_post(text,jsonb,jsonb,jsonb,integer)') is not null,
+    private.tg_bot_username(),
+    (select count(*)::int from private.staff_tg g join public.staff s on s.user_id = g.user_id where g.chat_id is not null and s.active),
+    t.notify_reviews
+  from private.telegram t where t.id = 1;
+end $$;
+revoke all on function public.telegram_status() from public;
+grant execute on function public.telegram_status() to authenticated;
+create or replace function public.set_telegram_reviews(p_on boolean)
+returns void language plpgsql security definer set search_path = public, private as $$
+begin
+  if not public.is_owner() then raise exception 'forbidden'; end if;
+  update private.telegram set notify_reviews = coalesce(p_on, true) where id = 1;
+end $$;
+revoke all on function public.set_telegram_reviews(boolean) from public;
+grant execute on function public.set_telegram_reviews(boolean) to authenticated;
+
+do $$
+begin
+  if exists (select 1 from pg_publication where pubname = 'supabase_realtime')
+     and not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'reviews') then
+    execute 'alter publication supabase_realtime add table public.reviews';
+  end if;
+end $$;
+

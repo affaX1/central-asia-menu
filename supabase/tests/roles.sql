@@ -475,4 +475,44 @@ set role authenticated; set request.jwt.claim.sub = '11111111-1111-1111-1111-111
 select t_ok((select bot_username from public.telegram_status()) = 'central_asia_bot' and (select staff_linked from public.telegram_status()) = 2, 'владелец видит имя бота и сколько сотрудников подключено');
 reset role; reset request.jwt.claim.sub;
 select t_ok((select count(*) from pg_publication_tables where pubname = 'supabase_realtime' and tablename = 'table_waiters') = 1, 'живые обновления включены для «моих столов»');
+
+-- ============ 17. Гость: просьбы, счёт стола, отзыв, «с этим берут» ============
+set role anon;
+select t_ok((select kind from public.call_staff((select token from tv where label = '1'), 'waiter', null, 'water')) = 'waiter', 'гость просит воду');
+select t_ok((select id from public.call_staff((select token from tv where label = '1'), 'waiter', null, 'water')) = (select id from public.call_staff((select token from tv where label = '1'), 'waiter', null, 'water')), 'повторная просьба воды не дублируется');
+select t_ok((select count(*) from public.table_calls((select token from tv where label = '1')) where reason = 'water') = 1, 'гость видит свою просьбу');
+select t_fails($$select * from public.call_staff((select token from tv where label = '1'), 'waiter', null, 'vodka')$$, 'bad_request', 'неизвестная просьба не проходит');
+select t_fails($$select * from public.call_staff((select token from tv where label = '1'), 'bill', 'cash', 'water')$$, 'bad_request', 'просьба только к вызову официанта');
+reset role;
+select t_ok(exists (select 1 from net.sent where body ->> 'text' = 'Стол 1: зовут официанта — вода'), 'просьба «вода» ушла в Telegram с пояснением');
+
+set role anon;
+create temp table o11 as select * from public.place_order((select token from tv where label = '2'), '[{"id":"green-tea","qty":2,"price":10}]', null, 'ru', gen_random_uuid());
+grant select on o11 to authenticated;
+select t_ok((select count(*) from public.table_bill((select token from tv where label = '2'))) >= 1 and exists (select 1 from public.table_bill((select token from tv where label = '2')) where no = (select no from o11)), 'гость видит неоплаченные заказы своего стола');
+select t_ok(not exists (select 1 from public.table_bill((select token from tv where label = '1'))), 'оплаченные заказы в счёт стола не попадают');
+select t_ok(not exists (select 1 from public.table_bill('0000000000000000000a')), 'по чужому коду счёт не виден');
+select t_fails($$select public.leave_review((select id from o11), (select guest_token from o11), 5, 'спасибо', 'ru')$$, 'too_early', 'отзыв на непринятый заказ нельзя');
+reset role;
+set role authenticated; set request.jwt.claim.sub = '22222222-2222-2222-2222-222222222222';
+select public.accept_order((select id from o11));
+reset role; reset request.jwt.claim.sub;
+set role anon;
+select public.leave_review((select id from o11), (select guest_token from o11), 4, 'Вкусно, но долго', 'ru');
+select public.leave_review((select id from o11), (select guest_token from o11), 5, 'Вкусно!', 'ru');
+select t_fails($$select public.leave_review((select id from o11), gen_random_uuid(), 1, 'плохо', 'ru')$$, 'not_found', 'отзыв без секрета заказа не принимается');
+select t_fails($$select public.leave_review((select id from o11), (select guest_token from o11), 9, null, 'ru')$$, 'bad_rating', 'оценка только от 1 до 5');
+select t_fails($$select * from public.reviews$$, 'permission denied', 'гость не читает отзывы');
+select t_ok(jsonb_typeof(public.menu_stats() -> 'popular') = 'array' and (public.menu_stats() -> 'popular') ? 'green-tea', '«Хиты» по продажам считаются (зелёный чай среди популярных)');
+select t_ok((public.menu_stats() -> 'pairs' -> 'plov-tashkent') ? 'green-tea', '«С этим берут»: к ташкентскому плову берут зелёный чай');
+reset role;
+set role authenticated; set request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
+select t_ok((select count(*) from public.reviews where order_id = (select id from o11)) = 1 and (select rating from public.reviews where order_id = (select id from o11)) = 5, 'один отзыв на заказ, гость поправил оценку');
+select t_ok(public.t_rows($$update public.dishes set prep_min = 20, pairs = '{achichuk,green-tea}' where id = 'plov-tashkent'$$) = 1, 'владелец указывает время готовки и «с этим берут»');
+select t_fails($$update public.dishes set prep_min = 999 where id = 'shurpa'$$, 'check', 'время готовки больше 4 часов не сохраняется');
+reset role; reset request.jwt.claim.sub;
+set role authenticated; set request.jwt.claim.sub = '22222222-2222-2222-2222-222222222222';
+select t_ok((select count(*) from public.reviews) = 0, 'официант не видит отзывы');
+reset role; reset request.jwt.claim.sub;
+select t_ok(exists (select 1 from net.sent where body ->> 'text' like 'Отзыв · стол 2%★★★★☆%'), 'отзыв ушёл владельцу в Telegram');
 \echo ALL DATABASE TESTS PASSED
