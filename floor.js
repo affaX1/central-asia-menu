@@ -22,6 +22,9 @@
   const optNames = (i) => (i.opts || []).map((o) => tr(o.name)).filter(Boolean);
   // пожелание гостя к блюду: заметно, жёлтым, с «!»
   const noteHtml = (i) => (i.note ? `<span class="i-note"><b aria-hidden="true">!</b>${esc(i.note)}</span>` : '');
+  // в ресторане без «принять / готовится / готово»: заказ либо ждёт подачи, либо подан
+  const ACTIVE = ['new', 'accepted', 'cooking', 'ready'];
+  const stOf = (s) => (ACTIVE.includes(s) ? 'new' : s);
   const lineTitle = (i) => { const o = optNames(i); return `${tr(i.name) || i.id}${o.length ? ` (${o.join(', ')})` : ''}`; };
   const sub = (o) => Number(o.subtotal ?? o.total);
   const PAY_KEYS = ['cash', 'card', 'qr', 'other'];
@@ -189,9 +192,7 @@
       const waiter = cs.find((c) => c.kind === 'waiter');
       let state = 'free';
       let text = t('fl_free');
-      if (os.some((o) => o.status === 'new')) { state = 'new'; text = t('fl_s_new'); }
-      else if (os.some((o) => o.status === 'ready')) { state = 'ready'; text = t('fl_s_ready'); }
-      else if (os.some((o) => o.status === 'accepted' || o.status === 'cooking')) { state = 'cooking'; text = t('fl_s_cooking'); }
+      if (os.some((o) => ACTIVE.includes(o.status))) { state = 'new'; text = t('fl_s_new'); }
       else if (os.length) { state = 'eating'; text = t('fl_s_served'); }
       if (bill) { state = 'bill'; text = t('fl_s_bill', bill.pay_method ? t('pay_guest')[bill.pay_method] : ''); }
       const total = r2(os.reduce((s, o) => s + Number(o.total), 0));
@@ -250,14 +251,14 @@
 
     // ---------- окно стола ----------
     function orderBlock(o, multi) {
-      const canServe = ['accepted', 'cooking', 'ready'].includes(o.status);
+      const canServe = ACTIVE.includes(o.status);
       return `<article class="fl-order">
-        <div class="o-head">${multi ? `<label class="fl-pick"><input type="checkbox" data-fl-pick="${esc(o.id)}"${payState?.ids.has(o.id) ? ' checked' : ''}${o.status === 'new' ? ' disabled' : ''}>` : '<span>'}<b>№${esc(o.no)} · ${esc(hhmm(o.created_at))}</b>${multi ? '</label>' : '</span>'}<span class="st st-${esc(o.status)}">${esc(t('st')[o.status])}</span></div>
+        <div class="o-head">${multi ? `<label class="fl-pick"><input type="checkbox" data-fl-pick="${esc(o.id)}"${payState?.ids.has(o.id) ? ' checked' : ''}>` : '<span>'}<b>№${esc(o.no)} · ${esc(hhmm(o.created_at))}</b>${multi ? '</label>' : '</span>'}<span class="st st-${esc(stOf(o.status))}">${esc(t('st')[stOf(o.status)])}</span></div>
         <ul class="o-items">${(o.items || []).map((i) => `<li><span><b>${esc(i.qty)}×</b> ${esc(tr(i.name) || i.id)}${optNames(i).length ? `<em class="o-opt">${esc(optNames(i).join(', '))}</em>` : ''}${noteHtml(i)}</span><span>${money(i.price * i.qty)}</span></li>`).join('')}</ul>
         ${o.note ? `<div class="o-note"><b>${esc(t('comment'))}:</b> ${esc(o.note)}</div>` : ''}
         ${o.source === 'staff' && o.created_by_name ? `<div class="o-meta">${esc(t('entered_by', o.created_by_name))}</div>` : ''}
         <div class="fl-order-actions">
-          ${canServe ? `<button type="button" class="btn small${o.status === 'ready' ? '' : ' soft'}" data-fl-serve="${esc(o.id)}">${icon('check', 'sm')}${esc(t('serve'))}</button>` : ''}
+          ${canServe ? `<button type="button" class="btn small" data-fl-serve="${esc(o.id)}">${icon('check', 'sm')}${esc(t('serve'))}</button>` : ''}
           <button type="button" class="btn small ghost" data-fl-ticket="${esc(o.id)}">${icon('printer', 'sm')}${esc(t('print_kitchen'))}</button>
           ${host.isOwner ? `<button type="button" class="btn small ghost" data-fl-edit="${esc(o.id)}">${icon('edit', 'sm')}Изменить</button>` : ''}
         </div>
@@ -275,11 +276,10 @@
       const d = dueOf(tableId);
       const tip = r2(Number(payState.tip) || 0);
       const grand = r2(d.total + tip);
-      const hasNew = unpaid(tableId).some((o) => o.status === 'new');
       const parts = payState.parts;
       const partsSum = r2(parts.reduce((x, p) => x + (Number(p.amount) || 0), 0));
       const left = r2(grand - partsSum);
-      const disabled = hasNew || !d.os.length;
+      const disabled = !d.os.length;
       return `
         <dl class="fl-sum">
           ${d.service || d.tax ? `<div><dt>${esc(t('sum_items'))}</dt><dd>${money(d.subtotal)}</dd></div>` : ''}
@@ -287,7 +287,6 @@
           ${d.tax ? `<div><dt>${esc(S.settings?.tax_name || t('sum_tax'))}</dt><dd>${money(d.tax)}</dd></div>` : ''}
           <div class="tot"><dt>${esc(t('sum_due'))}</dt><dd>${money(d.total)}</dd></div>
         </dl>
-        ${hasNew ? `<p class="notice bad">${icon('alert')}<span>${esc(t('has_new'))}</span></p>` : ''}
         <p class="section-label">${esc(t('tip'))}</p>
         <div class="fl-tip">
           <button type="button" class="chip${!tip ? ' active' : ''}" data-fl-tip="0">${esc(t('tip_none'))}</button>
@@ -319,7 +318,7 @@
       if (!tb) return;
       const { os, bill, waiter } = tableState(tb);
       if (!keep || !payState || payState.table !== id) {
-        payState = { table: id, ids: new Set(os.filter((o) => o.status !== 'new').map((o) => o.id)), tip: 0, split: false, parts: [], hint: bill?.pay_method || null };
+        payState = { table: id, ids: new Set(os.map((o) => o.id)), tip: 0, split: false, parts: [], hint: bill?.pay_method || null };
       }
       const multi = os.length > 1;
       const paid = bills.filter((b) => b.table_id === id);
@@ -703,5 +702,5 @@
     };
   }
 
-  window.Floor = { create, printTicket, printReceipt, optNames, lineTitle, noteHtml };
+  window.Floor = { create, printTicket, printReceipt, optNames, lineTitle, noteHtml, ACTIVE, stOf };
 })();

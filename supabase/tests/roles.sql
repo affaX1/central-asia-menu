@@ -295,7 +295,6 @@ select public.done_call((select id from c1));
 select t_ok((select done_by_name from public.calls where id = (select id from c1)) = 'Азиз', 'официант закрыл вызов, записано кто');
 
 -- ============ 9. Счёт и оплата ============
-select t_fails($$select * from public.close_bill((select id from tv where label = '1'), 'cash')$$, 'has_new', 'счёт нельзя закрыть, пока на столе есть непринятые заказы');
 select public.accept_order(id) from public.orders where table_id = (select id from tv where label = '1') and status = 'new';
 select t_fails($$select * from public.close_bill((select id from tv where label = '1'), 'bitcoin')$$, 'bad_method', 'неизвестный способ оплаты не проходит');
 create temp table b1 as select * from public.close_bill((select id from tv where label = '1'), 'card');
@@ -559,4 +558,11 @@ set role anon;
 select t_fails($$select * from public.place_order((select token from tv where label = 'VIP'), '[{"id":"green-tea","qty":1,"price":10,"note":"без сахара"},{"id":"green-tea","qty":1,"price":10,"note":" без  сахара "}]', null, 'ru', gen_random_uuid())$$, 'bad_items', 'одинаковое пожелание к одному блюду дважды — нельзя');
 reset role;
 select t_ok(char_length(public.order_line(jsonb_build_object('id', 'green-tea', 'qty', 1, 'price', 10, 'note', repeat('а', 500)), true) ->> 'note') = 120, 'длинное пожелание обрезается до 120 символов');
+-- ============ 21. Коротко: пришёл заказ → «Подано» ============
+grant select on o20 to authenticated;
+select t_ok(exists (select 1 from net.sent where body ->> 'chat_id' = '777000222' and body ->> 'text' like 'На кухню: заказ №' || (select no from o20) || '%'), 'гостевой заказ сразу ушёл повару, без «принять»');
+set role authenticated; set request.jwt.claim.sub = '22222222-2222-2222-2222-222222222222';
+select t_ok((select status from public.serve_order((select id from o20))) = 'served', 'официант подаёт новый заказ сразу');
+select t_ok((select accepted_by_name is not null and accepted_at is not null and served_at is not null from public.orders where id = (select id from o20)), 'у поданного заказа записано, кто и когда обслужил');
+reset role; reset request.jwt.claim.sub;
 \echo ALL DATABASE TESTS PASSED

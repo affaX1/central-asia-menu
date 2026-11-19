@@ -530,6 +530,11 @@ begin
     if new.status = 'cooking' and new.cooking_at is null then new.cooking_at := now(); end if;
     if new.status = 'ready' then new.ready_at := now(); end if;
     if new.status = 'served' and new.served_at is null then new.served_at := now(); end if;
+    -- короткий путь «новый → подано»: кто подал, тот и обслужил стол
+    if new.status = 'served' and new.accepted_at is null then
+      new.accepted_at := now();
+      new.accepted_by := coalesce(new.accepted_by, auth.uid());
+    end if;
     if new.status = 'cancelled' then new.cancelled_at := now(); else new.cancelled_at := null; end if;
   end if;
   return new;
@@ -940,10 +945,6 @@ begin
     where o.table_id = p_table and o.paid_at is null and o.status <> 'cancelled'
       and (p_orders is null or o.id = any (p_orders))
     for update;
-  if exists (select 1 from public.orders o where o.table_id = p_table and o.paid_at is null and o.status = 'new'
-             and (p_orders is null or o.id = any (p_orders))) then
-    raise exception 'has_new';
-  end if;
   select array_agg(o.id order by o.no), array_agg(o.no order by o.no),
          sum(coalesce(o.subtotal, o.total)), sum(o.service), sum(o.tax), sum(o.total), max(o.table_label)
     into v_ids, v_nos, v_sub, v_srv, v_tax, v_tot, v_label
@@ -1015,15 +1016,21 @@ begin
 end $$;
 
 -- ---------- Официант: заказ отнесли гостю ----------
+-- В ресторане всё просто: пришёл заказ → официант принёс → «Подано».
+-- Подать можно и новый заказ (без «принять/готовится/готово»).
 create or replace function public.serve_order(p_id uuid)
 returns setof public.orders language plpgsql security definer set search_path = public as $$
-declare v_o public.orders%rowtype;
+declare v_o public.orders%rowtype; v_name text;
 begin
   if not public.is_floor() then raise exception 'forbidden'; end if;
   select * into v_o from public.orders where id = p_id for update;
   if not found then raise exception 'not_found'; end if;
-  if v_o.status in ('accepted', 'cooking', 'ready') then
-    return query update public.orders set status = 'served' where id = p_id returning *; return;
+  if v_o.status in ('new', 'accepted', 'cooking', 'ready') then
+    select coalesce(nullif(st.name, ''), st.email) into v_name from public.staff st where st.user_id = auth.uid();
+    return query update public.orders
+       set status = 'served', accepted_by_name = coalesce(accepted_by_name, v_name)
+     where id = p_id returning *;
+    return;
   end if;
   return query select * from public.orders where id = p_id;
 end $$;
@@ -1391,10 +1398,8 @@ create or replace function public.tg_on_order_status()
 returns trigger language plpgsql security definer set search_path = public, private as $$
 begin
   begin
-    if new.status = 'accepted' and old.status = 'new' then
-      perform private.tg_send_to(private.tg_cook_chats(), 'На кухню: заказ №' || new.no || ' · стол ' || new.table_label || E'\n'
-        || coalesce(public.tg_lines(new.items), '') || coalesce(E'\nКомментарий: ' || new.note, ''));
-    elsif new.status = 'ready' and old.status <> 'ready' then
+    -- повар уже получил заказ при создании; «готово» от кухни (старые экраны) — официанту стола
+    if new.status = 'ready' and old.status <> 'ready' then
       perform private.tg_send_to(private.tg_floor_chats(new.table_id), 'Готово: заказ №' || new.no || ' · стол ' || new.table_label || ' — отнесите');
     end if;
   exception when others then null;
@@ -1420,8 +1425,11 @@ begin
         || coalesce(E'\nКомментарий: ' || new.note, '') || E'\nИтого: ' || public.tg_money(new.total));
     end if;
     if new.status = 'new' then
-      perform private.tg_send_to(private.tg_floor_chats(new.table_id), 'Новый заказ №' || new.no || ' · стол ' || new.table_label || ' — примите' || E'\n' || coalesce(v_lines, ''));
-    elsif new.status = 'accepted' then
+      perform private.tg_send_to(private.tg_floor_chats(new.table_id), 'Новый заказ №' || new.no || ' · стол ' || new.table_label || E'\n' || coalesce(v_lines, '')
+        || coalesce(E'\nКомментарий: ' || new.note, ''));
+    end if;
+    -- повар получает заказ сразу, без «принять»
+    if new.status in ('new', 'accepted') then
       perform private.tg_send_to(private.tg_cook_chats(), 'На кухню: заказ №' || new.no || ' · стол ' || new.table_label || E'\n'
         || coalesce(v_lines, '') || coalesce(E'\nКомментарий: ' || new.note, ''));
     end if;

@@ -193,7 +193,7 @@
       await delay(); floor(); offline();
       const d = db(); const o = d.orders.find((x) => x.id === id);
       if (!o) throw new Error('not_found');
-      if (['accepted', 'cooking', 'ready'].includes(o.status)) { o.status = 'served'; o.served_at = new Date().toISOString(); o.updated_at = o.served_at; save(d); }
+      if (['new', 'accepted', 'cooking', 'ready'].includes(o.status)) { o.status = 'served'; o.served_at = new Date().toISOString(); o.updated_at = o.served_at; o.accepted_at = o.accepted_at || o.served_at; o.accepted_by = o.accepted_by || uid(); o.accepted_by_name = o.accepted_by_name || myName(); save(d); }
       return o;
     },
     async myTelegram() { await delay(); staffOk(); const d = db(); return { linked: !!(d.staffTg || {})[uid()], bot_username: d.telegram?.token ? 'central_asia_test_bot' : null, bot_ready: !!d.telegram?.token }; },
@@ -209,7 +209,6 @@
       if (tip < 0) throw new Error('bad_tip');
       const d = db();
       const list = d.orders.filter((o) => o.table_id === tableId && !o.paid_at && o.status !== 'cancelled' && (!ids || ids.includes(o.id)));
-      if (list.some((o) => o.status === 'new')) throw new Error('has_new');
       if (!list.length) throw new Error('nothing_to_pay');
       const sum = (k) => r2(list.reduce((s, o) => s + Number(o[k] ?? (k === 'subtotal' ? o.total : 0)), 0));
       d.billSeq = (d.billSeq || 0) + 1;

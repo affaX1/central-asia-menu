@@ -24,13 +24,11 @@
   let cat = '';
   let stop = null;
   let timer = null;
-  let lastStatus = new Map();    // id → статус: чтобы сказать «заказ готов», когда кухня отметит
 
   let orders = [];
   let ordersState = 'loading';   // loading | ready | error | stale
   let live = false;
   let seen = null;               // какие заказы уже показывали — звеним только на новые
-  const busy = new Set();
   const mineOnly = () => { try { return localStorage.getItem('floor:mine') === '1'; } catch { return false; } };
 
   const norm = (s) => String(s || '').toLowerCase().replace(/ё/g, 'е');
@@ -105,11 +103,11 @@
   }
   setInterval(() => {
     if (!api) return;
-    if (orders.some((o) => o.status === 'new' && floor?.isMineOrFree(o.table_id)) || floor?.openCalls().some((c) => c.kind === 'bill' || floor.isMineOrFree(c.table_id))) ding();
+    if (floor?.openCalls().some((c) => c.kind === 'bill' || floor.isMineOrFree(c.table_id))) ding();
   }, 30000);
 
   function updateCount() {
-    const n = orders.filter((o) => o.status === 'new' && visibleOrder(o)).length;
+    const n = orders.filter((o) => window.Floor.ACTIVE.includes(o.status) && visibleOrder(o)).length;
     const el = $('#tab-count');
     if (el) { el.hidden = !n; el.textContent = n; }
     const c = floor ? floor.openCalls().length : 0;
@@ -125,12 +123,9 @@
       const rows = await api.orders(dayStart().toISOString());
       const fresh = seen ? rows.filter((o) => o.status === 'new' && !seen.has(o.id) && (!floor || floor.isMineOrFree(o.table_id))) : [];
       seen = new Set([...(seen || []), ...rows.map((o) => o.id)]);
-      const ready = rows.filter((o) => o.status === 'ready' && lastStatus.has(o.id) && lastStatus.get(o.id) !== 'ready' && (!floor || floor.isMineOrFree(o.table_id)));
-      lastStatus = new Map(rows.map((o) => [o.id, o.status]));
       orders = rows;
       ordersState = 'ready';
       if (fresh.length) announce(fresh);
-      else if (ready.length) { buzz(t('t_ready', ready[0].no, ready[0].table_label), 'ready-' + ready[0].id); S.toast(ready.length > 1 ? t('t_ready_many', ready.length) : t('t_ready', ready[0].no, ready[0].table_label)); }
     } catch {
       ordersState = ordersState === 'ready' || ordersState === 'stale' ? 'stale' : 'error';
     }
@@ -138,25 +133,23 @@
   }
 
   function orderCard(o) {
-    const isNew = o.status === 'new';
-    const b = busy.has(o.id);
-    const canServe = ['accepted', 'cooking', 'ready'].includes(o.status);
-    return `<article class="o-card${isNew ? ' is-new' : ''}${o.status === 'ready' ? ' is-ready' : ''}">
+    const st = window.Floor.stOf(o.status);
+    const isNew = st === 'new';
+    return `<article class="o-card${isNew ? ' is-new' : ''}">
       <div class="o-head"><b class="o-table">${esc(t('table'))} ${esc(o.table_label)}</b>
-        <span class="st st-${esc(o.status)}">${!['new', 'cancelled'].includes(o.status) ? icon('check', 'sm') : ''}${esc(t('st')[o.status] || o.status)}</span></div>
+        <span class="st st-${esc(st)}">${st === 'served' ? icon('check', 'sm') : ''}${esc(t('st')[st] || st)}</span></div>
       <div class="o-meta">${esc(t('order_no', o.no))} · ${esc(hhmm(o.created_at))} · ${esc(ago(o.created_at))}</div>
       <ul class="o-items">${(o.items || []).map((i) => `<li><span><b>${esc(i.qty)}×</b> ${esc(tr(i.name) || i.id)}${optNames(i).length ? `<em class="o-opt">${esc(optNames(i).join(', '))}</em>` : ''}${window.Floor.noteHtml(i)}</span><span>${money(i.price * i.qty)}</span></li>`).join('')}</ul>
       ${o.note ? `<div class="o-note"><b>${esc(t('comment'))}:</b> ${esc(o.note)}</div>` : ''}
       ${o.edited_at ? `<div class="o-meta">${esc(t('edited_at', hhmm(o.edited_at)))}</div>` : ''}
       <div class="o-total"><span>${esc(t('total'))}${o.paid_at ? ` · <span class="state-badge ok">${esc(t('paid_tag'))}</span>` : ''}</span><b>${money(o.total)}</b></div>
-      ${isNew ? `<button type="button" class="btn block accept-btn" data-accept="${esc(o.id)}"${b ? ' disabled' : ''}>
-          ${b ? `<span class="spinner" aria-hidden="true"></span>${esc(t('accepting'))}` : `${icon('check')}${esc(t('accept'))}`}</button>`
-        : o.status === 'cancelled' ? `<div class="o-meta">${esc(t('order_cancelled'))}</div>`
-          : `<div class="o-meta">${o.source === 'staff' && o.created_by_name ? esc(t('entered_by', o.created_by_name)) : esc(t('accepted_by', o.accepted_by_name, o.accepted_at ? hhmm(o.accepted_at) : ''))}</div>`}
-      ${canServe ? `<button type="button" class="btn block serve-btn${o.status === 'ready' ? '' : ' soft'}" data-fl-serve="${esc(o.id)}">${icon('check')}${esc(t('serve'))}</button>` : ''}
+      ${o.status === 'cancelled' ? `<div class="o-meta">${esc(t('order_cancelled'))}</div>`
+        : o.source === 'staff' && o.created_by_name ? `<div class="o-meta">${esc(t('entered_by', o.created_by_name))}</div>`
+          : st === 'served' && o.accepted_by_name ? `<div class="o-meta">${esc(t('served_by', o.accepted_by_name, o.served_at ? hhmm(o.served_at) : ''))}</div>` : ''}
+      ${isNew ? `<button type="button" class="btn block serve-btn" data-fl-serve="${esc(o.id)}">${icon('check')}${esc(t('serve'))}</button>` : ''}
       ${o.status !== 'cancelled' ? `<div class="o-actions">
         <button type="button" class="btn small ghost" data-fl-ticket="${esc(o.id)}">${icon('printer', 'sm')}${esc(t('print_kitchen'))}</button>
-        ${o.table_id && !o.paid_at && !isNew ? `<button type="button" class="btn small ghost" data-fl-table="${esc(o.table_id)}">${esc(t('table_bill'))}</button>` : ''}
+        ${o.table_id && !o.paid_at ? `<button type="button" class="btn small ghost" data-fl-table="${esc(o.table_id)}">${esc(t('table_bill'))}</button>` : ''}
       </div>` : ''}
     </article>`;
   }
@@ -199,29 +192,8 @@
         ${canNotify ? `<button type="button" class="btn small ghost" data-notify>${icon('bell', 'sm')}${esc(t('notifications'))}</button>` : ''}
       </div>
       ${mine && floor && !floor.myTables().length ? `<p class="notice info">${icon('table')}<span>${esc(t('no_my_tables'))}</span></p>` : ''}
-      ${section(t('sec_new'), by(['new']), t('e_new'), true)}
-      ${section(t('sec_ready'), by(['ready']), t('e_ready'), true, 'is-ready-sec')}
-      ${section(t('sec_cooking'), by(['accepted', 'cooking']), t('e_cooking'), false)}
+      ${section(t('sec_new'), by(window.Floor.ACTIVE), t('e_new'), true)}
       ${section(t('sec_served'), served.slice(0, 40), t('e_served'), false)}`;
-  }
-
-  async function accept(id) {
-    const o = orders.find((x) => x.id === id);
-    if (!o || busy.has(id)) return;
-    busy.add(id);
-    renderOrders();
-    try {
-      const r = await api.acceptOrder(id);
-      orders = orders.map((x) => (x.id === id ? { ...x, status: r.status, accepted_at: r.accepted_at, accepted_by_name: r.accepted_by_name, accepted_by: r.changed ? me?.id : x.accepted_by } : x));
-      if (r.changed) S.toast(t('t_accepted', o.no));
-      else S.toast(r.status === 'cancelled' ? t('t_was_cancelled', o.no) : t('t_taken', o.no, r.accepted_by_name), true);
-    } catch (ex) {
-      S.toast(S.errText(ex), true);
-    } finally {
-      busy.delete(id);
-      updateCount();
-      if (tab === 'orders') renderOrders();
-    }
   }
 
   // ---------- меню (только просмотр) ----------
@@ -356,8 +328,6 @@
   document.addEventListener('input', (e) => { if (e.target.id === 'w-search') { q = e.target.value; renderMenu(); } });
   document.addEventListener('click', (e) => {
     if (floor?.handleClick(e)) return;
-    const ac = e.target.closest('[data-accept]');
-    if (ac) { accept(ac.dataset.accept); return; }
     if (e.target.closest('[data-retry]')) { ordersState = 'loading'; renderOrders(); loadOrders().then(render); return; }
     if (e.target.closest('[data-sound]')) {
       soundOn = !soundOn;

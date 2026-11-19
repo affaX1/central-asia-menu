@@ -113,7 +113,7 @@ window.STAFF_T = (() => {
     tab_menu: { ru: 'Меню', en: 'Menu', ms: 'Menu', uz: 'Menyu' },
     tab_shift: { ru: 'Смена', en: 'Shift', ms: 'Syif', uz: 'Smena' },
     st: { ru: { new: 'Новый', accepted: 'Принят', cooking: 'Готовится', ready: 'Готов', served: 'Подан', cancelled: 'Отменён' }, en: { new: 'New', accepted: 'Accepted', cooking: 'Cooking', ready: 'Ready', served: 'Served', cancelled: 'Cancelled' }, ms: { new: 'Baharu', accepted: 'Diterima', cooking: 'Dimasak', ready: 'Siap', served: 'Dihidang', cancelled: 'Dibatalkan' }, uz: { new: 'Yangi', accepted: 'Qabul qilindi', cooking: 'Tayyorlanmoqda', ready: 'Tayyor', served: 'Berildi', cancelled: 'Bekor qilindi' } },
-    sec_new: { ru: 'Новые', en: 'New', ms: 'Baharu', uz: 'Yangi' },
+    sec_new: { ru: 'Ждут подачи', en: 'To serve', ms: 'Untuk dihidang', uz: 'Berilishi kutilmoqda' },
     sec_ready: { ru: 'Готово — отнесите', en: 'Ready — take to the table', ms: 'Siap — hantar ke meja', uz: 'Tayyor — olib boring' },
     sec_cooking: { ru: 'Готовятся', en: 'Cooking', ms: 'Sedang dimasak', uz: 'Tayyorlanmoqda' },
     sec_served: { ru: 'Поданы сегодня', en: 'Served today', ms: 'Dihidang hari ini', uz: 'Bugun berilgan' },
@@ -124,6 +124,7 @@ window.STAFF_T = (() => {
     accept: { ru: 'Принять заказ', en: 'Accept order', ms: 'Terima pesanan', uz: 'Buyurtmani qabul qilish' },
     accepting: { ru: 'Принимаем…', en: 'Accepting…', ms: 'Menerima…', uz: 'Qabul qilinmoqda…' },
     serve: { ru: 'Подано', en: 'Served', ms: 'Sudah dihidang', uz: 'Berildi' },
+    served_by: { ru: (n, t) => `Подал: ${n}${t ? ` в ${t}` : ''}`, en: (n, t) => `Served by ${n}${t ? ` at ${t}` : ''}`, ms: (n, t) => `Dihidang oleh ${n}${t ? ` pada ${t}` : ''}`, uz: (n, t) => `Olib bordi: ${n}${t ? `, ${t}` : ''}` },
     print_kitchen: { ru: 'Печать на кухню', en: 'Print for kitchen', ms: 'Cetak untuk dapur', uz: 'Oshxona uchun chop etish' },
     table_bill: { ru: 'Счёт стола', en: 'Table bill', ms: 'Bil meja', uz: 'Stol hisobi' },
     new_order: { ru: 'Новый заказ', en: 'New order', ms: 'Pesanan baharu', uz: 'Yangi buyurtma' },
@@ -154,9 +155,9 @@ window.STAFF_T = (() => {
 
     // ---------- смена ----------
     shift_t: { ru: 'Моя смена сегодня', en: 'My shift today', ms: 'Syif saya hari ini', uz: 'Bugungi smenam' },
-    s_accepted: { ru: 'принял заказов', en: 'orders accepted', ms: 'pesanan diterima', uz: 'qabul qilingan buyurtma' },
+    s_accepted: { ru: 'обслужил заказов', en: 'orders served by me', ms: 'pesanan saya hidang', uz: 'men olib borgan buyurtmalar' },
     s_entered: { ru: 'пробил сам', en: 'entered myself', ms: 'dimasukkan sendiri', uz: 'o‘zim kiritdim' },
-    s_served: { ru: 'подал', en: 'served', ms: 'dihidang', uz: 'berildi' },
+    s_served: { ru: 'подано на моих столах', en: 'served at my tables', ms: 'dihidang di meja saya', uz: 'mening stollarimda berildi' },
     s_bills: { ru: 'закрыл счетов', en: 'bills closed', ms: 'bil ditutup', uz: 'yopilgan hisob' },
     s_sum: { ru: 'по моим счетам', en: 'in my bills', ms: 'dalam bil saya', uz: 'hisoblarim bo‘yicha' },
     s_tips: { ru: 'чаевые', en: 'tips', ms: 'tip', uz: 'choychaqa' },
@@ -282,6 +283,9 @@ window.STAFF_T = (() => {
 
     // ---------- кухня ----------
     k_title: { ru: 'Кухня', en: 'Kitchen', ms: 'Dapur', uz: 'Oshxona' },
+    k_queue: { ru: 'Готовить', en: 'To cook', ms: 'Untuk dimasak', uz: 'Tayyorlash kerak' },
+    k_in: { ru: (t, m) => `Пришёл в ${t} · ждёт ${m} мин`, en: (t, m) => `In at ${t} · waiting ${m} min`, ms: (t, m) => `Masuk ${t} · menunggu ${m} min`, uz: (t, m) => `${t} da keldi · ${m} daqiqa kutmoqda` },
+    k_e_queue: { ru: 'Заказов нет. Новый заказ появится здесь сам, со звуком. Когда официант отнесёт заказ, он отсюда уйдёт.', en: 'No orders. A new order appears here by itself, with a sound. It leaves once the waiter serves it.', ms: 'Tiada pesanan. Pesanan baharu muncul di sini sendiri, dengan bunyi. Ia hilang selepas pelayan menghidangnya.', uz: 'Buyurtma yo‘q. Yangi buyurtma bu yerda ovoz bilan o‘zi chiqadi. Ofitsiant olib borgach, bu yerdan ketadi.' },
     k_new: { ru: 'Новые', en: 'New', ms: 'Baharu', uz: 'Yangi' },
     k_cooking: { ru: 'Готовятся', en: 'Cooking', ms: 'Dimasak', uz: 'Tayyorlanmoqda' },
     k_ready: { ru: 'Готово', en: 'Ready', ms: 'Siap', uz: 'Tayyor' },

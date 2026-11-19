@@ -791,8 +791,10 @@
   // =================================================================
   //  ЗАКАЗЫ
   // =================================================================
-  const ST = { new: 'Новый', accepted: 'Принят', cooking: 'Готовится', ready: 'Готов', served: 'Подан', cancelled: 'Отменён' };
-  const NEXT = { new: ['accepted', 'Принять заказ'], accepted: ['cooking', 'Готовится'], cooking: ['ready', 'Готов'], ready: ['served', 'Подано'] };
+  // без «принять / готовится / готово»: заказ ждёт подачи → подан (или отменён)
+  const ST = { new: 'Ждёт подачи', served: 'Подан', cancelled: 'Отменён' };
+  const ACTIVE = ['new', 'accepted', 'cooking', 'ready'];
+  const stOf = (s) => (ACTIVE.includes(s) ? 'new' : s);
   const pad = (n) => String(n).padStart(2, '0');
   const localDate = (d = new Date()) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
   const dayStart = (d = new Date()) => { const x = new Date(d); x.setHours(0, 0, 0, 0); return x; };
@@ -862,7 +864,7 @@
     } catch { /* без системных уведомлений */ }
   }
   function updateCount() {
-    const n = orders.filter((o) => o.status === 'new').length;
+    const n = orders.filter((o) => ACTIVE.includes(o.status)).length;
     const el = $('#tab-count');
     if (el) { el.hidden = !n; el.textContent = n; }
     const c = floor ? floor.openCalls().length : 0;
@@ -878,7 +880,6 @@
     updateCount();
     if (tab === 'floor' && !document.querySelector('.modal')) render();
   }
-  setInterval(() => { if (api && orders.some((o) => o.status === 'new')) ding(); }, 30000); // напоминание, пока не приняли
 
   async function loadOrders() {
     const rows = await api.orders(dayStart().toISOString());
@@ -895,26 +896,26 @@
   }
 
   function orderCard(o) {
-    const next = NEXT[o.status];
+    const st = stOf(o.status);
     const busy = busyOrders.has(o.id);
-    return `<article class="o-card${o.status === 'new' ? ' is-new' : ''}">
-      <div class="o-head"><b class="o-table">${icon('qr', 'sm')}Стол ${esc(o.table_label)}</b><span class="st st-${esc(o.status)}">${esc(ST[o.status] || o.status)}</span></div>
-      <div class="o-meta">Заказ №${esc(o.no)} · ${esc(hhmm(o.created_at))} · ${esc(ago(o.created_at))}${o.lang ? ` · язык гостя ${esc(String(o.lang).toUpperCase())}` : ''}${o.accepted_by_name ? ` · принял: ${esc(o.accepted_by_name)}` : ''}</div>
+    return `<article class="o-card${st === 'new' ? ' is-new' : ''}">
+      <div class="o-head"><b class="o-table">${icon('qr', 'sm')}Стол ${esc(o.table_label)}</b><span class="st st-${esc(st)}">${esc(ST[st] || st)}</span></div>
+      <div class="o-meta">Заказ №${esc(o.no)} · ${esc(hhmm(o.created_at))} · ${esc(ago(o.created_at))}${o.lang ? ` · язык гостя ${esc(String(o.lang).toUpperCase())}` : ''}${o.source === 'staff' && o.created_by_name ? ` · пробил: ${esc(o.created_by_name)}` : ''}${st === 'served' && o.accepted_by_name ? ` · подал: ${esc(o.accepted_by_name)}` : ''}</div>
       <ul class="o-items">${(o.items || []).map((i) => `<li><span><b>${esc(i.qty)}×</b> ${esc(tr(i.name) || i.id)}${window.Floor.optNames(i).length ? `<em class="o-opt">${esc(window.Floor.optNames(i).join(', '))}</em>` : ''}${window.Floor.noteHtml(i)}</span><span>${money(i.price * i.qty)}</span></li>`).join('')}</ul>
       ${o.note ? `<div class="o-note"><b>Комментарий гостя:</b> ${esc(o.note)}</div>` : ''}
       ${o.edited_at ? `<div class="o-meta">Изменён${o.edited_by_name ? `: ${esc(o.edited_by_name)}` : ''} в ${esc(hhmm(o.edited_at))}</div>` : ''}
       ${Number(o.service) || Number(o.tax) ? `<div class="o-meta">Блюда ${money(o.subtotal ?? o.total)}${Number(o.service) ? ` · сбор ${money(o.service)}` : ''}${Number(o.tax) ? ` · налог ${money(o.tax)}` : ''}</div>` : ''}
       <div class="o-total"><span>Итого${o.paid_at ? ' · <span class="state-badge ok">оплачено</span>' : ''}</span><b>${money(o.total)}</b></div>
       <div class="o-actions">
-        ${next ? `<button type="button" class="btn" data-order-next="${esc(o.id)}" data-to="${next[0]}"${busy ? ' disabled' : ''}>${esc(next[1])}</button>` : ''}
-        <label class="field o-select"><span class="sr-only">Статус</span><select data-order-status="${esc(o.id)}"${busy ? ' disabled' : ''}>
-          ${Object.entries(ST).map(([k, v]) => `<option value="${k}"${k === o.status ? ' selected' : ''}>${v}</option>`).join('')}</select></label>
+        ${st === 'new' ? `<button type="button" class="btn" data-order-next="${esc(o.id)}" data-to="served"${busy ? ' disabled' : ''}>${icon('check', 'sm')}Подано</button>` : ''}
+        ${st === 'served' && !o.paid_at ? `<button type="button" class="btn small ghost" data-order-next="${esc(o.id)}" data-to="new"${busy ? ' disabled' : ''}>Вернуть в «Ждёт подачи»</button>` : ''}
+        ${st === 'cancelled' ? `<button type="button" class="btn small ghost" data-order-next="${esc(o.id)}" data-to="new"${busy ? ' disabled' : ''}>Вернуть заказ</button>` : ''}
         ${o.status !== 'cancelled' ? `<button type="button" class="btn small danger" data-order-cancel="${esc(o.id)}"${busy ? ' disabled' : ''}>Отменить</button>` : ''}
       </div>
       ${o.status !== 'cancelled' ? `<div class="o-actions">
         <button type="button" class="btn small ghost" data-fl-ticket="${esc(o.id)}">${icon('printer', 'sm')}На кухню</button>
         ${!o.paid_at ? `<button type="button" class="btn small ghost" data-fl-edit="${esc(o.id)}">${icon('edit', 'sm')}Изменить</button>` : ''}
-        ${o.table_id && !o.paid_at && o.status !== 'new' ? `<button type="button" class="btn small ghost" data-fl-table="${esc(o.table_id)}">Счёт стола</button>` : ''}
+        ${o.table_id && !o.paid_at ? `<button type="button" class="btn small ghost" data-fl-table="${esc(o.table_id)}">Счёт стола</button>` : ''}
       </div>` : ''}
     </article>`;
   }
@@ -924,9 +925,8 @@
     const today = dayStart().getTime();
     const todays = orders.filter((o) => new Date(o.created_at).getTime() >= today);
     const active = orders
-      .filter((o) => ['new', 'accepted', 'cooking'].includes(o.status) || (o.status === 'ready' && new Date(o.created_at).getTime() >= today))
-      .sort((a, b) => ((b.status === 'new') - (a.status === 'new')) || (new Date(a.created_at) - new Date(b.created_at)));
-    const count = (s) => orders.filter((o) => o.status === s).length;
+      .filter((o) => ACTIVE.includes(o.status))
+      .sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
     const sum = (list) => list.filter((o) => o.status !== 'cancelled').reduce((s, o) => s + Number(o.total), 0);
     const list = ordersView === 'active' ? active : [...history].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
     const canNotify = 'Notification' in window && Notification.permission === 'default';
@@ -936,9 +936,9 @@
       ${off ? `<p class="notice bad">${icon('alert')}<span>Приём заказов из меню выключен (раздел «Ресторан»). Гости не могут отправить заказ.</span></p>` : ''}
       ${!tables.length ? `<p class="notice">${icon('alert')}<span>Столов ещё нет — гости не смогут заказать. Создайте столы и распечатайте QR-коды в разделе «Столы и QR».</span></p>` : ''}
       <div class="a-stats">
-        <div class="a-stat${count('new') ? ' hot' : ''}"><b>${count('new')}</b><span>новых</span></div>
-        <div class="a-stat"><b>${count('accepted') + count('cooking')}</b><span>принято и готовится</span></div>
-        <div class="a-stat"><b>${todays.filter((o) => o.status === 'ready').length}</b><span>готово сегодня</span></div>
+        <div class="a-stat${active.length ? ' hot' : ''}"><b>${active.length}</b><span>ждут подачи</span></div>
+        <div class="a-stat"><b>${todays.filter((o) => o.status === 'served').length}</b><span>подано сегодня</span></div>
+        <div class="a-stat"><b>${todays.filter((o) => o.status === 'cancelled').length}</b><span>отменено сегодня</span></div>
         <div class="a-stat"><b>${money(sum(todays))}</b><span>заказов сегодня: ${todays.filter((o) => o.status !== 'cancelled').length}</span></div>
       </div>
       <div class="toolbar">
@@ -964,11 +964,12 @@
     busyOrders.add(id);
     render();
     try {
-      const saved = await api.setOrderStatus(id, status);
+      // «Подано» — через сервер: он запишет, кто подал
+      const saved = status === 'served' ? await api.serveOrder(id) : await api.setOrderStatus(id, status);
       orders = orders.map((x) => (x.id === id ? saved : x));
       history = history.map((x) => (x.id === id ? saved : x));
-      if (status !== 'new' && bannerMsg && !orders.some((x) => x.status === 'new')) { bannerMsg = ''; renderBanner(); }
-      S.toast(`Заказ №${o.no}: ${ST[status]}`);
+      if (status !== 'new' && bannerMsg && !orders.some((x) => ACTIVE.includes(x.status))) { bannerMsg = ''; renderBanner(); }
+      S.toast(`Заказ №${o.no}: ${ST[stOf(saved?.status || status)]}`);
     } catch (ex) {
       S.toast(S.errText(ex), true);
     } finally {

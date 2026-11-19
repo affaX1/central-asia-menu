@@ -60,7 +60,7 @@
       sentAt: (x) => `Отправлен в ${x}`,
       statuses: { new: 'Отправлен', accepted: 'Принят официантом', cooking: 'Готовится', ready: 'Готово — несут', served: 'Подано', cancelled: 'Отменён' },
       meatNames: { beef: 'Говядина', lamb: 'Баранина', horse: 'Конина', chicken: 'Курица', fish: 'Рыба', seafood: 'Морепродукты' }, halal: 'Халяль', meatLabel: 'Мясо',
-      statusHint: { new: 'Заказ сохранён. Ждём, когда официант его примет.', accepted: 'Официант принял ваш заказ.', cooking: 'Повар уже готовит ваш заказ.', ready: 'Заказ готов — официант сейчас принесёт.', served: 'Приятного аппетита!', cancelled: 'Заказ отменён. Пожалуйста, обратитесь к официанту.' },
+      statusHint: { new: 'Заказ получен — официант и кухня его уже видят.', accepted: 'Официант принял ваш заказ.', cooking: 'Повар уже готовит ваш заказ.', ready: 'Заказ готов — официант сейчас принесёт.', served: 'Приятного аппетита!', cancelled: 'Заказ отменён. Пожалуйста, обратитесь к официанту.' },
       statusStale: 'Не удалось обновить статус — проверим ещё раз через несколько секунд.',
       myOrders: 'Мои заказы', orderMore: 'Заказать ещё', note: 'Комментарий',
       servedAt: (a, b) => `Подаётся ${a}–${b}`, fromTime: (a) => `с ${a}`, notNowRow: (a, b) => `Подаётся с ${a} до ${b}`, nowServing: 'Сейчас',
@@ -131,7 +131,7 @@
       sentAt: (x) => `${x} da yuborilgan`,
       statuses: { new: 'Yuborildi', accepted: 'Ofitsiant qabul qildi', cooking: 'Tayyorlanmoqda', ready: 'Tayyor — olib kelinmoqda', served: 'Berildi', cancelled: 'Bekor qilindi' },
       meatNames: { beef: "Mol go'shti", lamb: "Qo'y go'shti", horse: "Ot go'shti", chicken: 'Tovuq', fish: 'Baliq', seafood: 'Dengiz mahsulotlari' }, halal: 'Halol', meatLabel: "Go'sht",
-      statusHint: { new: 'Buyurtma saqlandi. Ofitsiant qabul qilishini kutmoqdamiz.', accepted: 'Ofitsiant buyurtmangizni qabul qildi.', cooking: 'Oshpaz buyurtmangizni tayyorlamoqda.', ready: 'Buyurtma tayyor — ofitsiant hozir olib keladi.', served: 'Yoqimli ishtaha!', cancelled: 'Buyurtma bekor qilindi. Iltimos, ofitsiantga murojaat qiling.' },
+      statusHint: { new: 'Buyurtma qabul qilindi — ofitsiant va oshxona uni ko‘rmoqda.', accepted: 'Ofitsiant buyurtmangizni qabul qildi.', cooking: 'Oshpaz buyurtmangizni tayyorlamoqda.', ready: 'Buyurtma tayyor — ofitsiant hozir olib keladi.', served: 'Yoqimli ishtaha!', cancelled: 'Buyurtma bekor qilindi. Iltimos, ofitsiantga murojaat qiling.' },
       statusStale: "Holatni yangilab bo'lmadi — bir necha soniyadan keyin yana tekshiramiz.",
       myOrders: 'Buyurtmalarim', orderMore: 'Yana buyurtma berish', note: 'Izoh',
       servedAt: (a, b) => `${a}–${b} da beriladi`, fromTime: (a) => `${a} dan`, notNowRow: (a, b) => `${a} dan ${b} gacha beriladi`, nowServing: 'Hozir',
@@ -202,7 +202,7 @@
       sentAt: (x) => `Sent at ${x}`,
       statuses: { new: 'Sent', accepted: 'Accepted by waiter', cooking: 'Cooking', ready: 'Ready — on its way', served: 'Served', cancelled: 'Cancelled' },
       meatNames: { beef: 'Beef', lamb: 'Lamb', horse: 'Horse meat', chicken: 'Chicken', fish: 'Fish', seafood: 'Seafood' }, halal: 'Halal', meatLabel: 'Meat',
-      statusHint: { new: 'Your order is saved and waiting for a waiter to accept it.', accepted: 'A waiter has accepted your order.', cooking: 'The chef is cooking your order.', ready: 'Your order is ready — the waiter is bringing it.', served: 'Enjoy your meal!', cancelled: 'The order was cancelled. Please talk to your waiter.' },
+      statusHint: { new: 'Your order is in — the waiter and the kitchen can already see it.', accepted: 'A waiter has accepted your order.', cooking: 'The chef is cooking your order.', ready: 'Your order is ready — the waiter is bringing it.', served: 'Enjoy your meal!', cancelled: 'The order was cancelled. Please talk to your waiter.' },
       statusStale: "Couldn't refresh the status — we'll check again in a few seconds.",
       myOrders: 'My orders', orderMore: 'Order more', note: 'Note',
       servedAt: (a, b) => `Served ${a}–${b}`, fromTime: (a) => `from ${a}`, notNowRow: (a, b) => `Served from ${a} to ${b}`, nowServing: 'Now',
@@ -274,7 +274,7 @@
       sentAt: (x) => `أُرسل الساعة ${x}`,
       statuses: { new: 'أُرسل', accepted: 'قبله النادل', cooking: 'قيد التحضير', ready: 'جاهز — في الطريق', served: 'قُدِّم', cancelled: 'أُلغي' },
       meatNames: { beef: 'لحم بقري', lamb: 'لحم ضأن', horse: 'لحم خيل', chicken: 'دجاج', fish: 'سمك', seafood: 'مأكولات بحرية' }, halal: 'حلال', meatLabel: 'اللحم',
-      statusHint: { new: 'تم حفظ طلبك وننتظر أن يقبله النادل.', accepted: 'قبل النادل طلبك.', cooking: 'الطاهي يحضّر طلبك الآن.', ready: 'طلبك جاهز — سيُحضره النادل الآن.', served: 'بالهناء والشفاء!', cancelled: 'أُلغي الطلب. يرجى التحدث إلى النادل.' },
+      statusHint: { new: 'وصل طلبك — النادل والمطبخ يرونه الآن.', accepted: 'قبل النادل طلبك.', cooking: 'الطاهي يحضّر طلبك الآن.', ready: 'طلبك جاهز — سيُحضره النادل الآن.', served: 'بالهناء والشفاء!', cancelled: 'أُلغي الطلب. يرجى التحدث إلى النادل.' },
       statusStale: 'تعذّر تحديث الحالة — سنحاول مجددًا بعد ثوانٍ.',
       myOrders: 'طلباتي', orderMore: 'اطلب المزيد', note: 'ملاحظة',
       servedAt: (a, b) => `يُقدَّم ${a}–${b}`, fromTime: (a) => `من ${a}`, notNowRow: (a, b) => `يُقدَّم من ${a} إلى ${b}`, nowServing: 'الآن',
@@ -345,7 +345,7 @@
       sentAt: (x) => `Dihantar pada ${x}`,
       statuses: { new: 'Dihantar', accepted: 'Diterima oleh pelayan', cooking: 'Sedang dimasak', ready: 'Siap — sedang dihantar', served: 'Dihidang', cancelled: 'Dibatalkan' },
       meatNames: { beef: 'Daging lembu', lamb: 'Daging kambing', horse: 'Daging kuda', chicken: 'Ayam', fish: 'Ikan', seafood: 'Makanan laut' }, halal: 'Halal', meatLabel: 'Daging',
-      statusHint: { new: 'Pesanan anda disimpan dan menunggu pelayan menerimanya.', accepted: 'Pelayan telah menerima pesanan anda.', cooking: 'Tukang masak sedang menyediakan pesanan anda.', ready: 'Pesanan anda siap — pelayan sedang membawanya.', served: 'Selamat menjamu selera!', cancelled: 'Pesanan dibatalkan. Sila berjumpa pelayan.' },
+      statusHint: { new: 'Pesanan diterima — pelayan dan dapur sudah nampak.', accepted: 'Pelayan telah menerima pesanan anda.', cooking: 'Tukang masak sedang menyediakan pesanan anda.', ready: 'Pesanan anda siap — pelayan sedang membawanya.', served: 'Selamat menjamu selera!', cancelled: 'Pesanan dibatalkan. Sila berjumpa pelayan.' },
       statusStale: 'Status gagal dikemas kini — kami akan cuba lagi sebentar lagi.',
       myOrders: 'Pesanan saya', orderMore: 'Pesan lagi', note: 'Nota',
       servedAt: (a, b) => `Dihidang ${a}–${b}`, fromTime: (a) => `dari ${a}`, notNowRow: (a, b) => `Dihidang dari ${a} hingga ${b}`, nowServing: 'Sekarang',
@@ -1056,9 +1056,8 @@
   const timeOf = (iso) => new Intl.DateTimeFormat(t('locale'), { hour: '2-digit', minute: '2-digit', hour12: lang === 'en' }).format(new Date(iso));
   // гость видит три состояния: отправлен → принят официантом (кухонные этапы тоже считаются принятым) / отменён
   // гость видит путь заказа: отправлен → принят → готовится → готово (несут) → подано / отменён
-  // в ресторане гость сидит за столом: ему важно только «приняли или нет».
-  // Кухонные этапы (готовится / готово) — внутреннее дело зала, гостю это «Принят».
-  const guestStatus = (s) => (['new', 'served', 'cancelled'].includes(s) ? s : 'accepted');
+  // в ресторане всё просто: заказ отправлен → подан (или отменён). Без «принят / готовится / готово».
+  const guestStatus = (s) => (['served', 'cancelled'].includes(s) ? s : 'new');
 
   const shownStatus = {};   // что гость уже видел — новый статус «подпрыгивает»
   let renderedTrack = null; // какую шторку заказа уже показали — появление играет один раз

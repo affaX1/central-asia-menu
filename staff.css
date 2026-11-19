@@ -415,7 +415,7 @@ body.signed .a-nav { position: static; background: none; border: 0; -webkit-back
 .o-card.is-ready { border-color: var(--ok); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ok) 16%, transparent); }
 .is-ready-sec .o-section-title { color: var(--ok); }
 .serve-btn { margin-top: 10px; min-height: 52px; font-size: 16px; font-weight: 800; }
-.btn.serve-btn:not(.soft) { background: var(--ok); color: #fff; }
+.btn.serve-btn:not(.soft) { background: var(--ok-soft); color: var(--ok); border: 1.5px solid color-mix(in srgb, var(--ok) 35%, transparent); }
 .btn.serve-btn.soft { background: var(--ok-soft); color: var(--ok); }
 .fl-table.is-ready { border-color: var(--ok); background: color-mix(in srgb, var(--ok-soft) 70%, var(--surface)); }
 .fl-table.is-ready .fl-state { color: var(--ok); }
@@ -490,3 +490,10 @@ body.signed #a-user .lang-pick select { width: 100%; }
 .i-note { display: flex; align-items: flex-start; gap: 6px; width: fit-content; max-width: 100%; margin: 4px 0 2px; padding: 4px 10px 4px 6px; border-radius: 10px; background: var(--warn-soft); color: var(--warn); font-size: 14px; font-weight: 800; line-height: 1.35; overflow-wrap: anywhere; }
 .i-note b { flex: none; display: grid; place-items: center; width: 18px; height: 18px; margin: 0 !important; border-radius: 50%; background: var(--warn); color: #fff; font-size: 12px; font-weight: 900; }
 .k-items .i-note { font-size: 16px; }
+
+/* кухня: одна очередь «Готовить» карточками в сетку */
+.k-grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); align-items: start; }
+.k-grid .k-card { margin-bottom: 0; }
+.k-card.is-late { border-color: var(--accent); }
+.k-items .i-note b, .o-items .i-note b { flex: none; width: 18px; min-width: 18px; height: 18px; padding: 0; margin: 0; border-radius: 50%; background: var(--warn); color: #fff; font-size: 12px; line-height: 18px; text-align: center; }
+.k-items li .i-note { margin-top: 6px; }
