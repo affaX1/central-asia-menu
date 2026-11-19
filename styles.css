@@ -691,3 +691,69 @@ body.scrolled::before { content: ''; position: fixed; top: 0; left: 0; right: 0;
 .order-bar.compact { min-height: 50px; padding-block: 5px; font-size: 15px; transform: translateX(-50%) translateY(4px) scale(.97); }
 .order-bar.compact .bar-sum { padding-block: 7px; }
 @media (prefers-reduced-motion: reduce) { .order-bar.compact { transform: translateX(-50%); } }
+
+/* =====================================================================
+   Шторка заказа: герой-статус, линия этапов, плавное появление
+   ===================================================================== */
+.track .sheet-title { margin-bottom: 8px; }
+.track .track-meta { gap: 8px; margin-top: 0 !important; }
+.tm-time { display: inline-flex; align-items: center; gap: 5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.tm-time .ic { width: 15px; height: 15px; }
+
+.track .track-card { margin-top: 16px; padding: 16px 18px; gap: 14px; border: 0; border-radius: 22px; background: var(--warn-soft); transition: background .4s; }
+.track .track-card b { font-size: 22px; line-height: 1.15; color: var(--text); }
+.track .track-card div > span { font-size: 15px; line-height: 1.4; color: color-mix(in srgb, var(--text) 62%, transparent); }
+.track .track-icon { position: relative; width: 54px; height: 54px; background: var(--surface); color: var(--warn); box-shadow: 0 2px 8px rgba(60, 38, 18, .08); }
+.track .track-icon .ic { width: 28px; height: 28px; }
+.track .is-new b { color: var(--warn); }
+.track .is-cooking { background: var(--accent-soft); }
+.track .is-cooking .track-icon { color: var(--accent); }
+.track .is-cooking b { color: var(--accent); }
+.track .is-ok { background: var(--ok-soft); }
+.track .is-ok .track-icon { background: var(--surface); color: var(--ok); }
+.track .is-ok b { color: var(--ok); }
+.track .is-cancelled { background: var(--accent-soft); }
+.track .is-cancelled .track-icon { background: var(--surface); color: var(--accent); }
+.track .is-cancelled b { color: var(--accent); }
+.track .track-card.sent .track-icon { color: var(--ok); }
+/* ждём официанта: мягкое кольцо вокруг часов; готовится: огонёк дышит */
+.track .is-new .track-icon::after { content: ''; position: absolute; inset: -4px; border-radius: 50%; border: 2px solid var(--warn); opacity: 0; animation: tr-ring 2s ease-out infinite; animation-delay: var(--ph, 0s); }
+.track .is-cooking .track-icon .ic { animation: tr-flame 2s ease-in-out infinite; animation-delay: var(--ph, 0s); transform-origin: 50% 85%; }
+@keyframes tr-ring { 0% { transform: scale(.9); opacity: .55; } 100% { transform: scale(1.35); opacity: 0; } }
+@keyframes tr-flame { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.1) rotate(-3deg); } }
+
+/* линия этапов */
+.tline { position: relative; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin: 18px 0 14px; }
+.tl-rail { position: absolute; top: 11px; inset-inline: 12.5%; height: 4px; border-radius: 4px; background: var(--line); overflow: hidden; }
+.tl-fill { position: absolute; inset: 0; border-radius: inherit; background: var(--ok); transform-origin: left center; transform: scaleX(var(--p)); animation: tr-grow .9s cubic-bezier(.3, .9, .3, 1) .15s both; }
+[dir="rtl"] .tl-fill { transform-origin: right center; }
+@keyframes tr-grow { from { transform: scaleX(var(--p0)); } }
+.tl-step { position: relative; display: flex; flex-direction: column; align-items: center; gap: 7px; min-width: 0; text-align: center; }
+.tl-dot { position: relative; z-index: 1; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; background: var(--surface); border: 2px solid var(--line); color: #fff; transition: background .3s, border-color .3s; }
+.tl-dot .ic { width: 15px; height: 15px; stroke-width: 3; }
+.tl-step.done .tl-dot, .tl-step.now .tl-dot { background: var(--ok); border-color: var(--ok); }
+.tl-step.fresh .tl-dot { animation: tr-dot .45s cubic-bezier(.3, 1.6, .5, 1) var(--d, 0ms) both; }
+.tl-step.now .tl-dot::after { content: ''; position: absolute; inset: -2px; border-radius: 50%; background: var(--ok); opacity: 0; animation: tr-halo 1.8s ease-out infinite; animation-delay: var(--ph, 0s); z-index: -1; }
+@keyframes tr-dot { from { transform: scale(.4); background: var(--surface); border-color: var(--line); } }
+@keyframes tr-halo { 0% { transform: scale(1); opacity: .35; } 100% { transform: scale(1.9); opacity: 0; } }
+
+.tl-live { width: 8px; height: 8px; border-radius: 50%; background: #fff; }
+.tl-name { font-size: 12.5px; font-weight: 700; line-height: 1.2; color: var(--muted); overflow-wrap: anywhere; }
+.tl-step.done .tl-name { color: var(--text); }
+.tl-step.now .tl-name { color: var(--ok); font-weight: 800; }
+
+/* кнопки внизу: одна под другой, текст в одну строку */
+.track .track-actions { grid-template-columns: 1fr; gap: 10px; margin-top: 18px; }
+.track .track-actions .btn { min-height: 52px; white-space: nowrap; }
+.track .track-actions .btn span { overflow: hidden; text-overflow: ellipsis; }
+
+/* появление: блоки один за другим, снизу вверх */
+.track.enter .tr-a { animation: tr-up .5s cubic-bezier(.2, .8, .2, 1) both; animation-delay: calc(var(--i, 0) * 55ms); }
+@keyframes tr-up { from { opacity: 0; transform: translateY(14px); } }
+.track .track-card.pop { animation: card-pop .55s cubic-bezier(.3, 1.5, .5, 1); }
+.track .track-card.sent .track-icon .ic { stroke-dasharray: 24; animation: tr-draw .5s ease-out .35s both; }
+@keyframes tr-draw { from { stroke-dashoffset: 24; } to { stroke-dashoffset: 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .track .tr-a, .tl-fill, .tl-dot, .tl-dot::after, .track-icon::after, .track-icon .ic, .track .track-card.pop { animation: none !important; }
+}

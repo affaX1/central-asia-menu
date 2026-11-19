@@ -129,7 +129,7 @@
       statusStale: "Holatni yangilab bo'lmadi — bir necha soniyadan keyin yana tekshiramiz.",
       myOrders: 'Buyurtmalarim', orderMore: 'Yana buyurtma berish', note: 'Izoh',
       servedAt: (a, b) => `${a}–${b} da beriladi`, fromTime: (a) => `${a} dan`, notNowRow: (a, b) => `${a} dan ${b} gacha beriladi`, nowServing: 'Hozir',
-      readyToast: 'Buyurtmangiz tayyor — ofitsiant olib kelmoqda!', stepAccepted: 'Qabul qilindi', stepCooking: 'Tayyorlanmoqda', stepReady: 'Tayyor',
+      readyToast: 'Buyurtmangiz tayyor — ofitsiant olib kelmoqda!', stepAccepted: 'Qabul qilindi', stepCooking: 'Pishmoqda', stepReady: 'Tayyor',
       tableBill: 'Stol hisobi', tableBillHint: "Stolingizdagi barcha to'lanmagan buyurtmalar — sizniki va do'stlaringizniki.", tableBillEmpty: "Stolda to'lanmagan buyurtma yo'q.", tableTotal: 'Stol bo‘yicha jami',
       reqTitle: 'Nima kerak?', reqCome: 'Shunchaki keling', reqs: { water: 'Suv', napkins: "Salfetka", cutlery: 'Qoshiq-sanchqi', ice: 'Muz', clear: "Stolni yig'ishtirish" }, reqPending: "so'raldi",
       filter: 'Filtrlar', fVeg: "Go'shtsiz", fSpicy: 'Achchiq', fNo: 'Siz', fReset: 'Tozalash', fShow: (n) => `Ko'rsatish (${n})`, fNote: "Tarkib va allergenlar — restoran maʼlumotlari bo'yicha. Allergiyangiz bo'lsa, ofitsiantdan so'rang.",
@@ -1015,29 +1015,42 @@
   const STEP = { new: 0, accepted: 1, cooking: 2, ready: 3, served: 4 };
 
   const shownStatus = {};   // что гость уже видел — новый статус «подпрыгивает»
+  let renderedTrack = null; // какую шторку заказа уже показали — появление играет один раз
+  const STATUS_ICON = { new: 'clock', accepted: 'check', cooking: 'flame', ready: 'dish', served: 'check', cancelled: 'x' };
+  // фаза бесконечной анимации привязана к часам: перерисовка не сбивает пульс
+  const phase = (ms) => `--ph:-${Date.now() % ms}ms`;
   function trackSheetHtml(id) {
-    setTimeout(() => { if (tracked[id]) shownStatus[id] = guestStatus(tracked[id].status); }, 0);
     const o = tracked[id];
     const mine = myOrders.find((x) => x.id === id);
     if (!o || !mine) return `<div class="state">${icon('alert')}<p>${esc(t('errServer'))}</p></div>`;
     const gs = guestStatus(o.status);
-    const ic = gs === 'cancelled' ? 'x' : gs === 'new' ? 'clock' : 'check';
-    const step = STEP[gs] ?? 0;
-    const steps = [['new', t('statuses').new], ['accepted', t('stepAccepted')], ['cooking', t('stepCooking')], ['ready', t('stepReady')]];
-    return `
-      ${justSent === id && gs === 'new' ? `<p class="sent-ok" role="status">${icon('check')}<span>${esc(t('sentTitle')(o.no))}</span></p>` : ''}
-      <h2 class="sheet-title" id="sheet-title">${esc(t('orderNo')(o.no))}</h2>
-      <p class="track-meta"><span class="table-tag">${icon('table')}${esc(t('table'))} ${esc(o.table_label)}</span><span>${esc(t('sentAt')(timeOf(o.created_at)))}</span>${o.paid_at ? `<span class="badge ok paid-tag">${icon('check', 'sm')}${esc(t('paid'))}</span>` : ''}</p>
-      <div class="track-card is-${gs === 'new' || gs === 'cancelled' ? gs : 'accepted'}${shownStatus[id] && shownStatus[id] !== gs ? ' pop' : ''}" aria-live="polite">
-        <span class="track-icon">${icon(ic)}</span>
+    const enter = renderedTrack !== id;
+    renderedTrack = id;
+    const before = enter ? null : shownStatus[id];
+    const changed = before && before !== gs;
+    setTimeout(() => { if (tracked[id]) shownStatus[id] = guestStatus(tracked[id].status); }, 0);
+    const sentNow = justSent === id && gs === 'new';
+    const ic = sentNow ? 'check' : STATUS_ICON[gs];
+    const step = Math.min(3, STEP[gs] ?? 0);
+    const p = step / 3;
+    const p0 = enter ? 0 : changed ? Math.min(3, STEP[before] ?? 0) / 3 : p;
+    const steps = [t('statuses').new, t('stepAccepted'), t('stepCooking'), t('stepReady')];
+    const kind = gs === 'new' || gs === 'cancelled' || gs === 'cooking' ? gs : 'ok';
+    return `<div class="track${enter ? ' enter' : ''}">
+      <h2 class="sheet-title tr-a" id="sheet-title" style="--i:0">${esc(t('orderNo')(o.no))}</h2>
+      <p class="track-meta tr-a" style="--i:1"><span class="table-tag">${icon('table')}${esc(t('table'))} ${esc(o.table_label)}</span><span class="tm-time">${icon('clock', 'sm')}${esc(timeOf(o.created_at))}</span>${o.paid_at ? `<span class="badge ok paid-tag">${icon('check', 'sm')}${esc(t('paid'))}</span>` : ''}</p>
+      <div class="track-card tr-a is-${kind}${changed ? ' pop' : ''}${sentNow && enter ? ' sent' : ''}" style="--i:2" aria-live="polite">
+        <span class="track-icon" style="${phase(2000)}">${icon(ic)}</span>
         <div><b>${esc(t('statuses')[gs])}</b><span>${esc(t('statusHint')[gs])}</span></div>
       </div>
-      ${gs === 'cancelled' ? '' : `<ol class="steps4">${steps.map(([k, n], i) => `
-        <li class="${i <= step ? 'done' : 'wait'}${i === step && gs !== 'served' ? ' now' : ''}">${i <= step ? icon('check', 'sm') : '<i></i>'}<span>${esc(n)}</span></li>`).join('')}
-      </ol>`}
+      ${gs === 'cancelled' ? '' : `<div class="tline tr-a" style="--i:3;--p:${p};--p0:${p0}" role="list">
+        <div class="tl-rail" aria-hidden="true"><i class="tl-fill"></i></div>
+        ${steps.map((n, i) => `<div class="tl-step ${i < step || gs === 'served' ? 'done' : i === step ? 'now' : 'wait'}${i <= step && (enter || (changed && i > Math.min(3, STEP[before] ?? 0))) ? ' fresh' : ''}" role="listitem" style="--d:${enter ? 250 + i * 180 : 500}ms">
+          <span class="tl-dot" style="${phase(1800)}">${i < step || (i === step && gs !== 'cooking') ? icon('check') : i === step ? '<i class="tl-live"></i>' : ''}</span><span class="tl-name">${esc(n)}</span></div>`).join('')}
+      </div>`}
       ${trackStale ? `<p class="notice info">${icon('alert')}<span>${esc(t('statusStale'))}</span></p>` : ''}
       ${o.edited_at ? `<p class="notice info">${icon('refresh')}<span>${esc(t('edited')(timeOf(o.edited_at)))}</span></p>` : ''}
-      <ul class="order-list track-list">${(o.items || []).map((i) => {
+      <ul class="order-list track-list tr-a" style="--i:4">${(o.items || []).map((i) => {
         const on = (i.opts || []).map((x) => L(x.name)).filter(Boolean);
         return `
         <li><span class="o-name"><b>${esc(L(i.name) || i.id)}</b>${on.length ? `<em class="o-opts">${esc(on.join(', '))}</em>` : ''}<small>${money(i.price)} × ${i.qty}</small></span><span class="o-sum">${money(i.price * i.qty)}</span></li>`;
@@ -1045,10 +1058,10 @@
       ${o.note ? `<p class="notice info">${icon('list')}<span><b>${esc(t('note'))}:</b> ${esc(o.note)}</span></p>` : ''}
       ${chargesHtml({ sub: o.subtotal ?? o.total, service: o.service || 0, tax: o.tax || 0, total: o.total }, false)}
       ${reviewHtml(id, o)}
-      <div class="track-actions">
-        <button type="button" class="btn ghost" data-act="more">${esc(t('orderMore'))}</button>
-        ${gs !== 'cancelled' ? `<button type="button" class="btn soft" data-act="repeat" data-id="${esc(id)}">${icon('refresh', 'sm')}${esc(t('repeat'))}</button>` : ''}
-      </div>`;
+      <div class="track-actions tr-a" style="--i:5">
+        ${gs !== 'cancelled' ? `<button type="button" class="btn soft" data-act="repeat" data-id="${esc(id)}">${icon('refresh', 'sm')}<span>${esc(t('repeat'))}</span></button>` : ''}
+        <button type="button" class="btn ghost" data-act="more"><span>${esc(t('orderMore'))}</span></button>
+      </div></div>`;
   }
 
   // ---------- Отзыв и «Повторить заказ» ----------
@@ -1552,7 +1565,7 @@
   function closeSheet() {
     if (!sheet) return;
     if (sheet.type === 'order') priceChanges = [];
-    if (sheet.type === 'track') justSent = null;
+    if (sheet.type === 'track') { justSent = null; renderedTrack = null; }
     sheet = null;
     const el = $('#sheet');
     const bd = $('#backdrop');
