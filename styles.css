@@ -684,14 +684,9 @@ html { scroll-behavior: smooth; }
 /* приложение на весь экран (с главного экрана): стекло и под часами */
 body.scrolled::before { content: ''; position: fixed; top: 0; left: 0; right: 0; z-index: 11; height: env(safe-area-inset-top); background: color-mix(in srgb, var(--bg) 74%, transparent); -webkit-backdrop-filter: saturate(1.8) blur(20px); backdrop-filter: saturate(1.8) blur(20px); pointer-events: none; }
 .cats { top: env(safe-area-inset-top); }
-/* снизу: меню мягко уходит под стекло под плашкой заказа */
-body.has-bar::after {
-  content: ''; position: fixed; left: 0; right: 0; bottom: 0; z-index: 19; pointer-events: none;
-  height: calc(118px + var(--safe-b));
-  background: linear-gradient(to top, color-mix(in srgb, var(--bg) 88%, transparent) 30%, color-mix(in srgb, var(--bg) 0%, transparent));
-  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
-  -webkit-mask-image: linear-gradient(to top, #000 45%, transparent); mask-image: linear-gradient(to top, #000 45%, transparent);
-}
+/* плашка заказа: без размытой полосы и без свечения, только лёгкая тень */
+.order-bar, .order-bar.status-bar { box-shadow: 0 2px 6px rgba(60, 38, 18, .10), 0 8px 20px rgba(60, 38, 18, .10); }
+:root[data-theme="dark"] .order-bar { box-shadow: 0 6px 18px rgba(0, 0, 0, .35); }
 .order-bar { transition: transform .32s cubic-bezier(.2, .8, .2, 1), min-height .32s cubic-bezier(.2, .8, .2, 1), padding .32s cubic-bezier(.2, .8, .2, 1), font-size .32s, box-shadow .3s, opacity .2s; }
 .order-bar.compact { min-height: 50px; padding-block: 5px; font-size: 15px; transform: translateX(-50%) translateY(4px) scale(.97); }
 .order-bar.compact .bar-sum { padding-block: 7px; }
