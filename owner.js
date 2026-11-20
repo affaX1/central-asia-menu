@@ -640,7 +640,7 @@
     st = st || {};
     box.innerHTML = `
       <p class="${st.connected ? 'notice ok' : 'help'}">${st.connected ? `${icon('check')}<span>Подключено: бот ${esc(st.bot_username ? '@' + st.bot_username : st.bot_hint || '')}, ваших чатов: ${st.chats}. Сотрудников со своим Telegram: ${st.staff_linked || 0}.</span>` : 'Не подключено. Новые заказы и вызовы будут приходить вам в Telegram, даже когда панель закрыта.'}</p>
-      ${st.bot_hint ? '<p class="help">Официанты и повара подключают свой Telegram сами: на своей странице → «Смена» (у повара — «Настройки») → «Подключить Telegram». Официант получает вызовы и заказы своих столов и «готово» с кухни, повар — заказы на кухню.</p>' : ''}
+      ${st.bot_hint ? '<p class="help">Официанты и повара подключают свой Telegram сами: на своей странице → «Смена» (у повара — «Настройки») → «Подключить Telegram». Официант получает вызовы, «принесите счёт» и заказы своих столов, повар — каждый новый заказ сразу.</p>' : ''}
       ${st.net_ok === false ? `<p class="notice bad">${icon('alert')}<span>На сервере выключено расширение pg_net — сообщения не уйдут. Запустите schema.sql ещё раз.</span></p>` : ''}
       <ol class="tg-steps">
         <li>В Telegram откройте <b>@BotFather</b>, отправьте <b>/newbot</b>, придумайте имя — он пришлёт <b>токен</b>.</li>
@@ -870,7 +870,7 @@
     const c = floor ? floor.openCalls().length : 0;
     const ce = $('#calls-count');
     if (ce) { ce.hidden = !c; ce.textContent = c; }
-    document.title = n ? `(${n}) Новый заказ — панель владельца` : c ? `(${c}) Вызов — панель владельца` : 'Панель владельца';
+    document.title = n ? `(${n}) Ждут подачи — панель владельца` : c ? `(${c}) Вызов — панель владельца` : 'Панель владельца';
   }
   function announceCalls(fresh) {
     const c = fresh[fresh.length - 1];
@@ -900,9 +900,9 @@
     const busy = busyOrders.has(o.id);
     return `<article class="o-card${st === 'new' ? ' is-new' : ''}">
       <div class="o-head"><b class="o-table">${icon('qr', 'sm')}Стол ${esc(o.table_label)}</b><span class="st st-${esc(st)}">${esc(ST[st] || st)}</span></div>
-      <div class="o-meta">Заказ №${esc(o.no)} · ${esc(hhmm(o.created_at))} · ${esc(ago(o.created_at))}${o.lang ? ` · язык гостя ${esc(String(o.lang).toUpperCase())}` : ''}${o.source === 'staff' && o.created_by_name ? ` · пробил: ${esc(o.created_by_name)}` : ''}${st === 'served' && o.accepted_by_name ? ` · подал: ${esc(o.accepted_by_name)}` : ''}</div>
+      <div class="o-meta">Заказ №${esc(o.no)} · ${esc(hhmm(o.created_at))} · ${esc(ago(o.created_at))}${o.lang ? ` · язык гостя ${esc(String(o.lang).toUpperCase())}` : ''}${o.source === 'staff' && o.created_by_name ? ` · пробил: ${esc(o.created_by_name)}` : ''}${st === 'served' && o.served_by_name ? ` · подал: ${esc(o.served_by_name)}` : ''}</div>
       <ul class="o-items">${(o.items || []).map((i) => `<li><span><b>${esc(i.qty)}×</b> ${esc(tr(i.name) || i.id)}${window.Floor.optNames(i).length ? `<em class="o-opt">${esc(window.Floor.optNames(i).join(', '))}</em>` : ''}${window.Floor.noteHtml(i)}</span><span>${money(i.price * i.qty)}</span></li>`).join('')}</ul>
-      ${o.note ? `<div class="o-note"><b>Комментарий гостя:</b> ${esc(o.note)}</div>` : ''}
+      ${o.note ? `<div class="o-note"><b>Пожелания гостя:</b> ${esc(window.Floor.trNote(o.note))}</div>` : ''}
       ${o.edited_at ? `<div class="o-meta">Изменён${o.edited_by_name ? `: ${esc(o.edited_by_name)}` : ''} в ${esc(hhmm(o.edited_at))}</div>` : ''}
       ${Number(o.service) || Number(o.tax) ? `<div class="o-meta">Блюда ${money(o.subtotal ?? o.total)}${Number(o.service) ? ` · сбор ${money(o.service)}` : ''}${Number(o.tax) ? ` · налог ${money(o.tax)}` : ''}</div>` : ''}
       <div class="o-total"><span>Итого${o.paid_at ? ' · <span class="state-badge ok">оплачено</span>' : ''}</span><b>${money(o.total)}</b></div>
@@ -910,7 +910,7 @@
         ${st === 'new' ? `<button type="button" class="btn" data-order-next="${esc(o.id)}" data-to="served"${busy ? ' disabled' : ''}>${icon('check', 'sm')}Подано</button>` : ''}
         ${st === 'served' && !o.paid_at ? `<button type="button" class="btn small ghost" data-order-next="${esc(o.id)}" data-to="new"${busy ? ' disabled' : ''}>Вернуть в «Ждёт подачи»</button>` : ''}
         ${st === 'cancelled' ? `<button type="button" class="btn small ghost" data-order-next="${esc(o.id)}" data-to="new"${busy ? ' disabled' : ''}>Вернуть заказ</button>` : ''}
-        ${o.status !== 'cancelled' ? `<button type="button" class="btn small danger" data-order-cancel="${esc(o.id)}"${busy ? ' disabled' : ''}>Отменить</button>` : ''}
+        ${o.status !== 'cancelled' && !o.paid_at ? `<button type="button" class="btn small danger" data-order-cancel="${esc(o.id)}"${busy ? ' disabled' : ''}>Отменить</button>` : ''}
       </div>
       ${o.status !== 'cancelled' ? `<div class="o-actions">
         <button type="button" class="btn small ghost" data-fl-ticket="${esc(o.id)}">${icon('printer', 'sm')}На кухню</button>

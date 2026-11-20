@@ -563,6 +563,23 @@ grant select on o20 to authenticated;
 select t_ok(exists (select 1 from net.sent where body ->> 'chat_id' = '777000222' and body ->> 'text' like 'На кухню: заказ №' || (select no from o20) || '%'), 'гостевой заказ сразу ушёл повару, без «принять»');
 set role authenticated; set request.jwt.claim.sub = '22222222-2222-2222-2222-222222222222';
 select t_ok((select status from public.serve_order((select id from o20))) = 'served', 'официант подаёт новый заказ сразу');
-select t_ok((select accepted_by_name is not null and accepted_at is not null and served_at is not null from public.orders where id = (select id from o20)), 'у поданного заказа записано, кто и когда обслужил');
+select t_ok((select served_by_name = 'Азиз' and served_at is not null from public.orders where id = (select id from o20)), 'у поданного заказа записано, кто и когда подал');
+reset role; reset request.jwt.claim.sub;
+-- ============ 22. Аудит: оплата, правка с пожеланиями, «вернуть» ============
+create temp table o22 as select * from public.place_order((select token from tv where label = '1'),
+  '[{"id":"green-tea","qty":1,"price":10,"note":"без сахара"},{"id":"green-tea","qty":1,"price":10}]', null, 'ru', gen_random_uuid());
+grant select on o22 to authenticated;
+set role authenticated; set request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
+select t_ok(jsonb_array_length((select items from public.edit_order((select id from o22), '[{"id":"green-tea","qty":2,"note":"без сахара"},{"id":"green-tea","qty":1}]'))) = 2, 'владелец правит заказ, где одно блюдо с пожеланием и без');
+select t_ok((select items -> 0 ->> 'note' from public.orders where id = (select id from o22)) = 'без сахара' and (select (items -> 0 ->> 'qty')::int from public.orders where id = (select id from o22)) = 2, 'пожелание при правке сохранилось');
+reset role; reset request.jwt.claim.sub;
+select t_ok(exists (select 1 from net.sent where body ->> 'chat_id' = '777000222' and body ->> 'text' like 'Изменён заказ №' || (select no from o22) || '%'), 'повару ушло «заказ изменён»');
+set role authenticated; set request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
+select public.serve_order((select id from o22));
+select t_ok(public.t_rows($$update public.orders set status = 'new' where id = (select id from o22)$$) = 1, 'владелец вернул заказ в «ждёт подачи»');
+select t_ok((select served_at is null and served_by_name is null from public.orders where id = (select id from o22)), 'вернули в «ждёт подачи» — отметка «подано» стёрлась');
+create temp table b22 as select * from public.close_bill((select id from tv where label = '1'), 'cash', array[(select id from o22)]);
+select t_ok((select status = 'served' and paid_at is not null and served_by_name is not null from public.orders where id = (select id from o22)), 'оплаченный заказ сам становится «подан», даже если забыли нажать');
+select t_fails($$update public.orders set status = 'cancelled' where id = (select id from o22)$$, 'paid', 'оплаченный заказ отменить нельзя');
 reset role; reset request.jwt.claim.sub;
 \echo ALL DATABASE TESTS PASSED

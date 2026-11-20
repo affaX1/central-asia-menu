@@ -506,6 +506,9 @@ alter table public.orders add column if not exists edited_at timestamptz;
 alter table public.orders add column if not exists edited_by_name text;
 update public.orders set subtotal = total where subtotal is null;
 alter table public.orders add column if not exists served_at timestamptz;
+-- кто принёс заказ на стол (нажал «Подано» или закрыл счёт)
+alter table public.orders add column if not exists served_by uuid references auth.users (id) on delete set null;
+alter table public.orders add column if not exists served_by_name text;
 alter table public.orders add column if not exists source text not null default 'guest';
 alter table public.orders add column if not exists created_by_name text;
 alter table public.orders drop constraint if exists orders_status_check;
@@ -529,11 +532,14 @@ begin
     end if;
     if new.status = 'cooking' and new.cooking_at is null then new.cooking_at := now(); end if;
     if new.status = 'ready' then new.ready_at := now(); end if;
-    if new.status = 'served' and new.served_at is null then new.served_at := now(); end if;
-    -- короткий путь «новый → подано»: кто подал, тот и обслужил стол
-    if new.status = 'served' and new.accepted_at is null then
-      new.accepted_at := now();
-      new.accepted_by := coalesce(new.accepted_by, auth.uid());
+    -- оплаченный заказ больше не меняет статус (иначе счёт и отчёты разойдутся)
+    if old.paid_at is not null then raise exception 'paid'; end if;
+    if new.status = 'served' then
+      if new.served_at is null then new.served_at := now(); end if;
+      new.served_by := coalesce(new.served_by, auth.uid());
+    elsif old.status = 'served' then
+      -- вернули в «ждёт подачи» — время и «кто подал» запишутся заново
+      new.served_at := null; new.served_by := null; new.served_by_name := null;
     end if;
     if new.status = 'cancelled' then new.cancelled_at := now(); else new.cancelled_at := null; end if;
   end if;
@@ -972,7 +978,12 @@ begin
   values (p_table, coalesce((select label from public.tables where id = p_table), v_label), v_ids, v_nos, v_sub, v_srv, v_tax, v_tot, v_tip, v_pay,
           case when cardinality(v_methods) = 1 then v_methods[1] else 'mixed' end, auth.uid(), public.staff_name())
   returning * into v_bill;
-  update public.orders set paid_at = v_bill.paid_at, bill_id = v_bill.id where id = any (v_ids);
+  -- оплаченный заказ точно на столе: если «Подано» забыли нажать — отмечаем сами
+  update public.orders
+     set paid_at = v_bill.paid_at, bill_id = v_bill.id,
+         status = case when status in ('new', 'accepted', 'cooking', 'ready') then 'served' else status end,
+         served_by_name = case when status in ('new', 'accepted', 'cooking', 'ready') then public.staff_name() else served_by_name end
+   where id = any (v_ids);
   -- открытый вызов «принесите счёт» этого стола закрывается сам
   update public.calls set done_at = now(), done_by = auth.uid(), done_by_name = public.staff_name()
    where table_id = p_table and done_at is null and kind = 'bill';
@@ -1028,7 +1039,7 @@ begin
   if v_o.status in ('new', 'accepted', 'cooking', 'ready') then
     select coalesce(nullif(st.name, ''), st.email) into v_name from public.staff st where st.user_id = auth.uid();
     return query update public.orders
-       set status = 'served', accepted_by_name = coalesce(accepted_by_name, v_name)
+       set status = 'served', served_by = auth.uid(), served_by_name = v_name
      where id = p_id returning *;
     return;
   end if;
@@ -1117,9 +1128,12 @@ begin
   for v_item in select value from jsonb_array_elements(p_items) loop
     if jsonb_typeof(v_item) <> 'object' then raise exception 'bad_items'; end if;
     -- позиция уже была в заказе: оставляем её снимок и цену, меняется только количество
-    v_key := (v_item ->> 'id') || '|' || coalesce((select string_agg(x, ',' order by x) from jsonb_array_elements_text(coalesce(v_item -> 'opts', '[]')) x), '');
+    -- строка = блюдо + варианты + пожелание гостя («без лука»): один плов с пожеланием и один без — разные строки
+    v_key := (v_item ->> 'id') || '|' || coalesce((select string_agg(x, ',' order by x) from jsonb_array_elements_text(coalesce(v_item -> 'opts', '[]')) x), '')
+             || '|' || coalesce(left(nullif(btrim(regexp_replace(coalesce(v_item ->> 'note', ''), '[[:space:]]+', ' ', 'g')), ''), 120), '');
     select value into v_old from jsonb_array_elements(v_o.items)
-      where (value ->> 'id') || '|' || coalesce((select string_agg((o ->> 'g') || ':' || (o ->> 'c'), ',' order by (o ->> 'g') || ':' || (o ->> 'c')) from jsonb_array_elements(coalesce(value -> 'opts', '[]')) o), '') = v_key
+      where (value ->> 'id') || '|' || coalesce((select string_agg((o ->> 'g') || ':' || (o ->> 'c'), ',' order by (o ->> 'g') || ':' || (o ->> 'c')) from jsonb_array_elements(coalesce(value -> 'opts', '[]')) o), '')
+            || '|' || coalesce(value ->> 'note', '') = v_key
       limit 1;
     begin
       v_q := (v_item ->> 'qty')::int;
@@ -1139,6 +1153,13 @@ begin
   end loop;
   if v_count > 100 then raise exception 'bad_items'; end if;
   select * into v_ch from public.order_charges(v_sub);
+  -- повару — что заказ поменяли (если заказ ещё не подан)
+  if v_o.status in ('new', 'accepted', 'cooking', 'ready') then
+    begin
+      perform private.tg_send_to(private.tg_cook_chats(), 'Изменён заказ №' || v_o.no || ' · стол ' || v_o.table_label || E'\n' || coalesce(public.tg_lines(v_items), ''));
+    exception when others then null;
+    end;
+  end if;
   return query update public.orders
      set items = v_items, subtotal = v_sub, service = v_ch.service, tax = v_ch.tax, total = v_ch.total,
          edited_at = now(), edited_by_name = public.staff_name()

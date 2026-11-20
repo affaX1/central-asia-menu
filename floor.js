@@ -20,8 +20,17 @@
   const dayStart = () => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; };
   const r2 = (x) => Math.round(x * 100) / 100;
   const optNames = (i) => (i.opts || []).map((o) => tr(o.name)).filter(Boolean);
+  // готовые пожелания гостя («Без лука», «Alahan kacang»…) — на языке сотрудника; свой текст гостя — как написал
+  const chipIndex = (() => {
+    const m = new Map();
+    const all = window.NOTE_CHIPS || {};
+    for (const c of [...(all.dish || []), ...(all.order || [])]) for (const v of Object.values(c)) m.set(String(v).toLowerCase(), c);
+    return m;
+  })();
+  const trNote = (text) => String(text || '').split(',').map((x) => x.trim()).filter(Boolean)
+    .map((tok) => { const c = chipIndex.get(tok.toLowerCase()); return c ? (c[S.lang] || c.en || tok) : tok; }).join(', ');
   // пожелание гостя к блюду: заметно, жёлтым, с «!»
-  const noteHtml = (i) => (i.note ? `<span class="i-note"><b aria-hidden="true">!</b>${esc(i.note)}</span>` : '');
+  const noteHtml = (i) => (i.note ? `<span class="i-note"><b aria-hidden="true">!</b>${esc(trNote(i.note))}</span>` : '');
   // в ресторане без «принять / готовится / готово»: заказ либо ждёт подачи, либо подан
   const ACTIVE = ['new', 'accepted', 'cooking', 'ready'];
   const stOf = (s) => (ACTIVE.includes(s) ? 'new' : s);
@@ -78,9 +87,9 @@
       <div class="c muted">${esc(t('p_kitchen'))}</div>
       <div class="c big">${esc(t('table'))} ${esc(o.table_label)}</div>
       <div class="c">${esc(t('order_no', o.no))} · ${esc(hhmm(o.created_at))}</div>
-      <hr><table class="k">${(o.items || []).map((i) => `<tr><td class="n">${esc(i.qty)} ×</td><td>${esc(tr(i.name) || i.id)}${optNames(i).length ? `<div class="opt">${esc(optNames(i).join(', '))}</div>` : ''}${i.note ? `<div class="inote">&gt;&gt; ${esc(i.note)}</div>` : ''}</td></tr>`).join('')}</table>
-      ${o.note ? `<div class="note">${esc(o.note)}</div>` : ''}
-      <hr><div class="c muted">${o.accepted_by_name ? `${esc(t('p_accepted', o.accepted_by_name))} · ` : ''}${esc(t('p_printed', hhmm(new Date().toISOString())))}</div>`);
+      <hr><table class="k">${(o.items || []).map((i) => `<tr><td class="n">${esc(i.qty)} ×</td><td>${esc(tr(i.name) || i.id)}${optNames(i).length ? `<div class="opt">${esc(optNames(i).join(', '))}</div>` : ''}${i.note ? `<div class="inote">&gt;&gt; ${esc(trNote(i.note))}</div>` : ''}</td></tr>`).join('')}</table>
+      ${o.note ? `<div class="note">${esc(trNote(o.note))}</div>` : ''}
+      <hr><div class="c muted">${o.source === 'staff' && o.created_by_name ? `${esc(t('p_accepted', o.created_by_name))} · ` : ''}${esc(t('p_printed', hhmm(new Date().toISOString())))}</div>`);
   }
 
   // чек / предварительный счёт стола: шапка с реквизитами, кто/когда, позиции с ценой за штуку,
@@ -107,7 +116,7 @@
     const taxBase = subT + (st.tax_on_service === false ? 0 : servT);
     const when = new Date(bill?.paid_at || Date.now());
     const addr = tr(st.address);
-    const waiters = [...new Set(orders.map((o) => o.accepted_by_name).filter(Boolean))];
+    const waiters = [...new Set(orders.map((o) => o.served_by_name || (o.source === 'staff' ? o.created_by_name : null)).filter(Boolean))];
     const pays = bill?.payments?.length ? bill.payments : bill ? [{ method: bill.method, amount: Number(bill.total) + Number(bill.tip || 0) }] : [];
     const row = (k, v, cls = '') => `<tr${cls ? ` class="${cls}"` : ''}><td>${esc(k)}</td><td class="s">${esc(v)}</td></tr>`;
     printSlip(bill ? t('p_receipt', bill.no) : t('p_prebill'), `
@@ -255,7 +264,7 @@
       return `<article class="fl-order">
         <div class="o-head">${multi ? `<label class="fl-pick"><input type="checkbox" data-fl-pick="${esc(o.id)}"${payState?.ids.has(o.id) ? ' checked' : ''}>` : '<span>'}<b>№${esc(o.no)} · ${esc(hhmm(o.created_at))}</b>${multi ? '</label>' : '</span>'}<span class="st st-${esc(stOf(o.status))}">${esc(t('st')[stOf(o.status)])}</span></div>
         <ul class="o-items">${(o.items || []).map((i) => `<li><span><b>${esc(i.qty)}×</b> ${esc(tr(i.name) || i.id)}${optNames(i).length ? `<em class="o-opt">${esc(optNames(i).join(', '))}</em>` : ''}${noteHtml(i)}</span><span>${money(i.price * i.qty)}</span></li>`).join('')}</ul>
-        ${o.note ? `<div class="o-note"><b>${esc(t('comment'))}:</b> ${esc(o.note)}</div>` : ''}
+        ${o.note ? `<div class="o-note"><b>${esc(t('comment'))}:</b> ${esc(trNote(o.note))}</div>` : ''}
         ${o.source === 'staff' && o.created_by_name ? `<div class="o-meta">${esc(t('entered_by', o.created_by_name))}</div>` : ''}
         <div class="fl-order-actions">
           ${canServe ? `<button type="button" class="btn small" data-fl-serve="${esc(o.id)}">${icon('check', 'sm')}${esc(t('serve'))}</button>` : ''}
@@ -572,7 +581,7 @@
     function editOrder(o) {
       let items = (o.items || []).map((i) => ({ ...i }));
       const dishes = host.getDishes().filter((d) => d.available && !d.hidden);
-      const key = (i) => `${i.id}|${(i.opts || []).map((x) => `${x.g}:${x.c}`).sort().join(',')}`;
+      const key = (i) => `${i.id}|${(i.opts || []).map((x) => `${x.g}:${x.c}`).sort().join(',')}|${i.note || ''}`;
       const m = S.modal(`<h2 id="modal-title">Изменить заказ №${esc(o.no)} · стол ${esc(o.table_label)}</h2>
         <p class="help">Уберите блюдо или поменяйте количество. Позиции, которые уже были, сохраняют свою цену; новые — по текущему меню. Гость увидит изменённый заказ.</p>
         <ul class="rows" id="ed-lines"></ul>
@@ -619,7 +628,7 @@
           const btn = e.target.closest('#ed-save');
           btn.disabled = true;
           try {
-            await host.api.editOrder(o.id, items.map((i) => ({ id: i.id, qty: i.qty, opts: (i.opts || []).map((x) => `${x.g}:${x.c}`) })));
+            await host.api.editOrder(o.id, items.map((i) => ({ id: i.id, qty: i.qty, opts: (i.opts || []).map((x) => `${x.g}:${x.c}`), ...(i.note ? { note: i.note } : {}) })));
             await host.reloadOrders();
             S.closeModal();
             S.toast(`Заказ №${o.no} изменён — гость видит новый состав`);
@@ -702,5 +711,5 @@
     };
   }
 
-  window.Floor = { create, printTicket, printReceipt, optNames, lineTitle, noteHtml, ACTIVE, stOf };
+  window.Floor = { create, printTicket, printReceipt, optNames, lineTitle, noteHtml, trNote, ACTIVE, stOf };
 })();

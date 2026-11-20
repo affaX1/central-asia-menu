@@ -193,7 +193,7 @@
       await delay(); floor(); offline();
       const d = db(); const o = d.orders.find((x) => x.id === id);
       if (!o) throw new Error('not_found');
-      if (['new', 'accepted', 'cooking', 'ready'].includes(o.status)) { o.status = 'served'; o.served_at = new Date().toISOString(); o.updated_at = o.served_at; o.accepted_at = o.accepted_at || o.served_at; o.accepted_by = o.accepted_by || uid(); o.accepted_by_name = o.accepted_by_name || myName(); save(d); }
+      if (['new', 'accepted', 'cooking', 'ready'].includes(o.status)) { o.status = 'served'; o.served_at = new Date().toISOString(); o.updated_at = o.served_at; o.served_by = uid(); o.served_by_name = myName(); save(d); }
       return o;
     },
     async myTelegram() { await delay(); staffOk(); const d = db(); return { linked: !!(d.staffTg || {})[uid()], bot_username: d.telegram?.token ? 'central_asia_test_bot' : null, bot_ready: !!d.telegram?.token }; },
@@ -221,7 +221,7 @@
       const methods = [...new Set(pays.map((p) => p.method))];
       const bill = { id: crypto.randomUUID(), no: d.billSeq, table_id: tableId, table_label: tb?.label || list[0].table_label, order_ids: list.map((o) => o.id), order_nos: list.map((o) => o.no),
         subtotal: sum('subtotal'), service: sum('service'), tax: sum('tax'), total, tip: r2(tip), payments: pays, method: methods.length === 1 ? methods[0] : 'mixed', paid_at: new Date().toISOString(), paid_by: uid(), paid_by_name: myName() };
-      list.forEach((o) => { o.paid_at = bill.paid_at; o.bill_id = bill.id; });
+      list.forEach((o) => { o.paid_at = bill.paid_at; o.bill_id = bill.id; if (['new', 'accepted', 'cooking', 'ready'].includes(o.status)) { o.status = 'served'; o.served_at = o.served_at || bill.paid_at; o.served_by_name = o.served_by_name || myName(); } });
       (d.calls || []).forEach((c) => { if (c.table_id === tableId && !c.done_at && c.kind === 'bill') Object.assign(c, { done_at: bill.paid_at, done_by_name: myName() }); });
       d.bills = (d.bills || []).concat(bill);
       (d.audit = d.audit || []).push({ id: Date.now(), at: bill.paid_at, who: myName(), entity: 'bill', entity_id: bill.id, label: `счёт №${bill.no} · стол ${bill.table_label}`, action: 'insert', changes: { total: bill.total, method } });
@@ -234,7 +234,7 @@
       if (o.status === 'cancelled') throw new Error('cancelled');
       if (o.paid_at) throw new Error('paid');
       if (!items.length) throw new Error('empty');
-      const keyOf = (i) => `${i.id}|${(i.opts || []).map((x) => (typeof x === 'string' ? x : `${x.g}:${x.c}`)).sort().join(',')}`;
+      const keyOf = (i) => `${i.id}|${(i.opts || []).map((x) => (typeof x === 'string' ? x : `${x.g}:${x.c}`)).sort().join(',')}|${String(i.note || '').replace(/\s+/g, ' ').trim().slice(0, 120)}`;
       const out = [];
       for (const it of items) {
         const old = o.items.find((x) => keyOf(x) === keyOf(it));

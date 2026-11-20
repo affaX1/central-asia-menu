@@ -128,7 +128,7 @@
       return [...m.values()].sort((a, b) => b.v - a.v);
     };
     const byTable = group(valid, (o) => `Стол ${o.table_label}`, (o) => Number(o.total));
-    const byWaiter = group(valid, (o) => o.accepted_by_name, () => 1);
+    const byWaiter = group(valid.filter((o) => o.status === 'served'), (o) => o.served_by_name || o.created_by_name || o.accepted_by_name, () => 1);
     const byCashier = group(R.bills, (b) => b.paid_by_name, (b) => Number(b.total));
     const tipsBy = group(R.bills.filter((b) => Number(b.tip) > 0), (b) => b.paid_by_name, (b) => Number(b.tip));
 
@@ -162,7 +162,7 @@
       <div class="rp-two">
         <section class="panel"><div class="panel-head"><h3>Столы</h3></div><div class="panel-body">${hbars(byTable.slice(0, 15), money, (r) => `заказов: ${r.n}`)}</div></section>
         <section class="panel"><div class="panel-head"><h3>Сотрудники</h3></div><div class="panel-body">
-          <p class="section-label" style="margin-top:0">Приняли заказов</p>${hbars(byWaiter, (v) => `${v}`)}
+          <p class="section-label" style="margin-top:0">Подали заказов</p>${hbars(byWaiter, (v) => `${v}`)}
           <p class="section-label">Закрыли счетов на сумму</p>${hbars(byCashier, money, (r) => `счетов: ${r.n}`)}
           ${tipsBy.length ? `<p class="section-label">Чаевые</p>${hbars(tipsBy, money, (r) => `счетов: ${r.n}`)}` : ''}
         </div></section>
@@ -203,10 +203,10 @@
     const tag = `${ymd(f)}_${ymd(addDays(t, -1))}`;
     const dt = (iso) => (iso ? new Date(iso).toLocaleString('ru-RU') : '');
     if (kind === 'orders') {
-      csv(`заказы_${tag}.csv`, ['№', 'Дата и время', 'Стол', 'Статус', 'Позиции', 'Блюда', 'Сбор', 'Налог', 'Итого', 'Оплачен', 'Принял', 'Комментарий'],
-        R.orders.map((o) => [o.no, dt(o.created_at), o.table_label, { new: 'новый', accepted: 'принят', cooking: 'готовится', ready: 'готов', served: 'подан', cancelled: 'отменён' }[o.status] || o.status,
+      csv(`заказы_${tag}.csv`, ['№', 'Дата и время', 'Стол', 'Статус', 'Позиции', 'Блюда', 'Сбор', 'Налог', 'Итого', 'Оплачен', 'Официант', 'Комментарий'],
+        R.orders.map((o) => [o.no, dt(o.created_at), o.table_label, { new: 'ждёт подачи', accepted: 'ждёт подачи', cooking: 'ждёт подачи', ready: 'ждёт подачи', served: 'подан', cancelled: 'отменён' }[o.status] || o.status,
           (o.items || []).map((i) => `${i.qty}× ${tr(i.name) || i.id}${optNames(i).length ? ` (${optNames(i).join(', ')})` : ''}${i.note ? ` [${i.note}]` : ''}`).join('; '),
-          num(o.subtotal ?? o.total), num(o.service), num(o.tax), num(o.total), dt(o.paid_at), o.accepted_by_name || '', o.note || '']));
+          num(o.subtotal ?? o.total), num(o.service), num(o.tax), num(o.total), dt(o.paid_at), o.served_by_name || o.created_by_name || o.accepted_by_name || '', o.note || '']));
     } else if (kind === 'bills') {
       csv(`счета_${tag}.csv`, ['Чек №', 'Оплачен', 'Стол', 'Заказы', 'Блюда', 'Сбор', 'Налог', 'Итого', 'Чаевые', 'Оплата', 'Части оплаты', 'Кто закрыл'],
         R.bills.map((b) => [b.no, dt(b.paid_at), b.table_label, (b.order_nos || []).join(', '), num(b.subtotal), num(b.service), num(b.tax), num(b.total), num(b.tip), PAY[b.method] || b.method,
@@ -235,11 +235,11 @@
     address: 'адрес', map_url: 'карта', phone: 'телефон', footer: 'подпись', default_language: 'язык по умолчанию', orders_enabled: 'приём заказов',
     orders_when_closed: 'заказы вне часов', halal: 'халяль', halal_note: 'сертификат халяль', service_pct: 'сервисный сбор %', tax_pct: 'налог %', tax_name: 'название налога',
     tax_on_service: 'налог на сбор', label: 'название', active: 'включён', token: 'QR-код', role: 'роль', email: 'email', status: 'статус', items: 'состав заказа',
-    total: 'итого', subtotal: 'блюда', service: 'сбор', tax: 'налог', paid_at: 'оплата', bill_id: 'счёт', note: 'комментарий', accepted_by_name: 'принял',
-    edited_at: 'изменён', edited_by_name: 'кто изменил', accepted_at: 'принят в', ready_at: 'готов в', cooking_at: 'начали готовить', cancelled_at: 'отменён в',
+    total: 'итого', subtotal: 'блюда', service: 'сбор', tax: 'налог', paid_at: 'оплата', bill_id: 'счёт', note: 'комментарий', accepted_by_name: null, served_by_name: 'подал', served_by: null,
+    edited_at: 'изменён', edited_by_name: 'кто изменил', accepted_at: null, ready_at: null, cooking_at: null, cancelled_at: 'отменён в',
     accepted_by: null, status_by: null, method: 'оплата', tables_count: null, tip: 'чаевые', payments: 'части оплаты', served_at: 'подан в', source: 'источник', created_by_name: 'пробил',
   };
-  const STV = { new: 'новый', accepted: 'принят', cooking: 'готовится', ready: 'готов', served: 'подан', cancelled: 'отменён', waiter: 'официант', owner: 'владелец', cook: 'повар', guest: 'гость', staff: 'официант' };
+  const STV = { new: 'ждёт подачи', accepted: 'ждёт подачи', cooking: 'ждёт подачи', ready: 'ждёт подачи', served: 'подан', cancelled: 'отменён', waiter: 'официант', owner: 'владелец', cook: 'повар', guest: 'гость', staff: 'официант' };
   function val(k, v) {
     if (v === null || v === undefined || v === '') return '—';
     if (typeof v === 'boolean') return v ? 'да' : 'нет';

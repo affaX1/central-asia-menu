@@ -41,8 +41,6 @@
       sendOrder: 'Отправить заказ', sending: 'Отправляем…',
       noteLabel: "Пожелания ко всему заказу", notePh: 'Например: без лука, острое отдельно',
       noteHint: "Аллергия, диабет, ребёнок — официант и повар увидят это сразу.", dishNote: "Пожелание к блюду", dishNotePh: "Своими словами…", noteDone: "Готово",
-      dishChips: ["Поменьше соли", "Поменьше сладкого", "Без сахара", "Не острое", "Острее", "Без лука", "Без зелени", "Без мяса", "Соус отдельно"],
-      orderChips: ["Диабет — без сахара", "Аллергия на орехи", "Аллергия на молочное", "Без лука во всех блюдах", "Ребёнок за столом", "Подать всё сразу"],
       yourTable: 'Ваш стол',
       noTable: 'Чтобы отправить заказ, отсканируйте QR-код на своём столе.',
       badTable: 'Этот QR-код недействителен или стол отключён. Попросите официанта помочь.',
@@ -112,8 +110,6 @@
       sendOrder: 'Buyurtmani yuborish', sending: 'Yuborilmoqda…',
       noteLabel: "Butun buyurtmaga istaklar", notePh: "Masalan: piyozsiz, achchiq alohida",
       noteHint: "Allergiya, diabet, bola — ofitsiant va oshpaz darhol ko‘radi.", dishNote: "Taomga istak", dishNotePh: "O‘z so‘zlaringiz bilan…", noteDone: "Tayyor",
-      dishChips: ["Tuzi kamroq", "Shirinligi kamroq", "Shakarsiz", "Achchiq emas", "Achchiqroq", "Piyozsiz", "Ko‘katsiz", "Go‘shtsiz", "Sous alohida"],
-      orderChips: ["Qandli diabet — shakarsiz", "Yong‘oqqa allergiya", "Sut mahsulotlariga allergiya", "Hamma taomlar piyozsiz", "Stolda bola bor", "Hammasini birga olib keling"],
       yourTable: 'Stolingiz',
       noTable: "Buyurtma yuborish uchun stolingizdagi QR-kodni skanerlang.",
       badTable: "Bu QR-kod yaroqsiz yoki stol o'chirilgan. Ofitsiantdan yordam so'rang.",
@@ -183,8 +179,6 @@
       sendOrder: 'Send order', sending: 'Sending…',
       noteLabel: "Requests for the whole order", notePh: 'For example: no onion, sauce on the side',
       noteHint: "Allergy, diabetes, a child — the waiter and the chef will see it right away.", dishNote: "Request for this dish", dishNotePh: "In your own words…", noteDone: "Done",
-      dishChips: ["Less salt", "Less sweet", "No sugar", "Not spicy", "Spicier", "No onion", "No herbs", "No meat", "Sauce on the side"],
-      orderChips: ["Diabetic — no sugar", "Nut allergy", "Dairy allergy", "No onion in any dish", "Child at the table", "Serve everything together"],
       yourTable: 'Your table',
       noTable: 'To send an order, scan the QR code on your table.',
       badTable: 'This QR code is not valid or the table is disabled. Please ask your waiter.',
@@ -255,8 +249,6 @@
       sendOrder: 'إرسال الطلب', sending: 'جارٍ الإرسال…',
       noteLabel: "طلبات لكل الطلب", notePh: 'مثال: بدون بصل، الصلصة منفصلة',
       noteHint: "حساسية، سكري، طفل — سيراها النادل والطاهي فوراً.", dishNote: "طلب خاص لهذا الطبق", dishNotePh: "بكلماتك…", noteDone: "تم",
-      dishChips: ["ملح أقل", "حلاوة أقل", "بدون سكر", "غير حار", "حار أكثر", "بدون بصل", "بدون أعشاب", "بدون لحم", "الصلصة منفصلة"],
-      orderChips: ["مريض سكري — بدون سكر", "حساسية من المكسرات", "حساسية من الألبان", "بدون بصل في كل الأطباق", "معنا طفل", "قدّموا كل شيء معاً"],
       yourTable: 'طاولتك',
       noTable: 'لإرسال الطلب، امسح رمز QR الموجود على طاولتك.',
       badTable: 'رمز QR هذا غير صالح أو الطاولة معطّلة. يرجى سؤال النادل.',
@@ -326,8 +318,6 @@
       sendOrder: 'Hantar pesanan', sending: 'Menghantar…',
       noteLabel: "Permintaan untuk seluruh pesanan", notePh: 'Contoh: tanpa bawang, sos berasingan',
       noteHint: "Alahan, kencing manis, kanak-kanak — pelayan dan tukang masak akan nampak serta-merta.", dishNote: "Permintaan untuk hidangan ini", dishNotePh: "Dengan kata-kata anda…", noteDone: "Siap",
-      dishChips: ["Kurang garam", "Kurang manis", "Tanpa gula", "Tidak pedas", "Lebih pedas", "Tanpa bawang", "Tanpa daun herba", "Tanpa daging", "Sos berasingan"],
-      orderChips: ["Pesakit kencing manis — tanpa gula", "Alahan kacang", "Alahan susu", "Tanpa bawang dalam semua hidangan", "Ada kanak-kanak", "Hidang semua serentak"],
       yourTable: 'Meja anda',
       noTable: 'Untuk menghantar pesanan, imbas kod QR di meja anda.',
       badTable: 'Kod QR ini tidak sah atau meja telah dinyahaktifkan. Sila minta bantuan pelayan.',
@@ -500,6 +490,7 @@
     if (i >= 0) list.splice(i, 1); else list.push(tok);
     return list.join(', ').slice(0, max);
   };
+  const chipList = (kind) => ((window.NOTE_CHIPS || {})[kind] || []).map((c) => c[lang] || c.en);
   const hasToken = (v, tok) => noteTokens(v).some((x) => x.toLowerCase() === tok.toLowerCase());
   let sending = false;
   let sendError = '';
@@ -579,10 +570,12 @@
   // сервисный сбор и налог — та же формула, что на сервере (сервер всё равно пересчитает)
   function charges(sum) {
     const r = R();
-    const r2 = (x) => Math.round(x * 100) / 100;
-    const service = r2(sum * (r.servicePct || 0) / 100);
-    const tax = r2((sum + (r.taxOnService ? service : 0)) * (r.taxPct || 0) / 100);
-    return { sub: r2(sum), service, tax, total: r2(sum + service + tax) };
+    // считаем в сенах (целых), как сервер: 16,75 × 6% = 1,01, а не 1,00
+    const sen = Math.round(sum * 100);
+    const pctSen = (base, p) => Math.round((base * (Number(p) || 0)) / 100 + 1e-9);
+    const service = pctSen(sen, r.servicePct);
+    const tax = pctSen(sen + (r.taxOnService ? service : 0), r.taxPct);
+    return { sub: sen / 100, service: service / 100, tax: tax / 100, total: (sen + service + tax) / 100 };
   }
   const pct = (x) => String(Math.round(Number(x) * 100) / 100);
   function chargesHtml(c, withPct) {
@@ -981,7 +974,7 @@
     const v = dishNotes[key] || '';
     if (noteOpen === key) {
       return `<div class="dn-edit">
-        <div class="n-chips" role="group" aria-label="${esc(t('dishNote'))}">${t('dishChips').map((c) => `<button type="button" class="n-chip${hasToken(v, c) ? ' on' : ''}" data-act="dn-chip" data-key="${esc(key)}" data-v="${esc(c)}" aria-pressed="${hasToken(v, c)}">${esc(c)}</button>`).join('')}</div>
+        <div class="n-chips" role="group" aria-label="${esc(t('dishNote'))}">${chipList('dish').map((c) => `<button type="button" class="n-chip${hasToken(v, c) ? ' on' : ''}" data-act="dn-chip" data-key="${esc(key)}" data-v="${esc(c)}" aria-pressed="${hasToken(v, c)}">${esc(c)}</button>`).join('')}</div>
         <div class="dn-row"><input class="dn-input" data-key="${esc(key)}" maxlength="120" aria-label="${esc(t('dishNote'))}" placeholder="${esc(t('dishNotePh'))}" value="${esc(v)}">
           <button type="button" class="btn small" data-act="dn-done">${esc(t('noteDone'))}</button></div>
       </div>`;
@@ -1020,7 +1013,7 @@
     if (ONLINE) {
       out.push(`<section class="note-field" aria-labelledby="note-l"><span id="note-l">${esc(t('noteLabel'))}</span>
         <small class="note-hint">${esc(t('noteHint'))}</small>
-        <div class="n-chips" role="group" aria-labelledby="note-l">${t('orderChips').map((c) => `<button type="button" class="n-chip${hasToken(note, c) ? ' on' : ''}" data-act="on-chip" data-v="${esc(c)}" aria-pressed="${hasToken(note, c)}">${esc(c)}</button>`).join('')}</div>
+        <div class="n-chips" role="group" aria-labelledby="note-l">${chipList('order').map((c) => `<button type="button" class="n-chip${hasToken(note, c) ? ' on' : ''}" data-act="on-chip" data-v="${esc(c)}" aria-pressed="${hasToken(note, c)}">${esc(c)}</button>`).join('')}</div>
         <textarea id="note-input" rows="2" maxlength="300" aria-labelledby="note-l" placeholder="${esc(t('notePh'))}">${esc(note)}</textarea></section>`);
     }
     out.push(pairsHtml(pairsFor(ls.map((l) => l.id), 3), t('upsell')));

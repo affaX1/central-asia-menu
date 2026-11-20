@@ -140,12 +140,12 @@
         <span class="st st-${esc(st)}">${st === 'served' ? icon('check', 'sm') : ''}${esc(t('st')[st] || st)}</span></div>
       <div class="o-meta">${esc(t('order_no', o.no))} · ${esc(hhmm(o.created_at))} · ${esc(ago(o.created_at))}</div>
       <ul class="o-items">${(o.items || []).map((i) => `<li><span><b>${esc(i.qty)}×</b> ${esc(tr(i.name) || i.id)}${optNames(i).length ? `<em class="o-opt">${esc(optNames(i).join(', '))}</em>` : ''}${window.Floor.noteHtml(i)}</span><span>${money(i.price * i.qty)}</span></li>`).join('')}</ul>
-      ${o.note ? `<div class="o-note"><b>${esc(t('comment'))}:</b> ${esc(o.note)}</div>` : ''}
+      ${o.note ? `<div class="o-note"><b>${esc(t('comment'))}:</b> ${esc(window.Floor.trNote(o.note))}</div>` : ''}
       ${o.edited_at ? `<div class="o-meta">${esc(t('edited_at', hhmm(o.edited_at)))}</div>` : ''}
       <div class="o-total"><span>${esc(t('total'))}${o.paid_at ? ` · <span class="state-badge ok">${esc(t('paid_tag'))}</span>` : ''}</span><b>${money(o.total)}</b></div>
       ${o.status === 'cancelled' ? `<div class="o-meta">${esc(t('order_cancelled'))}</div>`
         : o.source === 'staff' && o.created_by_name ? `<div class="o-meta">${esc(t('entered_by', o.created_by_name))}</div>`
-          : st === 'served' && o.accepted_by_name ? `<div class="o-meta">${esc(t('served_by', o.accepted_by_name, o.served_at ? hhmm(o.served_at) : ''))}</div>` : ''}
+          : st === 'served' && o.served_by_name ? `<div class="o-meta">${esc(t('served_by', o.served_by_name, o.served_at ? hhmm(o.served_at) : ''))}</div>` : ''}
       ${isNew ? `<button type="button" class="btn block serve-btn" data-fl-serve="${esc(o.id)}">${icon('check')}${esc(t('serve'))}</button>` : ''}
       ${o.status !== 'cancelled' ? `<div class="o-actions">
         <button type="button" class="btn small ghost" data-fl-ticket="${esc(o.id)}">${icon('printer', 'sm')}${esc(t('print_kitchen'))}</button>
@@ -279,9 +279,11 @@
   function renderShift() {
     const main = $('#a-main');
     const mineId = me?.id;
-    const myAccepted = orders.filter((o) => o.accepted_by === mineId && o.status !== 'cancelled');
-    const myEntered = myAccepted.filter((o) => o.source === 'staff');
-    const myServed = orders.filter((o) => o.status === 'served' && (o.accepted_by === mineId || floor?.myTables().some((x) => x.id === o.table_id)));
+    const today = dayStart().getTime();
+    const todays = orders.filter((o) => new Date(o.created_at).getTime() >= today && o.status !== 'cancelled');
+    const myAccepted = todays.filter((o) => o.status === 'served' && o.served_by === mineId);
+    const myEntered = todays.filter((o) => o.source === 'staff' && o.accepted_by === mineId);
+    const myServed = todays.filter((o) => o.status === 'served' && floor?.myTables().some((x) => x.id === o.table_id));
     const myBills = (floor?.bills || []).filter((b) => b.paid_by === mineId);
     const sum = r2(myBills.reduce((x, b) => x + Number(b.total), 0));
     const tips = r2(myBills.reduce((x, b) => x + Number(b.tip || 0), 0));

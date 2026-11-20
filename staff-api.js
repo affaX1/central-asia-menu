@@ -9,6 +9,17 @@
 
   const BUCKET = 'menu-photos';
   const fail = (error) => { if (error) throw new Error(error.message || String(error)); };
+  // Supabase отдаёт не больше 1000 строк за запрос — забираем по страницам, чтобы отчёты за месяц не теряли заказы
+  async function pages(make, max = 20000) {
+    const out = [];
+    for (let from = 0; from < max; from += 1000) {
+      const { data, error } = await make(from, from + 999);
+      fail(error);
+      out.push(...(data || []));
+      if (!data || data.length < 1000) break;
+    }
+    return out;
+  }
 
   function makeSupabaseApi(B) {
     if (!B?.url || !B?.key || !window.supabase?.createClient) return null;
@@ -90,12 +101,13 @@
       // ---------- заказы (видят официант и владелец — проверяет база) ----------
       // без toIso: все незакрытые + всё созданное с fromIso; с toIso: история за период
       async orders(fromIso, toIso) {
-        let q = sb.from('orders').select('*');
-        q = toIso
-          ? q.gte('created_at', fromIso).lt('created_at', toIso)
-          : q.or(`created_at.gte.${fromIso},status.in.(new,accepted,cooking)`);
-        const { data, error } = await q.order('created_at', { ascending: true }).limit(2000);
-        fail(error); return data || [];
+        return pages((from, to) => {
+          let q = sb.from('orders').select('*');
+          q = toIso
+            ? q.gte('created_at', fromIso).lt('created_at', toIso)
+            : q.or(`created_at.gte.${fromIso},status.in.(new,accepted,cooking,ready)`);
+          return q.order('created_at', { ascending: true }).order('id', { ascending: true }).range(from, to);
+        });
       },
       // официант или владелец принимает новый заказ; changed=false — его уже принял кто-то другой (или отменили)
       async acceptOrder(id) {
@@ -119,10 +131,11 @@
       },
       async doneCall(id) { const { error } = await sb.rpc('done_call', { p_id: id }); fail(error); },
       async bills(fromIso, toIso) {
-        let q = sb.from('bills').select('*').gte('paid_at', fromIso);
-        if (toIso) q = q.lt('paid_at', toIso);
-        const { data, error } = await q.order('paid_at', { ascending: false }).limit(5000);
-        fail(error); return data || [];
+        return pages((from, to) => {
+          let q = sb.from('bills').select('*').gte('paid_at', fromIso);
+          if (toIso) q = q.lt('paid_at', toIso);
+          return q.order('paid_at', { ascending: false }).order('id', { ascending: true }).range(from, to);
+        });
       },
       async closeBill(tableId, method, orderIds, tip = 0, payments = null) {
         const { data, error } = await sb.rpc('close_bill', { p_table: tableId, p_method: method, p_orders: orderIds || null, p_tip: tip || 0, p_payments: payments });
@@ -153,9 +166,8 @@
       },
       // ---------- журнал изменений (только владелец) ----------
       async audit(fromIso, toIso) {
-        const { data, error } = await sb.from('audit_log').select('*').gte('at', fromIso).lt('at', toIso)
-          .order('at', { ascending: false }).limit(1000);
-        fail(error); return data || [];
+        return pages((from, to) => sb.from('audit_log').select('*').gte('at', fromIso).lt('at', toIso)
+          .order('at', { ascending: false }).order('id', { ascending: true }).range(from, to), 5000);
       },
       // ---------- отзывы гостей (только владелец) ----------
       async reviews(fromIso, toIso) {
