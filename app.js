@@ -39,8 +39,8 @@
       emptyMenu: 'Меню скоро появится', emptyMenuHint: 'Ресторан ещё заполняет меню. Спросите официанта.',
       offline: 'Нет связи — показано меню, загруженное ранее.',
       sendOrder: 'Отправить заказ', sending: 'Отправляем…',
-      noteLabel: "Пожелания ко всему заказу", notePh: 'Например: без лука, острое отдельно',
-      noteHint: "Аллергия, диабет, ребёнок — официант и повар увидят это сразу.", dishNote: "Пожелание к блюду", dishNotePh: "Своими словами…", noteDone: "Готово",
+      noteLabel: "Комментарий к заказу", notePh: 'Например: у меня диабет, аллергия на орехи, всё без лука',
+      noteHint: "Напишите своими словами — официант и повар увидят это сразу.", dishNote: "Пожелание к блюду", dishNotePh: "Своими словами…", noteDone: "Готово",
       yourTable: 'Ваш стол',
       noTable: 'Чтобы отправить заказ, отсканируйте QR-код на своём столе.',
       badTable: 'Этот QR-код недействителен или стол отключён. Попросите официанта помочь.',
@@ -108,8 +108,8 @@
       emptyMenu: "Menyu tez orada paydo bo'ladi", emptyMenuHint: "Restoran menyuni to'ldirmoqda. Ofitsiantdan so'rang.",
       offline: "Aloqa yo'q — avval yuklangan menyu ko'rsatilmoqda.",
       sendOrder: 'Buyurtmani yuborish', sending: 'Yuborilmoqda…',
-      noteLabel: "Butun buyurtmaga istaklar", notePh: "Masalan: piyozsiz, achchiq alohida",
-      noteHint: "Allergiya, diabet, bola — ofitsiant va oshpaz darhol ko‘radi.", dishNote: "Taomga istak", dishNotePh: "O‘z so‘zlaringiz bilan…", noteDone: "Tayyor",
+      noteLabel: "Buyurtmaga izoh", notePh: "Masalan: menda diabet bor, yong‘oqqa allergiya, hammasi piyozsiz",
+      noteHint: "O‘z so‘zlaringiz bilan yozing — ofitsiant va oshpaz darhol ko‘radi.", dishNote: "Taomga istak", dishNotePh: "O‘z so‘zlaringiz bilan…", noteDone: "Tayyor",
       yourTable: 'Stolingiz',
       noTable: "Buyurtma yuborish uchun stolingizdagi QR-kodni skanerlang.",
       badTable: "Bu QR-kod yaroqsiz yoki stol o'chirilgan. Ofitsiantdan yordam so'rang.",
@@ -177,8 +177,8 @@
       emptyMenu: 'The menu is coming soon', emptyMenuHint: 'The restaurant is still filling in the menu. Please ask your waiter.',
       offline: 'No connection — showing the menu loaded earlier.',
       sendOrder: 'Send order', sending: 'Sending…',
-      noteLabel: "Requests for the whole order", notePh: 'For example: no onion, sauce on the side',
-      noteHint: "Allergy, diabetes, a child — the waiter and the chef will see it right away.", dishNote: "Request for this dish", dishNotePh: "In your own words…", noteDone: "Done",
+      noteLabel: "Note for the order", notePh: 'For example: I am diabetic, nut allergy, no onion in anything',
+      noteHint: "Write it in your own words — the waiter and the chef will see it right away.", dishNote: "Request for this dish", dishNotePh: "In your own words…", noteDone: "Done",
       yourTable: 'Your table',
       noTable: 'To send an order, scan the QR code on your table.',
       badTable: 'This QR code is not valid or the table is disabled. Please ask your waiter.',
@@ -247,8 +247,8 @@
       emptyMenu: 'القائمة قريبًا', emptyMenuHint: 'المطعم ما زال يُعدّ القائمة. يرجى سؤال النادل.',
       offline: 'لا يوجد اتصال — تُعرض القائمة المحمّلة سابقًا.',
       sendOrder: 'إرسال الطلب', sending: 'جارٍ الإرسال…',
-      noteLabel: "طلبات لكل الطلب", notePh: 'مثال: بدون بصل، الصلصة منفصلة',
-      noteHint: "حساسية، سكري، طفل — سيراها النادل والطاهي فوراً.", dishNote: "طلب خاص لهذا الطبق", dishNotePh: "بكلماتك…", noteDone: "تم",
+      noteLabel: "ملاحظة على الطلب", notePh: 'مثال: لدي سكري، حساسية من المكسرات، بدون بصل',
+      noteHint: "اكتبها بكلماتك — سيراها النادل والطاهي فوراً.", dishNote: "طلب خاص لهذا الطبق", dishNotePh: "بكلماتك…", noteDone: "تم",
       yourTable: 'طاولتك',
       noTable: 'لإرسال الطلب، امسح رمز QR الموجود على طاولتك.',
       badTable: 'رمز QR هذا غير صالح أو الطاولة معطّلة. يرجى سؤال النادل.',
@@ -316,8 +316,8 @@
       emptyMenu: 'Menu akan datang', emptyMenuHint: 'Restoran sedang menyediakan menu. Sila tanya pelayan.',
       offline: 'Tiada sambungan — menu yang dimuatkan sebelum ini dipaparkan.',
       sendOrder: 'Hantar pesanan', sending: 'Menghantar…',
-      noteLabel: "Permintaan untuk seluruh pesanan", notePh: 'Contoh: tanpa bawang, sos berasingan',
-      noteHint: "Alahan, kencing manis, kanak-kanak — pelayan dan tukang masak akan nampak serta-merta.", dishNote: "Permintaan untuk hidangan ini", dishNotePh: "Dengan kata-kata anda…", noteDone: "Siap",
+      noteLabel: "Nota pesanan", notePh: 'Contoh: saya ada kencing manis, alahan kacang, semua tanpa bawang',
+      noteHint: "Tulis dengan kata-kata anda — pelayan dan tukang masak akan nampak serta-merta.", dishNote: "Permintaan untuk hidangan ini", dishNotePh: "Dengan kata-kata anda…", noteDone: "Siap",
       yourTable: 'Meja anda',
       noTable: 'Untuk menghantar pesanan, imbas kod QR di meja anda.',
       badTable: 'Kod QR ini tidak sah atau meja telah dinyahaktifkan. Sila minta bantuan pelayan.',
@@ -1013,8 +1013,7 @@
     if (ONLINE) {
       out.push(`<section class="note-field" aria-labelledby="note-l"><span id="note-l">${esc(t('noteLabel'))}</span>
         <small class="note-hint">${esc(t('noteHint'))}</small>
-        <div class="n-chips" role="group" aria-labelledby="note-l">${chipList('order').map((c) => `<button type="button" class="n-chip${hasToken(note, c) ? ' on' : ''}" data-act="on-chip" data-v="${esc(c)}" aria-pressed="${hasToken(note, c)}">${esc(c)}</button>`).join('')}</div>
-        <textarea id="note-input" rows="2" maxlength="300" aria-labelledby="note-l" placeholder="${esc(t('notePh'))}">${esc(note)}</textarea></section>`);
+        <textarea id="note-input" rows="3" maxlength="300" aria-labelledby="note-l" placeholder="${esc(t('notePh'))}">${esc(note)}</textarea></section>`);
     }
     out.push(pairsHtml(pairsFor(ls.map((l) => l.id), 3), t('upsell')));
     out.push(chargesHtml(charges(totals().sum), true));
@@ -1764,12 +1763,6 @@
         const on = hasToken(dishNotes[k], act.dataset.v);
         act.classList.toggle('on', on); act.setAttribute('aria-pressed', String(on));
         const inp = document.querySelector('.dn-input'); if (inp) inp.value = dishNotes[k] || '';
-      } else if (a === 'on-chip') {
-        note = toggleToken(note, act.dataset.v, 300);
-        store.set('note', note);
-        const on = hasToken(note, act.dataset.v);
-        act.classList.toggle('on', on); act.setAttribute('aria-pressed', String(on));
-        const ta = document.getElementById('note-input'); if (ta) ta.value = note;
       }
       else if (a === 'clear') {
         order = {};
@@ -1860,7 +1853,6 @@
     if (e.target.id === 'note-input') {
       note = e.target.value.slice(0, 300);
       store.set('note', note);
-      document.querySelectorAll('[data-act="on-chip"]').forEach((b) => { const on = hasToken(note, b.dataset.v); b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on)); });
     }
     if (e.target.classList.contains('dn-input')) {
       const k = e.target.dataset.key;
