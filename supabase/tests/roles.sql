@@ -582,4 +582,22 @@ create temp table b22 as select * from public.close_bill((select id from tv wher
 select t_ok((select status = 'served' and paid_at is not null and served_by_name is not null from public.orders where id = (select id from o22)), 'оплаченный заказ сам становится «подан», даже если забыли нажать');
 select t_fails($$update public.orders set status = 'cancelled' where id = (select id from o22)$$, 'paid', 'оплаченный заказ отменить нельзя');
 reset role; reset request.jwt.claim.sub;
+-- ============ 23. Скидка на счёт и округление наличных до 5 сен ============
+set role authenticated; set request.jwt.claim.sub = '22222222-2222-2222-2222-222222222222';
+create temp table o23 as select * from public.staff_place_order((select id from tv where label = '3'), '[{"id":"green-tea","qty":3}]', null, gen_random_uuid());
+select t_ok((select total from o23) = 34.98, 'заказ 30 + сбор 10% + налог 6% = 34,98');
+select t_fails($$select * from public.close_bill((select id from tv where label = '3'), 'cash', array[(select id from o23)], 0, null, '{"kind":"pct","value":10,"reason":"Постоянный гость"}')$$, 'no_discount_rights', 'официант без разрешения скидку не даёт');
+reset role; reset request.jwt.claim.sub;
+set role authenticated; set request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
+select t_fails($$select * from public.close_bill((select id from tv where label = '3'), 'cash', array[(select id from o23)], 0, null, '{"kind":"pct","value":10,"reason":"  "}')$$, 'discount_reason', 'скидка без причины не проходит');
+select t_fails($$select * from public.close_bill((select id from tv where label = '3'), 'cash', array[(select id from o23)], 0, null, '{"kind":"amount","value":31,"reason":"Жалоба"}')$$, 'bad_discount', 'скидка больше суммы блюд не проходит');
+create temp table b23 as select * from public.close_bill((select id from tv where label = '3'), 'cash', array[(select id from o23)], 0, null, '{"kind":"pct","value":10,"reason":"Постоянный гость"}');
+select t_ok((select discount = 3 and service = 2.70 and tax = 1.78 and total = 31.48 from b23), 'скидка 10%: блюда −3,00, сбор и налог пересчитаны, итого 31,48');
+select t_ok((select rounding = 0.02 and (payments -> 0 ->> 'amount')::numeric = 31.50 from b23), 'наличными 31,48 → 31,50 (округление +0,02)');
+select t_ok((select discount_reason = 'Постоянный гость' and discount_by_name = 'Хозяин' and discount_pct = 10 from b23), 'в счёте записано: сколько, почему и кто дал скидку');
+create temp table o23b as select * from public.staff_place_order((select id from tv where label = '3'), '[{"id":"green-tea","qty":3}]', null, gen_random_uuid());
+select t_fails($$select * from public.close_bill((select id from tv where label = '3'), 'mixed', array[(select id from o23b)], 0, '[{"method":"card","amount":20},{"method":"cash","amount":14.98}]')$$, 'bad_payments', 'наличная часть без округления не проходит');
+create temp table b23b as select * from public.close_bill((select id from tv where label = '3'), 'mixed', array[(select id from o23b)], 0, '[{"method":"card","amount":20},{"method":"cash","amount":15}]');
+select t_ok((select rounding = 0.02 and total = 34.98 from b23b), 'карта 20 + наличные 14,98 → 15,00: округляется только наличная часть');
+reset role; reset request.jwt.claim.sub;
 \echo ALL DATABASE TESTS PASSED

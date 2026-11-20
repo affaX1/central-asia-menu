@@ -19,6 +19,25 @@
   const dur = (iso) => window.STAFF_T.dur[S.lang]?.(mins(iso)) ?? window.STAFF_T.dur.en(mins(iso));
   const dayStart = () => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; };
   const r2 = (x) => Math.round(x * 100) / 100;
+  // деньги счёта считаем в сенах (целых), как сервер (close_bill)
+  const sen = (x) => Math.round((Number(x) || 0) * 100);
+  const round5 = (s) => Math.round(s / 5) * 5;                 // наличные: до 5 сен
+  const roundingOn = () => S.settings?.cash_rounding !== false;
+  const signed = (x) => `${x > 0 ? '+' : x < 0 ? '−' : ''}${money(Math.abs(x))}`;
+  // скидка на блюда: сбор и налог пересчитываются с суммы после скидки
+  function billCalc(d, disc) {
+    const sub = sen(d.subtotal);
+    let D = 0;
+    if (disc && Number(disc.value) > 0) {
+      D = disc.kind === 'pct' ? Math.round((sub * Math.min(100, Number(disc.value))) / 100 + 1e-9) : Math.min(sub, sen(disc.value));
+    }
+    const srv = D && sub ? Math.round((sen(d.service) * (sub - D)) / sub + 1e-9) : sen(d.service);
+    const tax = D && sub ? Math.round((sen(d.tax) * (sub - D)) / sub + 1e-9) : sen(d.tax);
+    const total = D ? sub - D + srv + tax : sen(d.total);
+    return { subtotal: sub / 100, discount: D / 100, service: srv / 100, tax: tax / 100, total: total / 100 };
+  }
+  // сколько добавить/убрать, если эту сумму платят наличными
+  const cashAdj = (amount) => (roundingOn() ? (round5(sen(amount)) - sen(amount)) / 100 : 0);
   const optNames = (i) => (i.opts || []).map((o) => tr(o.name)).filter(Boolean);
   // готовые пожелания гостя («Без лука», «Alahan kacang»…) — на языке сотрудника; свой текст гостя — как написал
   const chipIndex = (() => {
@@ -94,7 +113,7 @@
 
   // чек / предварительный счёт стола: шапка с реквизитами, кто/когда, позиции с ценой за штуку,
   // подытог, сервисный сбор и налог с процентом, ИТОГО, чаевые и чем оплатили
-  function printReceipt({ table, orders, bill }) {
+  function printReceipt({ table, orders, bill, draft }) {
     const st = S.settings || {};
     const lines = new Map();
     for (const o of orders) for (const i of o.items || []) {
@@ -104,7 +123,7 @@
       lines.set(k, l);
     }
     const sum = (f) => r2(orders.reduce((s, o) => s + Number(f(o) || 0), 0));
-    const tt = bill || { subtotal: sum(sub), service: sum((o) => o.service), tax: sum((o) => o.tax), total: sum((o) => o.total) };
+    const tt = bill || draft || { subtotal: sum(sub), service: sum((o) => o.service), tax: sum((o) => o.tax), total: sum((o) => o.total) };
     // на чеке — суммы с копейками; валюта только у итога и оплаты
     const num = (n) => new Intl.NumberFormat(S.locale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(n) || 0);
     const cur = (n) => (st.currency_before ? `${st.currency || ''} ${num(n)}` : `${num(n)} ${st.currency || ''}`).trim();
@@ -113,11 +132,13 @@
     const subT = Number(tt.subtotal) || 0;
     const servT = Number(tt.service) || 0;
     const taxT = Number(tt.tax) || 0;
-    const taxBase = subT + (st.tax_on_service === false ? 0 : servT);
+    const discT = Number(tt.discount) || 0;
+    const roundT = Number(bill?.rounding) || 0;
+    const taxBase = subT - discT + (st.tax_on_service === false ? 0 : servT);
     const when = new Date(bill?.paid_at || Date.now());
     const addr = tr(st.address);
     const waiters = [...new Set(orders.map((o) => o.served_by_name || (o.source === 'staff' ? o.created_by_name : null)).filter(Boolean))];
-    const pays = bill?.payments?.length ? bill.payments : bill ? [{ method: bill.method, amount: Number(bill.total) + Number(bill.tip || 0) }] : [];
+    const pays = bill?.payments?.length ? bill.payments : bill ? [{ method: bill.method, amount: Number(bill.total) + Number(bill.tip || 0) + Number(bill.rounding || 0) }] : [];
     const row = (k, v, cls = '') => `<tr${cls ? ` class="${cls}"` : ''}><td>${esc(k)}</td><td class="s">${esc(v)}</td></tr>`;
     printSlip(bill ? t('p_receipt', bill.no) : t('p_prebill'), `
       <h1>${esc(st.name || '')}</h1>
@@ -142,16 +163,18 @@
       <hr>
       <table class="sums">
         ${row(t('p_subtotal'), num(subT))}
-        ${servT ? row(`${t('sum_service')} ${pct(servT, subT)}`.trim(), num(servT)) : ''}
+        ${discT ? row(`${t('disc_line', tt.discount_pct ? `${Number(tt.discount_pct)}%` : '')}${tt.discount_reason ? ` (${tt.discount_reason})` : ''}`, `−${num(discT)}`) : ''}
+        ${servT ? row(`${t('sum_service')} ${pct(servT, subT - discT)}`.trim(), num(servT)) : ''}
         ${taxT ? row(`${st.tax_name || t('sum_tax')} ${pct(taxT, taxBase)}`.trim(), num(taxT)) : ''}
       </table>
       <hr class="dbl">
       <table>${row(t('p_total'), cur(tt.total), 'tot')}</table>
+      ${roundT ? `<table class="sums">${row(t('rounding'), `${roundT > 0 ? '+' : '−'}${num(Math.abs(roundT))}`)}${row(t('p_to_pay'), cur(Number(tt.total) + roundT))}</table>` : ''}
       <hr class="dbl">
       ${bill ? `<table class="pay">
         ${Number(bill.tip) ? row(t('tip'), num(bill.tip)) : ''}
         ${pays.map((p) => row(`${t('p_paid')}: ${payName(p.method)}`, cur(p.amount))).join('')}
-        ${pays.length > 1 || Number(bill.tip) ? row(t('p_paid_total'), cur(Number(bill.total) + Number(bill.tip || 0)), 'tot') : ''}
+        ${pays.length > 1 || Number(bill.tip) ? row(t('p_paid_total'), cur(Number(bill.total) + Number(bill.tip || 0) + roundT), 'tot') : ''}
       </table><hr>` : `<div class="stamp">${esc(t('p_not_receipt'))}</div>`}
       <div class="c" style="font-weight:700;margin-top:4px">${esc(t('p_thanks'))}</div>
       <div class="c small muted">${esc(t('p_printed', hhmm(new Date().toISOString())))}</div>`);
@@ -281,21 +304,54 @@
       return { os, subtotal: sum(sub), service: sum((o) => o.service), tax: sum((o) => o.tax), total: sum((o) => o.total) };
     }
 
+    const canDiscount = () => host.isOwner || !!S.settings?.waiter_discounts;
+    const calcOf = (tableId) => billCalc(dueOf(tableId), payState?.disc?.value ? payState.disc : null);
+    // раздельная оплата: наличная часть округляется до 5 сен, остальное — как есть
+    function partsTarget(grand, parts) {
+      const nonCash = r2(parts.filter((p) => p.method !== 'cash').reduce((x, p) => x + (Number(p.amount) || 0), 0));
+      const hasCash = parts.some((p) => p.method === 'cash' && Number(p.amount) > 0);
+      return r2(grand + (hasCash ? cashAdj(r2(grand - nonCash)) : 0));
+    }
+    function discHtml() {
+      if (!canDiscount()) return '';
+      const ds = payState.disc;
+      if (!payState.discOpen && !ds?.value) return `<button type="button" class="link-btn fl-disc-open" data-fl-disc-open>${icon('plus', 'sm')}${esc(t('disc_btn'))}</button>`;
+      const pcts = [5, 10, 15, 20];
+      return `<section class="fl-disc">
+        <p class="section-label" style="margin-top:0">${esc(t('disc_t'))}</p>
+        <div class="fl-tip">${pcts.map((v) => `<button type="button" class="chip${ds?.kind === 'pct' && Number(ds.value) === v ? ' active' : ''}" data-fl-disc-pct="${v}">${v}%</button>`).join('')}
+          <button type="button" class="chip${ds?.kind === 'pct' && Number(ds.value) === 100 ? ' active' : ''}" data-fl-disc-pct="100">${esc(t('disc_comp'))}</button>
+          <label class="field fl-tip-in"><span class="sr-only">${esc(t('disc_amount'))}</span><input type="number" min="0" step="0.5" inputmode="decimal" data-fl-disc-amt value="${ds?.kind === 'amount' ? esc(ds.value) : ''}" placeholder="${esc(t('disc_amount'))}"></label></div>
+        <p class="section-label">${esc(t('disc_why'))}</p>
+        <div class="fl-tip">${t('disc_reasons').map((r) => `<button type="button" class="chip${ds?.reason === r ? ' active' : ''}" data-fl-disc-why="${esc(r)}">${esc(r)}</button>`).join('')}</div>
+        <label class="field"><span class="sr-only">${esc(t('disc_why'))}</span><input type="text" maxlength="100" data-fl-disc-why-in value="${esc(ds?.reason || '')}" placeholder="${esc(t('disc_why'))}"></label>
+        ${ds?.value && !String(ds.reason || '').trim() ? `<p class="notice bad">${icon('alert')}<span>${esc(t('disc_need_why'))}</span></p>` : ''}
+        <button type="button" class="link-btn" data-fl-disc-clear>${esc(t('disc_clear'))}</button>
+      </section>`;
+    }
+
     function payHtml(tableId) {
-      const d = dueOf(tableId);
+      const raw = dueOf(tableId);
+      const d = calcOf(tableId);
+      const ds = payState.disc;
       const tip = r2(Number(payState.tip) || 0);
       const grand = r2(d.total + tip);
       const parts = payState.parts;
       const partsSum = r2(parts.reduce((x, p) => x + (Number(p.amount) || 0), 0));
-      const left = r2(grand - partsSum);
-      const disabled = !d.os.length;
+      const left = r2(partsTarget(grand, parts) - partsSum);
+      const needWhy = !!ds?.value && !String(ds.reason || '').trim();
+      const disabled = !raw.os.length || needWhy;
+      const cashR = cashAdj(grand);
+      const discLabel = ds?.value ? `${ds.kind === 'pct' ? `${Number(ds.value)}%` : ''}${ds.reason ? ` · ${ds.reason}` : ''}`.replace(/^ · /, '') : '';
       return `
         <dl class="fl-sum">
-          ${d.service || d.tax ? `<div><dt>${esc(t('sum_items'))}</dt><dd>${money(d.subtotal)}</dd></div>` : ''}
+          ${d.service || d.tax || d.discount ? `<div><dt>${esc(t('sum_items'))}</dt><dd>${money(d.subtotal)}</dd></div>` : ''}
+          ${d.discount ? `<div class="disc"><dt>${esc(t('disc_line', discLabel))}</dt><dd>−${money(d.discount)}</dd></div>` : ''}
           ${d.service ? `<div><dt>${esc(t('sum_service'))}</dt><dd>${money(d.service)}</dd></div>` : ''}
           ${d.tax ? `<div><dt>${esc(S.settings?.tax_name || t('sum_tax'))}</dt><dd>${money(d.tax)}</dd></div>` : ''}
           <div class="tot"><dt>${esc(t('sum_due'))}</dt><dd>${money(d.total)}</dd></div>
         </dl>
+        ${discHtml()}
         <p class="section-label">${esc(t('tip'))}</p>
         <div class="fl-tip">
           <button type="button" class="chip${!tip ? ' active' : ''}" data-fl-tip="0">${esc(t('tip_none'))}</button>
@@ -305,6 +361,7 @@
           <label class="field fl-tip-in"><span class="sr-only">${esc(t('tip'))}</span><input type="number" min="0" step="0.5" inputmode="decimal" data-fl-tip-in value="${tip || ''}" placeholder="0"></label>
         </div>
         ${tip ? `<p class="fl-grand">${esc(t('with_tip'))}: <b>${money(grand)}</b></p>` : ''}
+        ${!payState.split && cashR ? `<p class="help fl-round">${esc(t('cash_to_pay', money(r2(grand + cashR)), signed(cashR)))}</p>` : ''}
         <p class="section-label">${esc(t('payment'))}</p>
         ${payState.split ? `
           <ul class="fl-parts">${parts.map((p, i) => `<li>
@@ -355,6 +412,8 @@
       m.dataset.table = id;
       m.addEventListener('input', (e) => {
         if (e.target.matches('[data-fl-tip-in]')) { payState.tip = Math.max(0, Number(e.target.value) || 0); syncParts(); repaintPay(true); }
+        else if (e.target.matches('[data-fl-disc-amt]')) { const v = Math.max(0, Number(e.target.value) || 0); payState.disc = { ...(payState.disc || {}), kind: v ? 'amount' : (payState.disc?.kind || 'pct'), value: v }; syncParts(); repaintPay(true); }
+        else if (e.target.matches('[data-fl-disc-why-in]')) { payState.disc = { ...(payState.disc || { kind: 'pct', value: 0 }), reason: e.target.value.slice(0, 100) }; repaintPay(true); }
         else if (e.target.matches('[data-fl-part-a]')) {
           const i = Number(e.target.dataset.flPartA);
           payState.parts[i].amount = e.target.value;
@@ -364,7 +423,7 @@
       });
       m.addEventListener('change', (e) => {
         if (e.target.matches('[data-fl-pick]')) { if (e.target.checked) payState.ids.add(e.target.dataset.flPick); else payState.ids.delete(e.target.dataset.flPick); syncParts(); repaintPay(); }
-        else if (e.target.matches('[data-fl-part-m]')) payState.parts[e.target.dataset.flPartM].method = e.target.value;
+        else if (e.target.matches('[data-fl-part-m]')) { payState.parts[e.target.dataset.flPartM].method = e.target.value; syncParts(); repaintPay(); }
       });
     }
     // перерисовать только блок оплаты (не сбивая ввод)
@@ -372,7 +431,7 @@
       const box = document.getElementById('fl-pay-box');
       if (!box || !payState) return;
       const active = keepFocus ? document.activeElement : null;
-      const sel = active && (active.dataset.flTipIn !== undefined ? '[data-fl-tip-in]' : active.dataset.flPartA !== undefined ? `[data-fl-part-a="${active.dataset.flPartA}"]` : null);
+      const sel = active && (active.dataset.flTipIn !== undefined ? '[data-fl-tip-in]' : active.dataset.flDiscAmt !== undefined ? '[data-fl-disc-amt]' : active.dataset.flDiscWhyIn !== undefined ? '[data-fl-disc-why-in]' : active.dataset.flPartA !== undefined ? `[data-fl-part-a="${active.dataset.flPartA}"]` : null);
       const pos = active?.selectionStart;
       box.innerHTML = payHtml(payState.table);
       if (sel) { const el = box.querySelector(sel); if (el) { el.focus(); try { el.setSelectionRange(pos, pos); } catch { /* number input */ } } }
@@ -380,17 +439,30 @@
     // при раздельной оплате последняя часть добирает остаток
     function syncParts() {
       if (!payState.split || !payState.parts.length) return;
-      const grand = r2(dueOf(payState.table).total + (Number(payState.tip) || 0));
-      const others = r2(payState.parts.slice(0, -1).reduce((x, p) => x + (Number(p.amount) || 0), 0));
-      payState.parts[payState.parts.length - 1].amount = Math.max(0, r2(grand - others));
+      const grand = r2(calcOf(payState.table).total + (Number(payState.tip) || 0));
+      const others = payState.parts.slice(0, -1);
+      const last = payState.parts[payState.parts.length - 1];
+      const othersSum = r2(others.reduce((x, p) => x + (Number(p.amount) || 0), 0));
+      if (last.method === 'cash') {
+        // наличная часть — остаток после карт/QR, округлённый до 5 сен
+        const nonCash = r2(others.filter((p) => p.method !== 'cash').reduce((x, p) => x + (Number(p.amount) || 0), 0));
+        const cashOthers = r2(othersSum - nonCash);
+        const cashDue = r2(grand - nonCash);
+        last.amount = Math.max(0, r2(cashDue + cashAdj(cashDue) - cashOthers));
+      } else {
+        last.amount = Math.max(0, r2(grand - othersSum));
+      }
     }
 
     async function pay(tableId, how) {
       const tb = tables.find((x) => x.id === tableId);
       const d = dueOf(tableId);
       if (!tb || !d.os.length) return;
+      const c = calcOf(tableId);
+      const disc = payState.disc?.value ? { kind: payState.disc.kind, value: Number(payState.disc.value), reason: String(payState.disc.reason || '').trim() } : null;
+      if (disc && !disc.reason) { S.toast(t('disc_need_why'), true); return; }
       const tip = r2(Number(payState.tip) || 0);
-      const grand = r2(d.total + tip);
+      let grand = r2(c.total + tip);
       let method = how;
       let payments = null;
       if (how === 'split') {
@@ -398,22 +470,24 @@
         const methods = [...new Set(payments.map((p) => p.method))];
         method = methods.length === 1 ? methods[0] : 'mixed';
       }
+      if (!payments && method === 'cash') grand = r2(grand + cashAdj(grand));
+      if (payments) grand = r2(payments.reduce((x, p) => x + p.amount, 0));
       const label = payments ? payments.map((p) => `${payName(p.method)} ${money(p.amount)}`).join(' + ') : payName(method);
       if (!await S.ask(t('ask_close', tb.label, money(grand), label), { ok: t('ok_paid') })) return;
       document.querySelectorAll('[data-fl-pay]').forEach((b) => { b.disabled = true; });
       try {
-        const b = await host.api.closeBill(tableId, method, d.os.map((o) => o.id), tip, payments);
+        const b = await host.api.closeBill(tableId, method, d.os.map((o) => o.id), tip, payments, disc);
         bills = [b, ...bills];
         await host.reloadOrders();
         calls = calls.map((c) => (c.table_id === tableId && c.kind === 'bill' && !c.done_at ? { ...c, done_at: b.paid_at } : c));
         payState = null;
         S.closeModal();
         host.rerender();
-        const again = await S.ask(t('ask_print', tb.label, money(Number(b.total) + Number(b.tip || 0)), label), { ok: t('print_receipt'), cancel: t('no_need') });
+        const again = await S.ask(t('ask_print', tb.label, money(Number(b.total) + Number(b.tip || 0) + Number(b.rounding || 0)), label), { ok: t('print_receipt'), cancel: t('no_need') });
         if (again) printReceipt({ table: tb.label, orders: d.os, bill: b });
       } catch (ex) {
         const m = String(ex?.message || '');
-        S.toast(/has_new/.test(m) ? t('e_has_new') : /nothing_to_pay/.test(m) ? t('e_nothing') : /bad_payments/.test(m) ? t('e_payments') : /bad_tip/.test(m) ? t('e_tip') : S.errText(ex), true);
+        S.toast(/no_discount_rights/.test(m) ? t('e_disc_rights') : /bad_discount|discount_reason/.test(m) ? t('e_disc') : /has_new/.test(m) ? t('e_has_new') : /nothing_to_pay/.test(m) ? t('e_nothing') : /bad_payments/.test(m) ? t('e_payments') : /bad_tip/.test(m) ? t('e_tip') : S.errText(ex), true);
         await host.reloadOrders().catch(() => {});
         S.closeModal();
         host.rerender();
@@ -655,9 +729,15 @@
       if (cp) { compose(cp.dataset.flCompose || ''); return true; }
       const sv = e.target.closest('[data-fl-serve]');
       if (sv) { serve(sv.dataset.flServe); return true; }
+      if (e.target.closest('[data-fl-disc-open]') && payState) { payState.discOpen = true; repaintPay(); return true; }
+      if (e.target.closest('[data-fl-disc-clear]') && payState) { payState.disc = null; payState.discOpen = false; syncParts(); repaintPay(); return true; }
+      const dp = e.target.closest('[data-fl-disc-pct]');
+      if (dp && payState) { payState.disc = { ...(payState.disc || {}), kind: 'pct', value: Number(dp.dataset.flDiscPct) }; syncParts(); repaintPay(); return true; }
+      const dw = e.target.closest('[data-fl-disc-why]');
+      if (dw && payState) { payState.disc = { ...(payState.disc || { kind: 'pct', value: 0 }), reason: dw.dataset.flDiscWhy }; repaintPay(); return true; }
       const tip = e.target.closest('[data-fl-tip]');
       if (tip && payState) {
-        const due = dueOf(payState.table).total;
+        const due = calcOf(payState.table).total;
         const v = tip.dataset.flTip;
         payState.tip = v === '0' ? 0 : v === 'round' ? r2(Math.ceil(due / 10) * 10 - due) || 10 : r2(due * parseFloat(v) / 100);
         syncParts();
@@ -667,7 +747,7 @@
       const sp = e.target.closest('[data-fl-split]');
       if (sp && payState) {
         payState.split = sp.dataset.flSplit === '1';
-        const grand = r2(dueOf(payState.table).total + (Number(payState.tip) || 0));
+        const grand = r2(calcOf(payState.table).total + (Number(payState.tip) || 0));
         payState.parts = payState.split ? [{ method: 'cash', amount: '' }, { method: 'card', amount: grand }] : [];
         repaintPay();
         return true;
@@ -685,7 +765,11 @@
       if (e.target.closest('[data-fl-prebill]')) {
         const id = document.querySelector('.modal')?.dataset.table;
         const tb = tables.find((x) => x.id === id);
-        if (tb) printReceipt({ table: tb.label, orders: payState?.table === id ? dueOf(id).os : unpaid(id) });
+        if (tb) {
+          const mine = payState?.table === id;
+          const ds = mine && payState.disc?.value ? payState.disc : null;
+          printReceipt({ table: tb.label, orders: mine ? dueOf(id).os : unpaid(id), draft: ds ? { ...calcOf(id), discount_pct: ds.kind === 'pct' ? Number(ds.value) : null, discount_reason: ds.reason || '' } : null });
+        }
         return true;
       }
       const rp = e.target.closest('[data-fl-reprint]');

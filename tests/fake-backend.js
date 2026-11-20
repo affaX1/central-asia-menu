@@ -203,7 +203,7 @@
     async calls(from) { await delay(); floor(); offline(); const f = new Date(from).getTime(); return (db().calls || []).filter((c) => !c.done_at || new Date(c.created_at).getTime() >= f); },
     async doneCall(id) { await delay(); floor(); const d = db(); const c = (d.calls || []).find((x) => x.id === id); if (c && !c.done_at) Object.assign(c, { done_at: new Date().toISOString(), done_by_name: myName() }); save(d); },
     async bills(from, to) { await delay(); floor(); const f = new Date(from).getTime(); const t = to ? new Date(to).getTime() : Infinity; return (db().bills || []).filter((b) => { const x = new Date(b.paid_at).getTime(); return x >= f && x < t; }).sort((a, b) => new Date(b.paid_at) - new Date(a.paid_at)); },
-    async closeBill(tableId, method, ids, tip = 0, payments = null) {
+    async closeBill(tableId, method, ids, tip = 0, payments = null, discount = null) {
       await delay(); floor(); offline();
       if (!['cash', 'card', 'qr', 'other', 'mixed'].includes(method)) throw new Error('bad_method');
       if (tip < 0) throw new Error('bad_tip');
@@ -213,14 +213,41 @@
       const sum = (k) => r2(list.reduce((s, o) => s + Number(o[k] ?? (k === 'subtotal' ? o.total : 0)), 0));
       d.billSeq = (d.billSeq || 0) + 1;
       const tb = d.tables.find((t) => t.id === tableId);
-      const total = sum('total');
+      // как close_bill на сервере: скидка на блюда, сбор/налог пропорционально, наличные — до 5 сен
+      const sen = (x) => Math.round(Number(x) * 100);
+      let subS = sen(sum('subtotal')); let srvS = sen(sum('service')); let taxS = sen(sum('tax')); let totS = sen(sum('total'));
+      let D = 0; let dpct = null; let dreason = null;
+      if (discount) {
+        if (!(role() === 'owner' || d.settings.waiter_discounts)) throw new Error('no_discount_rights');
+        dreason = String(discount.reason || '').trim().slice(0, 100);
+        if (!dreason) throw new Error('discount_reason');
+        const v = Number(discount.value);
+        if (discount.kind === 'pct') { if (!(v > 0 && v <= 100)) throw new Error('bad_discount'); dpct = v; D = Math.round(subS * v / 100 + 1e-9); }
+        else if (discount.kind === 'amount') { if (!(v > 0) || sen(v) > subS) throw new Error('bad_discount'); D = sen(v); }
+        else throw new Error('bad_discount');
+        if (subS) { srvS = Math.round(srvS * (subS - D) / subS + 1e-9); taxS = Math.round(taxS * (subS - D) / subS + 1e-9); }
+        totS = subS - D + srvS + taxS;
+      }
+      const total = totS / 100;
+      const roundOn = d.settings.cash_rounding !== false;
+      const r5 = (x) => Math.round(x / 5) * 5;
+      let roundS = 0;
       let pays = payments;
-      if (!pays) { if (method === 'mixed') throw new Error('bad_payments'); pays = [{ method, amount: r2(total + tip) }]; }
-      if (pays.length < 1 || pays.length > 4 || pays.some((p) => !['cash', 'card', 'qr', 'other'].includes(p.method) || !(p.amount > 0))) throw new Error('bad_payments');
-      if (Math.abs(r2(pays.reduce((x, p) => x + p.amount, 0)) - r2(total + tip)) > 0.01) throw new Error('bad_payments');
+      if (!pays) {
+        if (method === 'mixed') throw new Error('bad_payments');
+        const due = totS + sen(tip);
+        if (method === 'cash' && roundOn) roundS = r5(due) - due;
+        pays = [{ method, amount: (due + roundS) / 100 }];
+      } else {
+        const nonCash = pays.filter((p) => p.method !== 'cash').reduce((x, p) => x + sen(p.amount), 0);
+        if (pays.some((p) => p.method === 'cash') && roundOn) { const due = totS + sen(tip) - nonCash; roundS = r5(due) - due; }
+      }
+      if (pays.length < 1 || pays.length > 4 || pays.some((p) => !['cash', 'card', 'qr', 'other'].includes(p.method) || !(p.amount > 0 || (!payments && p.amount === 0)))) throw new Error('bad_payments');
+      if (Math.abs(pays.reduce((x, p) => x + sen(p.amount), 0) - (totS + sen(tip) + roundS)) > 1) throw new Error('bad_payments');
       const methods = [...new Set(pays.map((p) => p.method))];
       const bill = { id: crypto.randomUUID(), no: d.billSeq, table_id: tableId, table_label: tb?.label || list[0].table_label, order_ids: list.map((o) => o.id), order_nos: list.map((o) => o.no),
-        subtotal: sum('subtotal'), service: sum('service'), tax: sum('tax'), total, tip: r2(tip), payments: pays, method: methods.length === 1 ? methods[0] : 'mixed', paid_at: new Date().toISOString(), paid_by: uid(), paid_by_name: myName() };
+        subtotal: subS / 100, service: srvS / 100, tax: taxS / 100, total, tip: r2(tip),
+        discount: D / 100, discount_pct: dpct, discount_reason: D ? dreason : null, discount_by_name: D ? myName() : null, rounding: roundS / 100, payments: pays, method: methods.length === 1 ? methods[0] : 'mixed', paid_at: new Date().toISOString(), paid_by: uid(), paid_by_name: myName() };
       list.forEach((o) => { o.paid_at = bill.paid_at; o.bill_id = bill.id; if (['new', 'accepted', 'cooking', 'ready'].includes(o.status)) { o.status = 'served'; o.served_at = o.served_at || bill.paid_at; o.served_by_name = o.served_by_name || myName(); } });
       (d.calls || []).forEach((c) => { if (c.table_id === tableId && !c.done_at && c.kind === 'bill') Object.assign(c, { done_at: bill.paid_at, done_by_name: myName() }); });
       d.bills = (d.bills || []).concat(bill);

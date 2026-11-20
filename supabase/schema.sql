@@ -177,6 +177,9 @@ alter table public.settings add column if not exists tax_pct numeric(5, 2) not n
 alter table public.settings add column if not exists tax_name text not null default 'SST' check (char_length(tax_name) between 1 and 20);
 alter table public.settings add column if not exists tax_on_service boolean not null default true;
 -- реквизиты для чека: юр. название, SSM, номер SST — печатаются под названием, до 5 строк
+-- округление наличных до 5 сен (правило Малайзии); официанты могут давать скидку (иначе — только владелец)
+alter table public.settings add column if not exists cash_rounding boolean not null default true;
+alter table public.settings add column if not exists waiter_discounts boolean not null default false;
 alter table public.settings add column if not exists receipt_info text not null default '' check (char_length(receipt_info) <= 300);
 insert into public.settings (id) values (1) on conflict (id) do nothing;
 
@@ -934,15 +937,25 @@ alter table public.bills add column if not exists tip numeric(10, 2) not null de
 alter table public.bills add column if not exists payments jsonb not null default '[]';   -- [{ method, amount }] — раздельная оплата
 alter table public.bills drop constraint if exists bills_method_check;
 alter table public.bills add constraint bills_method_check check (method in ('cash', 'card', 'qr', 'other', 'mixed'));
+-- скидка на счёт (с блюд; сбор и налог пересчитаны с суммы после скидки) и округление наличных
+alter table public.bills add column if not exists discount numeric(10, 2) not null default 0 check (discount >= 0);
+alter table public.bills add column if not exists discount_pct numeric(5, 2);
+alter table public.bills add column if not exists discount_reason text;
+alter table public.bills add column if not exists discount_by_name text;
+alter table public.bills add column if not exists rounding numeric(10, 2) not null default 0;
 
 -- Закрыть счёт стола: все неоплаченные заказы стола (или выбранные) → один счёт.
 -- p_tip — чаевые; p_payments — раздельная оплата [{ method, amount }], сумма = к оплате + чаевые.
 drop function if exists public.close_bill(uuid, text, uuid[]);
+drop function if exists public.close_bill(uuid, text, uuid[], numeric, jsonb);
+-- p_discount: { "kind": "pct" | "amount", "value": 10, "reason": "Постоянный гость" } — скидка на блюда
 create or replace function public.close_bill(p_table uuid, p_method text, p_orders uuid[] default null,
-                                             p_tip numeric default 0, p_payments jsonb default null)
+                                             p_tip numeric default 0, p_payments jsonb default null, p_discount jsonb default null)
 returns setof public.bills language plpgsql security definer set search_path = public as $$
 declare v_ids uuid[]; v_nos bigint[]; v_sub numeric; v_srv numeric; v_tax numeric; v_tot numeric; v_label text; v_bill public.bills%rowtype;
         v_tip numeric(10, 2) := round(coalesce(p_tip, 0), 2); v_pay jsonb := '[]'::jsonb; v_sum numeric := 0; v_methods text[] := '{}'; x jsonb; v_m text;
+        v_set public.settings%rowtype; v_disc numeric(10, 2) := 0; v_dpct numeric(5, 2); v_dreason text; v_kind text; v_val numeric;
+        v_round numeric(10, 2) := 0; v_cash numeric := 0; v_noncash numeric := 0; v_due numeric;
 begin
   if not public.is_floor() then raise exception 'forbidden'; end if;
   if p_method not in ('cash', 'card', 'qr', 'other', 'mixed') then raise exception 'bad_method'; end if;
@@ -958,10 +971,38 @@ begin
    where o.table_id = p_table and o.paid_at is null and o.status <> 'cancelled'
      and (p_orders is null or o.id = any (p_orders));
   if v_ids is null then raise exception 'nothing_to_pay'; end if;
-  -- оплата: один способ на всю сумму или несколько частей
+  select * into v_set from public.settings where id = 1;
+  -- скидка: владелец всегда, официант — если владелец разрешил; причина обязательна
+  if p_discount is not null and jsonb_typeof(p_discount) = 'object' then
+    if not (public.is_owner() or coalesce(v_set.waiter_discounts, false)) then raise exception 'no_discount_rights'; end if;
+    v_kind := p_discount ->> 'kind';
+    v_dreason := left(nullif(btrim(coalesce(p_discount ->> 'reason', '')), ''), 100);
+    if v_dreason is null then raise exception 'discount_reason'; end if;
+    begin v_val := (p_discount ->> 'value')::numeric; exception when others then raise exception 'bad_discount'; end;
+    if v_kind = 'pct' then
+      if v_val is null or v_val <= 0 or v_val > 100 then raise exception 'bad_discount'; end if;
+      v_dpct := round(v_val, 2);
+      v_disc := round(v_sub * v_dpct / 100, 2);
+    elsif v_kind = 'amount' then
+      if v_val is null or v_val <= 0 or round(v_val, 2) > v_sub then raise exception 'bad_discount'; end if;
+      v_disc := round(v_val, 2);
+    else
+      raise exception 'bad_discount';
+    end if;
+    -- сбор и налог — с суммы после скидки (пропорционально)
+    if v_sub > 0 then
+      v_srv := round(v_srv * (v_sub - v_disc) / v_sub, 2);
+      v_tax := round(v_tax * (v_sub - v_disc) / v_sub, 2);
+    end if;
+    v_tot := v_sub - v_disc + v_srv + v_tax;
+  end if;
+  -- оплата: один способ на всю сумму или несколько частей.
+  -- Наличные округляются до 5 сен (1–2 сен вниз, 3–4 вверх, 6–7 вниз, 8–9 вверх), если включено.
   if p_payments is null then
     if p_method = 'mixed' then raise exception 'bad_payments'; end if;
-    v_pay := jsonb_build_array(jsonb_build_object('method', p_method, 'amount', v_tot + v_tip));
+    v_due := v_tot + v_tip;
+    if p_method = 'cash' and coalesce(v_set.cash_rounding, true) then v_round := round(v_due * 20) / 20 - v_due; end if;
+    v_pay := jsonb_build_array(jsonb_build_object('method', p_method, 'amount', v_due + v_round));
     v_methods := array[p_method];
   else
     if jsonb_typeof(p_payments) <> 'array' or jsonb_array_length(p_payments) not between 1 and 4 then raise exception 'bad_payments'; end if;
@@ -969,14 +1010,22 @@ begin
       v_m := x ->> 'method';
       if v_m not in ('cash', 'card', 'qr', 'other') or jsonb_typeof(x -> 'amount') <> 'number' or (x ->> 'amount')::numeric <= 0 then raise exception 'bad_payments'; end if;
       v_sum := v_sum + round((x ->> 'amount')::numeric, 2);
+      if v_m = 'cash' then v_cash := v_cash + round((x ->> 'amount')::numeric, 2); else v_noncash := v_noncash + round((x ->> 'amount')::numeric, 2); end if;
       v_pay := v_pay || jsonb_build_array(jsonb_build_object('method', v_m, 'amount', round((x ->> 'amount')::numeric, 2)));
       if not v_m = any (v_methods) then v_methods := v_methods || v_m; end if;
     end loop;
-    if abs(v_sum - (v_tot + v_tip)) > 0.01 then raise exception 'bad_payments'; end if;
+    -- округляется только наличная часть: всё, что не картой/QR, — до 5 сен
+    if v_cash > 0 and coalesce(v_set.cash_rounding, true) then
+      v_due := v_tot + v_tip - v_noncash;
+      v_round := round(v_due * 20) / 20 - v_due;
+    end if;
+    if abs(v_sum - (v_tot + v_tip + v_round)) > 0.01 then raise exception 'bad_payments'; end if;
   end if;
-  insert into public.bills (table_id, table_label, order_ids, order_nos, subtotal, service, tax, total, tip, payments, method, paid_by, paid_by_name)
+  insert into public.bills (table_id, table_label, order_ids, order_nos, subtotal, service, tax, total, tip, payments, method, paid_by, paid_by_name,
+                            discount, discount_pct, discount_reason, discount_by_name, rounding)
   values (p_table, coalesce((select label from public.tables where id = p_table), v_label), v_ids, v_nos, v_sub, v_srv, v_tax, v_tot, v_tip, v_pay,
-          case when cardinality(v_methods) = 1 then v_methods[1] else 'mixed' end, auth.uid(), public.staff_name())
+          case when cardinality(v_methods) = 1 then v_methods[1] else 'mixed' end, auth.uid(), public.staff_name(),
+          v_disc, v_dpct, case when v_disc > 0 then v_dreason end, case when v_disc > 0 then public.staff_name() end, v_round)
   returning * into v_bill;
   -- оплаченный заказ точно на столе: если «Подано» забыли нажать — отмечаем сами
   update public.orders
@@ -1197,7 +1246,7 @@ drop policy if exists calls_floor_read on public.calls;
 create policy calls_floor_read on public.calls for select to authenticated using (public.is_floor());
 
 revoke all on function public.floor_tables() from public;
-revoke all on function public.close_bill(uuid, text, uuid[], numeric, jsonb) from public;
+revoke all on function public.close_bill(uuid, text, uuid[], numeric, jsonb, jsonb) from public;
 revoke all on function public.claim_table(uuid, boolean) from public;
 revoke all on function public.staff_place_order(uuid, jsonb, text, uuid) from public;
 revoke all on function public.serve_order(uuid) from public;
@@ -1207,7 +1256,7 @@ revoke all on function public.done_call(uuid) from public;
 revoke all on function public.edit_order(uuid, jsonb) from public;
 revoke all on function public.kitchen_set(uuid, text) from public;
 grant execute on function public.floor_tables() to authenticated;
-grant execute on function public.close_bill(uuid, text, uuid[], numeric, jsonb) to authenticated;
+grant execute on function public.close_bill(uuid, text, uuid[], numeric, jsonb, jsonb) to authenticated;
 grant execute on function public.claim_table(uuid, boolean) to authenticated;
 grant execute on function public.staff_place_order(uuid, jsonb, text, uuid) to authenticated;
 grant execute on function public.serve_order(uuid) to authenticated;

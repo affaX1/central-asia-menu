@@ -120,6 +120,8 @@
     const parts = R.bills.flatMap((b) => (b.payments?.length ? b.payments : [{ method: b.method, amount: Number(b.total) + Number(b.tip || 0) }]));
     const byPay = ['cash', 'card', 'qr', 'other'].map((m) => ({ k: PAY[m], v: r2(parts.filter((p) => p.method === m).reduce((s, p) => s + Number(p.amount), 0)), n: parts.filter((p) => p.method === m).length })).filter((r) => r.n);
     const tips = r2(R.bills.reduce((s, b) => s + Number(b.tip || 0), 0));
+    const discBills = R.bills.filter((b) => Number(b.discount) > 0);
+    const discounts = r2(discBills.reduce((s, b) => s + Number(b.discount), 0));
     const received = r2(parts.reduce((s, p) => s + Number(p.amount), 0));
     // столы и официанты
     const group = (list, keyf, valf) => {
@@ -128,6 +130,7 @@
       return [...m.values()].sort((a, b) => b.v - a.v);
     };
     const byTable = group(valid, (o) => `Стол ${o.table_label}`, (o) => Number(o.total));
+    const discBy = group(discBills, (b) => b.discount_reason || '—', (b) => Number(b.discount));
     const byWaiter = group(valid.filter((o) => o.status === 'served'), (o) => o.served_by_name || o.created_by_name || o.accepted_by_name, () => 1);
     const byCashier = group(R.bills, (b) => b.paid_by_name, (b) => Number(b.total));
     const tipsBy = group(R.bills.filter((b) => Number(b.tip) > 0), (b) => b.paid_by_name, (b) => Number(b.tip));
@@ -141,7 +144,7 @@
         <div class="a-stat"><b>${money(avg)}</b><span>средний чек</span></div>
         <div class="a-stat${unpaid ? ' hot' : ''}"><b>${money(unpaid)}</b><span>не оплачено</span></div>
       </div>
-      ${service || tax || cancelled.length || tips ? `<p class="help">${tips ? `Чаевые: ${money(tips)}. ` : ''}${service ? `Сервисный сбор: ${money(service)}. ` : ''}${tax ? `Налог: ${money(tax)}. ` : ''}${cancelled.length ? `Отменено заказов: ${cancelled.length} на ${money(cancelled.reduce((s, o) => s + Number(o.total), 0))}.` : ''}</p>` : ''}
+      ${service || tax || cancelled.length || tips || discounts ? `<p class="help">${discounts ? `Скидки: −${money(discounts)} (счетов ${discBills.length}). ` : ''}${tips ? `Чаевые: ${money(tips)}. ` : ''}${service ? `Сервисный сбор: ${money(service)}. ` : ''}${tax ? `Налог: ${money(tax)}. ` : ''}${cancelled.length ? `Отменено заказов: ${cancelled.length} на ${money(cancelled.reduce((s, o) => s + Number(o.total), 0))}.` : ''}</p>` : ''}
       <section class="panel"><div class="panel-head"><h3>Продажи по дням</h3></div><div class="panel-body">
         ${bars(byDay, money, { compact: byDay.length > 16 })}
         <details class="rp-table"><summary>Таблицей</summary><table><tbody>${byDay.map((r) => `<tr><td>${esc(r.k)}</td><td>${money(r.v)}</td></tr>`).join('')}</tbody></table></details>
@@ -151,6 +154,7 @@
           ${hbars(top.slice(0, 12).map((d) => ({ k: d.k, v: d.qty, sum: d.v })), (v) => `${v} шт.`, (r) => money(r.sum))}
           ${top.length > 12 ? `<details class="rp-table"><summary>Все блюда</summary><table><tbody>${top.map((d) => `<tr><td>${esc(d.k)}</td><td>${d.qty} шт.</td><td>${money(d.v)}</td></tr>`).join('')}</tbody></table></details>` : ''}
         </div></section>
+        ${discBy.length ? `<section class="panel"><div class="panel-head"><h3>Скидки по причинам<small>−${money(discounts)}</small></h3></div><div class="panel-body">${hbars(discBy, money, (r) => `счетов: ${r.n}`)}</div></section>` : ''}
         <section class="panel"><div class="panel-head"><h3>Способы оплаты</h3></div><div class="panel-body">
           ${hbars(byPay, money, (r) => `платежей: ${r.n} · ${received ? Math.round((r.v / received) * 100) : 0}%`)}
           ${tips ? `<p class="help">С чаевыми ${money(tips)}: всего получено ${money(received)}.</p>` : ''}
@@ -208,9 +212,10 @@
           (o.items || []).map((i) => `${i.qty}× ${tr(i.name) || i.id}${optNames(i).length ? ` (${optNames(i).join(', ')})` : ''}${i.note ? ` [${i.note}]` : ''}`).join('; '),
           num(o.subtotal ?? o.total), num(o.service), num(o.tax), num(o.total), dt(o.paid_at), o.served_by_name || o.created_by_name || o.accepted_by_name || '', o.note || '']));
     } else if (kind === 'bills') {
-      csv(`счета_${tag}.csv`, ['Чек №', 'Оплачен', 'Стол', 'Заказы', 'Блюда', 'Сбор', 'Налог', 'Итого', 'Чаевые', 'Оплата', 'Части оплаты', 'Кто закрыл'],
+      csv(`счета_${tag}.csv`, ['Чек №', 'Оплачен', 'Стол', 'Заказы', 'Блюда', 'Сбор', 'Налог', 'Итого', 'Чаевые', 'Оплата', 'Части оплаты', 'Кто закрыл', 'Скидка', 'Причина скидки', 'Кто дал скидку', 'Округление'],
         R.bills.map((b) => [b.no, dt(b.paid_at), b.table_label, (b.order_nos || []).join(', '), num(b.subtotal), num(b.service), num(b.tax), num(b.total), num(b.tip), PAY[b.method] || b.method,
-          (b.payments || []).map((p) => `${PAY[p.method] || p.method} ${num(p.amount)}`).join(' + '), b.paid_by_name || '']));
+          (b.payments || []).map((p) => `${PAY[p.method] || p.method} ${num(p.amount)}`).join(' + '), b.paid_by_name || '',
+          num(b.discount || 0), b.discount_reason || '', b.discount_by_name || '', num(b.rounding || 0)]));
     } else {
       const m = new Map();
       for (const o of R.orders) if (o.status !== 'cancelled') for (const i of o.items || []) {
@@ -237,7 +242,7 @@
     tax_on_service: 'налог на сбор', label: 'название', active: 'включён', token: 'QR-код', role: 'роль', email: 'email', status: 'статус', items: 'состав заказа',
     total: 'итого', subtotal: 'блюда', service: 'сбор', tax: 'налог', paid_at: 'оплата', bill_id: 'счёт', note: 'комментарий', accepted_by_name: null, served_by_name: 'подал', served_by: null,
     edited_at: 'изменён', edited_by_name: 'кто изменил', accepted_at: null, ready_at: null, cooking_at: null, cancelled_at: 'отменён в',
-    accepted_by: null, status_by: null, method: 'оплата', tables_count: null, tip: 'чаевые', payments: 'части оплаты', served_at: 'подан в', source: 'источник', created_by_name: 'пробил',
+    accepted_by: null, status_by: null, method: 'оплата', tables_count: null, tip: 'чаевые', payments: 'части оплаты', discount: 'скидка', discount_pct: 'скидка %', discount_reason: 'причина скидки', discount_by_name: 'кто дал скидку', rounding: 'округление', cash_rounding: 'округление наличных', waiter_discounts: 'скидки официантов', receipt_info: 'реквизиты для чека', served_at: 'подан в', source: 'источник', created_by_name: 'пробил',
   };
   const STV = { new: 'ждёт подачи', accepted: 'ждёт подачи', cooking: 'ждёт подачи', ready: 'ждёт подачи', served: 'подан', cancelled: 'отменён', waiter: 'официант', owner: 'владелец', cook: 'повар', guest: 'гость', staff: 'официант' };
   function val(k, v) {

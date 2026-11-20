@@ -498,3 +498,10 @@ body.signed #a-user .lang-pick select { width: 100%; }
 .k-items .i-note b, .o-items .i-note b { flex: none; width: 18px; min-width: 18px; height: 18px; padding: 0; margin: 0; border-radius: 50%; background: var(--warn); color: #fff; font-size: 12px; line-height: 18px; text-align: center; }
 .k-items li .i-note { margin-top: 6px; }
 .k-edited { display: inline-flex; align-items: center; gap: 6px; margin-top: 6px; padding: 4px 10px; border-radius: 10px; background: var(--warn-soft); color: var(--warn); font-size: 14px; font-weight: 800; }
+
+/* скидка на счёт */
+.fl-disc { margin-top: 12px; padding: 12px; border-radius: 16px; background: var(--surface-2); border: 1px solid var(--line); }
+.fl-disc .field { margin-top: 8px; }
+.fl-disc-open { display: inline-flex; align-items: center; gap: 6px; margin-top: 10px; }
+.fl-sum .disc dt, .fl-sum .disc dd { color: var(--ok); font-weight: 800; }
+.fl-round { margin: 6px 0 0; font-weight: 700; }

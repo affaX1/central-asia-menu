@@ -504,13 +504,17 @@
           ${langFields('footer', st.footer, { label: 'Подпись внизу меню (необязательно)' })}
         </div></section>
 
-        <section class="panel"><div class="panel-head"><h3>Сервисный сбор и налог</h3></div><div class="panel-body">
+        <section class="panel"><div class="panel-head"><h3>Сбор, налог, скидки и округление</h3></div><div class="panel-body">
           <p class="help">Сумма считается на сервере и видна гостю в корзине, на экране заказа и в чеке. Оставьте 0, если не берёте. Новые проценты действуют для новых заказов.</p>
           <div class="form-grid">
             <label class="field"><span>Сервисный сбор, %</span><input name="service_pct" type="number" min="0" max="30" step="0.5" value="${esc(Number(st.service_pct) || 0)}"></label>
             <label class="field"><span>Налог, %</span><input name="tax_pct" type="number" min="0" max="30" step="0.5" value="${esc(Number(st.tax_pct) || 0)}"></label>
             <label class="field"><span>Название налога</span><input name="tax_name" type="text" maxlength="20" value="${esc(st.tax_name || 'SST')}"></label>
             <div class="field"><span>Налог на сервисный сбор</span>${sw('name="tax_on_service"', st.tax_on_service !== false, 'Считать налог и на сбор')}</div>
+            <div class="field"><span>Наличные</span>${sw('name="cash_rounding"', st.cash_rounding !== false, 'Округлять до 5 сен')}
+              <span class="hint">Правило Малайзии: 1–2 сен вниз, 3–4 вверх, 6–7 вниз, 8–9 вверх. Только для наличных, карта и QR — точно.</span></div>
+            <div class="field"><span>Скидки</span>${sw('name="waiter_discounts"', !!st.waiter_discounts, 'Официанты тоже могут давать скидку')}
+              <span class="hint">Вы даёте скидку всегда. Причина обязательна и видна в журнале, отчётах и чеке.</span></div>
           </div>
           <label class="field"><span>Реквизиты для чека (необязательно)</span><textarea name="receipt_info" rows="3" maxlength="300" placeholder="Например:&#10;Central Asia Sdn Bhd (SSM 202401234567)&#10;SST No: W10-1234-56789012">${esc(st.receipt_info || '')}</textarea>
             <span class="hint">Печатается вверху чека, под названием. До 5 строк.</span></label>
@@ -615,6 +619,7 @@
           logo_url: uploaded || (removeLogo ? null : st.logo_url || null),
           service_pct: servicePct, tax_pct: taxPct, tax_name: taxName.slice(0, 20), tax_on_service: !!f.get('tax_on_service'),
           receipt_info: receiptInfo,
+          cash_rounding: !!f.get('cash_rounding'), waiter_discounts: !!f.get('waiter_discounts'),
         };
         const saved = await api.saveSettings(patch);
         if ((uploaded || removeLogo) && st.logo_url) api.deleteImage(st.logo_url);

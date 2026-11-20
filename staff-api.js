@@ -137,8 +137,8 @@
           return q.order('paid_at', { ascending: false }).order('id', { ascending: true }).range(from, to);
         });
       },
-      async closeBill(tableId, method, orderIds, tip = 0, payments = null) {
-        const { data, error } = await sb.rpc('close_bill', { p_table: tableId, p_method: method, p_orders: orderIds || null, p_tip: tip || 0, p_payments: payments });
+      async closeBill(tableId, method, orderIds, tip = 0, payments = null, discount = null) {
+        const { data, error } = await sb.rpc('close_bill', { p_table: tableId, p_method: method, p_orders: orderIds || null, p_tip: tip || 0, p_payments: payments, p_discount: discount });
         fail(error); return Array.isArray(data) ? data[0] : data;
       },
       async claimTable(tableId, on) { const { error } = await sb.rpc('claim_table', { p_table: tableId, p_claim: on }); fail(error); },
