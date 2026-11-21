@@ -45,7 +45,7 @@ alter table public.staff add column if not exists email text not null default ''
 alter table public.staff add column if not exists role text not null default 'waiter';
 alter table public.staff add column if not exists active boolean not null default true;
 alter table public.staff drop constraint if exists staff_role_check;
-alter table public.staff add constraint staff_role_check check (role in ('waiter', 'owner', 'cook'));
+alter table public.staff add constraint staff_role_check check (role in ('waiter', 'owner', 'cook', 'manager'));
 
 create table if not exists public.staff_invites (
   email      text primary key check (email = lower(email) and email ~ '^[^@\s]+@[^@\s]+\.[^@\s]+$'),
@@ -56,7 +56,7 @@ create table if not exists public.staff_invites (
 );
 
 alter table public.staff_invites drop constraint if exists staff_invites_role_check;
-alter table public.staff_invites add constraint staff_invites_role_check check (role in ('waiter', 'owner', 'cook'));
+alter table public.staff_invites add constraint staff_invites_role_check check (role in ('waiter', 'owner', 'cook', 'manager'));
 
 -- Сотрудник = есть в staff, доступ включён и email подтверждён.
 create or replace function public.is_staff()
@@ -73,6 +73,15 @@ returns boolean language sql stable security definer set search_path = public, a
     where s.user_id = auth.uid() and s.active and s.role = 'owner' and u.email_confirmed_at is not null);
 $$;
 
+-- Менеджер (старший смены) или владелец: отмена оплаты, скидки, закрытие дня, отчёты, правка заказов.
+-- Меню, столы, настройки, сотрудники, Telegram и журнал — только владелец.
+create or replace function public.is_manager()
+returns boolean language sql stable security definer set search_path = public, auth as $$
+  select exists (
+    select 1 from public.staff s join auth.users u on u.id = s.user_id
+    where s.user_id = auth.uid() and s.active and s.role in ('owner', 'manager') and u.email_confirmed_at is not null);
+$$;
+
 -- Роль текущего сотрудника (null — не сотрудник / нет доступа / email не подтверждён)
 create or replace function public.staff_role()
 returns text language sql stable security definer set search_path = public, auth as $$
@@ -82,7 +91,7 @@ $$;
 -- Зал: официант или владелец (принимают заказы, вызовы, счета)
 create or replace function public.is_floor()
 returns boolean language sql stable security definer set search_path = public as $$
-  select coalesce(public.staff_role() in ('waiter', 'owner'), false);
+  select coalesce(public.staff_role() in ('waiter', 'owner', 'manager'), false);
 $$;
 -- Кухня: повар или владелец
 create or replace function public.is_kitchen()
@@ -359,7 +368,7 @@ declare
 begin
   if not public.is_owner() then raise exception 'forbidden'; end if;
   if v_email !~ '^[^@\s]+@[^@\s]+\.[^@\s]+$' then raise exception 'bad_email'; end if;
-  if p_role not in ('waiter', 'owner', 'cook') then raise exception 'bad_role'; end if;
+  if p_role not in ('waiter', 'owner', 'cook', 'manager') then raise exception 'bad_role'; end if;
   select id into v_user from auth.users where lower(email) = v_email;
   if found then
     -- аккаунт уже есть — сразу даём доступ
@@ -388,7 +397,7 @@ returns void language plpgsql security definer set search_path = public as $$
 declare v_old public.staff%rowtype;
 begin
   if not public.is_owner() then raise exception 'forbidden'; end if;
-  if p_role not in ('waiter', 'owner', 'cook') then raise exception 'bad_role'; end if;
+  if p_role not in ('waiter', 'owner', 'cook', 'manager') then raise exception 'bad_role'; end if;
   select * into v_old from public.staff where user_id = p_user;
   if not found then raise exception 'not_found'; end if;
   if p_user = auth.uid() and (not p_active or p_role <> 'owner') then raise exception 'self'; end if;
@@ -449,6 +458,7 @@ revoke all on function public.bootstrap_owner(text, text) from public, anon, aut
 revoke all on function public.handle_new_user() from public;
 grant execute on function public.is_staff() to anon, authenticated;
 grant execute on function public.is_owner() to authenticated;
+grant execute on function public.is_manager() to authenticated;
 grant execute on function public.whoami() to authenticated;
 grant execute on function public.staff_role() to authenticated;
 grant execute on function public.is_floor() to authenticated;
@@ -615,7 +625,7 @@ drop policy if exists orders_staff_read on public.orders;
 create policy orders_staff_read on public.orders for select to authenticated using (public.is_staff());
 drop policy if exists orders_owner_status on public.orders;
 create policy orders_owner_status on public.orders for update to authenticated
-  using (public.is_owner()) with check (public.is_owner());
+  using (public.is_manager()) with check (public.is_manager());
 
 -- ---------- Гость: проверить стол по коду из QR ----------
 -- ---------- Wi‑Fi для гостей ----------
@@ -995,7 +1005,7 @@ begin
   select * into v_set from public.settings where id = 1;
   -- скидка: владелец всегда, официант — если владелец разрешил; причина обязательна
   if p_discount is not null and jsonb_typeof(p_discount) = 'object' then
-    if not (public.is_owner() or coalesce(v_set.waiter_discounts, false)) then raise exception 'no_discount_rights'; end if;
+    if not (public.is_manager() or coalesce(v_set.waiter_discounts, false)) then raise exception 'no_discount_rights'; end if;
     v_kind := p_discount ->> 'kind';
     v_dreason := left(nullif(btrim(coalesce(p_discount ->> 'reason', '')), ''), 100);
     if v_dreason is null then raise exception 'discount_reason'; end if;
@@ -1188,7 +1198,7 @@ returns setof public.orders language plpgsql security definer set search_path = 
 declare v_o public.orders%rowtype; v_item jsonb; v_line jsonb; v_old jsonb; v_items jsonb := '[]'::jsonb;
         v_sub numeric(10, 2) := 0; v_ch record; v_keys text[] := '{}'; v_key text; v_count int := 0; v_q int;
 begin
-  if not public.is_owner() then raise exception 'forbidden'; end if;
+  if not public.is_manager() then raise exception 'forbidden'; end if;
   select * into v_o from public.orders where id = p_id for update;
   if not found then raise exception 'not_found'; end if;
   if v_o.status = 'cancelled' then raise exception 'cancelled'; end if;
@@ -1463,13 +1473,13 @@ returns text[] language sql stable security definer set search_path = public, pr
   select coalesce(
     (select array_agg(chat_id) from own),
     (select array_agg(g.chat_id) from public.staff s join private.staff_tg g on g.user_id = s.user_id
-      where s.active and s.role = 'waiter' and g.chat_id is not null and not exists (select 1 from own)),
+      where s.active and s.role in ('waiter', 'manager') and g.chat_id is not null and not exists (select 1 from own)),
     '{}');
 $$;
 create or replace function private.tg_all_waiter_chats()
 returns text[] language sql stable security definer set search_path = public, private as $$
   select coalesce(array_agg(g.chat_id), '{}') from public.staff s join private.staff_tg g on g.user_id = s.user_id
-  where s.active and s.role = 'waiter' and g.chat_id is not null;
+  where s.active and s.role in ('waiter', 'manager') and g.chat_id is not null;
 $$;
 create or replace function private.tg_cook_chats()
 returns text[] language sql stable security definer set search_path = public, private as $$
@@ -1802,7 +1812,7 @@ alter table public.reviews enable row level security;
 revoke all on public.reviews from anon, authenticated;
 grant select on public.reviews to authenticated;
 drop policy if exists reviews_owner_read on public.reviews;
-create policy reviews_owner_read on public.reviews for select to authenticated using (public.is_owner());
+create policy reviews_owner_read on public.reviews for select to authenticated using (public.is_manager());
 
 -- новый отзыв → владельцу в Telegram
 alter table private.telegram add column if not exists notify_reviews boolean not null default true;
@@ -1902,7 +1912,7 @@ create or replace function public.void_bill(p_bill uuid, p_reason text)
 returns setof public.bills language plpgsql security definer set search_path = public, private as $$
 declare b public.bills%rowtype; v_reason text := left(nullif(btrim(regexp_replace(coalesce(p_reason, ''), '\s+', ' ', 'g')), ''), 200);
 begin
-  if not public.is_owner() then raise exception 'forbidden'; end if;
+  if not public.is_manager() then raise exception 'forbidden'; end if;
   if v_reason is null then raise exception 'void_reason'; end if;
   perform pg_advisory_xact_lock_shared(hashtext('restoran_z_report'));
   select * into b from public.bills where id = p_bill for update;
@@ -1937,7 +1947,7 @@ alter table public.z_reports enable row level security;
 revoke all on public.z_reports from anon, authenticated;
 grant select on public.z_reports to authenticated;
 drop policy if exists z_owner_read on public.z_reports;
-create policy z_owner_read on public.z_reports for select to authenticated using (public.is_owner());
+create policy z_owner_read on public.z_reports for select to authenticated using (public.is_manager());
 
 -- начало открытого дня: конец прошлого закрытия (первый раз — с первого счёта или заказа)
 create or replace function private.z_open_from()
@@ -1985,7 +1995,7 @@ $$;
 create or replace function public.z_preview()
 returns jsonb language plpgsql stable security definer set search_path = public, private as $$
 begin
-  if not public.is_owner() then raise exception 'forbidden'; end if;
+  if not public.is_manager() then raise exception 'forbidden'; end if;
   return private.z_totals(private.z_open_from(), now());
 end $$;
 
@@ -1994,7 +2004,7 @@ create or replace function public.close_day(p_counted numeric default null, p_no
 returns setof public.z_reports language plpgsql security definer set search_path = public, private as $$
 declare v_from timestamptz; v_to timestamptz; r public.z_reports%rowtype;
 begin
-  if not public.is_owner() then raise exception 'forbidden'; end if;
+  if not public.is_manager() then raise exception 'forbidden'; end if;
   if p_counted is not null and (p_counted < 0 or p_counted > 10000000) then raise exception 'bad_amount'; end if;
   -- ждём, пока закончатся идущие оплаты; новые оплаты подождут нас
   perform pg_advisory_xact_lock(hashtext('restoran_z_report'));
@@ -2078,3 +2088,24 @@ grant execute on function public.guest_receipt(uuid, uuid) to anon, authenticate
 -- китайский язык (2026-11-21): язык по умолчанию может быть и zh
 alter table public.settings drop constraint if exists settings_default_language_check;
 alter table public.settings add constraint settings_default_language_check check (default_language in ('ru', 'uz', 'en', 'ar', 'ms', 'zh'));
+
+-- =====================================================================
+-- Админка: язык чека, резервная копия, менеджер (2026-11-21)
+-- =====================================================================
+-- язык бумажного чека и счёта (одинаковый у всех, кто печатает)
+alter table public.settings add column if not exists receipt_lang text not null default 'en';
+alter table public.settings drop constraint if exists settings_receipt_lang_check;
+alter table public.settings add constraint settings_receipt_lang_check check (receipt_lang in ('en', 'ms', 'ru', 'uz'));
+-- когда владелец последний раз скачал резервную копию (для напоминания раз в неделю)
+alter table public.settings add column if not exists backup_at timestamptz;
+create or replace function public.mark_backup()
+returns timestamptz language plpgsql security definer set search_path = public as $$
+declare v timestamptz := now();
+begin
+  if not public.is_owner() then raise exception 'forbidden'; end if;
+  update public.settings set backup_at = v where id = 1;
+  return v;
+end $$;
+revoke all on function public.mark_backup() from public, anon;
+revoke all on function public.is_manager() from public;
+grant execute on function public.mark_backup() to authenticated;

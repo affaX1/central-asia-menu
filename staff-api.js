@@ -141,6 +141,11 @@
         const { data, error } = await sb.rpc('close_bill', { p_table: tableId, p_method: method, p_orders: orderIds || null, p_tip: tip || 0, p_payments: payments, p_discount: discount });
         fail(error); return Array.isArray(data) ? data[0] : data;
       },
+      // резервная копия: вся таблица целиком, по 1000 строк
+      async dump(table, order, key = 'id') {
+        return pages((from, to) => sb.from(table).select('*').order(order, { ascending: true }).order(key, { ascending: true }).range(from, to), 500000);
+      },
+      async markBackup() { const { data, error } = await sb.rpc('mark_backup'); fail(error); return data; },
       // Wi‑Fi ресторана (читает и меняет только владелец; гость видит через table_info)
       async wifi() {
         const { data, error } = await sb.from('wifi').select('name, pass').eq('id', 1).maybeSingle();

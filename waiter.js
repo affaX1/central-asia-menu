@@ -364,7 +364,7 @@
       me = ctx.me;
       paintBrand();
       floor = window.Floor.create({
-        api, isOwner: me?.role === 'owner', me,
+        api, isOwner: ['owner', 'manager'].includes(me?.role), me,
         getOrders: () => orders, getDishes: () => dishes, getCats: () => cats,
         reloadOrders: loadOrders, onCalls: announceCalls,
         rerender: () => { updateCount(); if (document.querySelector('.modal')) return; render(); },

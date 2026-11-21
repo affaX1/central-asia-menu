@@ -47,8 +47,17 @@
   }
 
   // ---------- переключение разделов ----------
+  // менеджер (старший смены): зал, заказы, отчёты, закрытие дня. Меню, столы, настройки, сотрудники и журнал — только владелец.
+  const MANAGER_TABS = ['floor', 'orders', 'reports', 'day'];
+  const allowedTabs = () => (me?.role === 'owner' ? ['floor', 'orders', 'menu', 'tables', 'reports', 'day', 'audit', 'restaurant', 'staff'] : MANAGER_TABS);
+  function applyRole() {
+    const mgr = me?.role !== 'owner';
+    document.querySelectorAll('.a-tab').forEach((a) => { a.hidden = !allowedTabs().includes(a.dataset.tab); });
+    const sub = document.querySelector('.a-brand h1, .a-brand b');
+    if (mgr && sub && /владельца/.test(sub.textContent)) sub.textContent = sub.textContent.replace('владельца', 'менеджера');
+  }
   function setTab(next) {
-    tab = ['floor', 'orders', 'menu', 'tables', 'reports', 'day', 'audit', 'restaurant', 'staff'].includes(next) ? next : 'orders';
+    tab = allowedTabs().includes(next) ? next : 'orders';
     document.querySelectorAll('.a-tab').forEach((a) => a.setAttribute('aria-current', a.dataset.tab === tab ? 'page' : 'false'));
     // на телефоне нижняя панель прокручивается — показываем открытый раздел
     const cur = document.querySelector(`.a-tab[data-tab="${tab}"]`); const bar = cur?.parentElement;
@@ -489,6 +498,11 @@
           <label class="field"><span>Телефон</span><input name="phone" type="tel" inputmode="tel" maxlength="30" placeholder="+60 12 345 6789" value="${esc(st.phone || '')}"></label>
         </div></section>
 
+        <section class="panel"><div class="panel-head"><h3>Резервная копия</h3></div><div class="panel-body">
+          <p class="help" style="margin-top:0">${esc(backupText())} Один файл: меню, столы, сотрудники, все заказы, счета, Z-отчёты и отзывы. Скачивайте раз в неделю и храните в надёжном месте (Google Диск, почта).</p>
+          <button type="button" class="btn ghost" data-backup>${icon('download', 'sm')}Скачать резервную копию</button>
+        </div></section>
+
         <section class="panel"><div class="panel-head"><h3>Для гостей: Wi‑Fi и отзывы</h3></div><div class="panel-body">
           <p class="help">Wi‑Fi видят только гости, которые отсканировали QR на столе. Пустое поле — значок Wi‑Fi не показывается.</p>
           <div class="form-grid">
@@ -530,6 +544,8 @@
             <div class="field"><span>Скидки</span>${sw('name="waiter_discounts"', !!st.waiter_discounts, 'Официанты тоже могут давать скидку')}
               <span class="hint">Вы даёте скидку всегда. Причина обязательна и видна в журнале, отчётах и чеке.</span></div>
           </div>
+          <label class="field"><span>Язык чека и счёта</span><select name="receipt_lang">${[['en', 'English'], ['ms', 'Bahasa Melayu'], ['ru', 'Русский'], ['uz', "O'zbekcha"]].map(([c, n]) => `<option value="${c}"${(st.receipt_lang || 'en') === c ? ' selected' : ''}>${n}</option>`).join('')}</select>
+            <span class="hint">На этом языке печатаются все чеки и счета — и у вас, и у официантов. Для Малайзии обычно English или Bahasa Melayu.</span></label>
           <label class="field"><span>Реквизиты для чека (необязательно)</span><textarea name="receipt_info" rows="3" maxlength="300" placeholder="Например:&#10;Central Asia Sdn Bhd (SSM 202401234567)&#10;SST No: W10-1234-56789012">${esc(st.receipt_info || '')}</textarea>
             <span class="hint">Печатается вверху чека, под названием. До 5 строк.</span></label>
         </div></section>
@@ -650,6 +666,7 @@
           service_pct: servicePct, tax_pct: taxPct, tax_name: taxName.slice(0, 20), tax_on_service: !!f.get('tax_on_service'),
           receipt_info: receiptInfo,
           google_review_url: googleUrl || null,
+          receipt_lang: ['en', 'ms', 'ru', 'uz'].includes(f.get('receipt_lang')) ? f.get('receipt_lang') : 'en',
           cash_rounding: !!f.get('cash_rounding'), waiter_discounts: !!f.get('waiter_discounts'),
         };
         const saved = await api.saveSettings(patch);
@@ -773,7 +790,7 @@
         <form id="invite-form" class="form-grid" novalidate>
           <label class="field"><span>Email сотрудника</span><input name="email" type="email" inputmode="email" required autocomplete="off"></label>
           <label class="field"><span>Имя (необязательно)</span><input name="name" type="text" maxlength="60"></label>
-          <label class="field"><span>Роль</span><select name="role"><option value="waiter">Официант — зал: заказы, вызовы, счета</option><option value="cook">Повар — экран кухни</option><option value="owner">Владелец — полный доступ</option></select></label>
+          <label class="field"><span>Роль</span><select name="role"><option value="waiter">Официант — зал: заказы, вызовы, счета</option><option value="cook">Повар — экран кухни</option><option value="manager">Менеджер — зал, скидки, отмена оплаты, закрытие дня, отчёты</option><option value="owner">Владелец — полный доступ</option></select></label>
           <div class="field" style="justify-content:flex-end"><button class="btn" type="submit">${icon('mail', 'sm')}Пригласить</button></div>
         </form>
         <p class="help" style="margin:12px 0 0">Как это работает: вы приглашаете email → сотрудник открывает <b>${esc(staffLink)}</b>, выбирает «Меня пригласили — зарегистрироваться» и подтверждает email из письма. Доступ появится сам.</p>
@@ -782,7 +799,7 @@
 
       ${invites.length ? `<section class="panel"><div class="panel-head"><h3>Ждут регистрации<small>${invites.length}</small></h3></div>
         <ul class="rows">${invites.map((i) => `<li>
-          <div class="grow"><b>${esc(i.email)}</b><small>${esc([i.name, ({ owner: 'владелец', waiter: 'официант', cook: 'повар' })[i.role] || i.role].filter(Boolean).join(' · '))}</small></div>
+          <div class="grow"><b>${esc(i.email)}</b><small>${esc([i.name, ({ owner: 'владелец', manager: 'менеджер', waiter: 'официант', cook: 'повар' })[i.role] || i.role].filter(Boolean).join(' · '))}</small></div>
           <div class="row-btns"><button type="button" class="btn small danger" data-revoke="${esc(i.email)}">Отменить приглашение</button></div>
         </li>`).join('')}</ul></section>` : ''}
 
@@ -795,6 +812,7 @@
               <label class="field" style="margin:0"><select data-role="${esc(s.user_id)}" aria-label="Роль"${self ? ' disabled' : ''}>
                 <option value="waiter"${s.role === 'waiter' ? ' selected' : ''}>Официант</option>
                 <option value="cook"${s.role === 'cook' ? ' selected' : ''}>Повар</option>
+                <option value="manager"${s.role === 'manager' ? ' selected' : ''}>Менеджер</option>
                 <option value="owner"${s.role === 'owner' ? ' selected' : ''}>Владелец</option></select></label>
               ${sw(`data-active="${esc(s.user_id)}" aria-label="Доступ: ${esc(s.email)}"`, s.active, 'Доступ', self)}
               ${self ? '' : `<button type="button" class="btn small danger" data-remove="${esc(s.user_id)}" aria-label="Удалить ${esc(s.email)}">${icon('trash', 'sm')}</button>`}
@@ -879,6 +897,50 @@
     });
   }
   let bannerMsg = '';
+  // ---------- Резервная копия ----------
+  // Бесплатный Supabase сам копий не делает: владелец скачивает всё одним файлом, раз в неделю напоминаем.
+  const BACKUP_DAYS = 7;
+  const backupDue = () => me?.role === 'owner' && S.settings && (!S.settings.backup_at || Date.now() - new Date(S.settings.backup_at).getTime() > BACKUP_DAYS * 864e5);
+  const backupText = () => (S.settings?.backup_at
+    ? `Резервная копия: последняя ${new Date(S.settings.backup_at).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })}.`
+    : 'Резервную копию ещё ни разу не скачивали.');
+  let backupBusy = false;
+  async function downloadBackup(btn) {
+    if (backupBusy || me?.role !== 'owner') return;
+    backupBusy = true;
+    const was = btn?.innerHTML;
+    if (btn) { btn.disabled = true; btn.textContent = 'Собираем копию…'; }
+    try {
+      const [settings, categories, dishes, tables, staffRows, invites, wifi, orders, bills, zReports, reviews] = await Promise.all([
+        api.dump('settings', 'id'), api.dump('categories', 'sort'), api.dump('dishes', 'sort'), api.dump('tables', 'sort'),
+        api.dump('staff', 'created_at', 'user_id'), api.dump('staff_invites', 'created_at', 'email'), api.wifi().catch(() => null),
+        api.dump('orders', 'created_at'), api.dump('bills', 'paid_at'), api.dump('z_reports', 'closed_at'), api.dump('reviews', 'created_at'),
+      ]);
+      const now = new Date();
+      const data = {
+        app: 'central-asia-menu', kind: 'backup', version: 1, created_at: now.toISOString(),
+        note: 'Резервная копия ресторана: меню, столы (с кодами QR), сотрудники, Wi‑Fi, все заказы, счета, Z-отчёты и отзывы. Храните в надёжном месте — здесь коды столов и пароль Wi‑Fi.',
+        counts: { categories: categories.length, dishes: dishes.length, tables: tables.length, staff: staffRows.length, orders: orders.length, bills: bills.length, z_reports: zReports.length, reviews: reviews.length },
+        settings: settings[0] || null, categories, dishes, tables, staff: staffRows, staff_invites: invites, wifi, orders, bills, z_reports: zReports, reviews,
+      };
+      const pad = (n) => String(n).padStart(2, '0');
+      const name = `central-asia-backup-${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}.json`;
+      const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 1)], { type: 'application/json' }));
+      const a = document.createElement('a');
+      a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+      const at = await api.markBackup();
+      S.settings = { ...S.settings, backup_at: at };
+      S.toast(`Копия скачана: ${name} (заказов ${orders.length}, счетов ${bills.length})`);
+      renderBanner();
+      if (tab === 'restaurant') renderRestaurant();
+    } catch (ex) {
+      S.toast(`Копию не получилось собрать: ${S.errText(ex)}`, true);
+      if (btn && btn.isConnected) { btn.disabled = false; btn.innerHTML = was; }
+    }
+    backupBusy = false;
+  }
+
   function renderBanner() {
     const el = $('#a-banner');
     if (!el || !api) return;
@@ -886,6 +948,7 @@
     const parts = [];
     if (bannerMsg) parts.push(`<button type="button" class="banner-new" data-banner="orders">${icon('bell')}<span>${esc(bannerMsg)}</span></button>`);
     if (needSound) parts.push(`<button type="button" class="banner-sound" data-banner="sound">${icon('bell')}<span>Нажмите здесь, чтобы включить звук новых заказов</span></button>`);
+    if (backupDue()) parts.push(`<button type="button" class="banner-sound" data-banner="backup">${icon('download')}<span>${esc(backupText())} Нажмите, чтобы скачать копию.</span></button>`);
     el.hidden = !parts.length;
     el.innerHTML = parts.join('');
   }
@@ -907,7 +970,8 @@
     const c = floor ? floor.openCalls().length : 0;
     const ce = $('#calls-count');
     if (ce) { ce.hidden = !c; ce.textContent = c; }
-    document.title = n ? `(${n}) Ждут подачи — панель владельца` : c ? `(${c}) Вызов — панель владельца` : 'Панель владельца';
+    const who = me?.role === 'owner' ? 'владельца' : 'менеджера';
+    document.title = n ? `(${n}) Ждут подачи — панель ${who}` : c ? `(${c}) Вызов — панель ${who}` : `Панель ${who}`;
   }
   function announceCalls(fresh) {
     const c = fresh[fresh.length - 1];
@@ -971,7 +1035,7 @@
 
     main.innerHTML = `
       ${off ? `<p class="notice bad">${icon('alert')}<span>Приём заказов из меню выключен (раздел «Ресторан»). Гости не могут отправить заказ.</span></p>` : ''}
-      ${!tables.length ? `<p class="notice">${icon('alert')}<span>Столов ещё нет — гости не смогут заказать. Создайте столы и распечатайте QR-коды в разделе «Столы и QR».</span></p>` : ''}
+      ${me?.role === 'owner' && !tables.length ? `<p class="notice">${icon('alert')}<span>Столов ещё нет — гости не смогут заказать. Создайте столы и распечатайте QR-коды в разделе «Столы и QR».</span></p>` : ''}
       <div class="a-stats">
         <div class="a-stat${active.length ? ' hot' : ''}"><b>${active.length}</b><span>ждут подачи</span></div>
         <div class="a-stat"><b>${todays.filter((o) => o.status === 'served').length}</b><span>подано сегодня</span></div>
@@ -1224,8 +1288,11 @@
       Notification.requestPermission().then(() => renderOrders());
       return;
     }
+    const bk = e.target.closest('[data-backup]');
+    if (bk) { downloadBackup(bk); return; }
     const bn = e.target.closest('[data-banner]');
     if (bn) {
+      if (bn.dataset.banner === 'backup') { downloadBackup(bn); return; }
       if (bn.dataset.banner === 'sound') { unlockAudio(); ding(); } else { const toFloor = /Стол .*:|Вызов/.test(bannerMsg); bannerMsg = ''; location.hash = toFloor ? '#floor' : '#orders'; renderBanner(); }
       return;
     }
@@ -1269,13 +1336,14 @@
       me = ctx.me;
       paintBrand();
       floor = window.Floor.create({
-        api, isOwner: true, me,
+        api, isOwner: true, me,   // владелец или менеджер: правка заказа, отмена оплаты
         getOrders: () => orders, getDishes: () => dishes, getCats: () => cats,
         reloadOrders: loadOrders, onCalls: announceCalls,
         rerender: () => { updateCount(); if (['floor', 'orders'].includes(tab) && !document.querySelector('.modal')) render(); },
       });
       try {
-        await Promise.all([loadMenu(), loadStaff(), loadOrders(), loadTables(), floor.load()]);
+        applyRole();
+        await Promise.all([loadMenu(), me?.role === 'owner' ? loadStaff() : null, loadOrders(), me?.role === 'owner' ? loadTables() : null, floor.load()]);
       } catch (ex) { S.toast(S.errText(ex), true); }
       updateCount();
       setTab(location.hash.slice(1) || 'orders');

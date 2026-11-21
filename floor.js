@@ -113,7 +113,9 @@
 
   // чек / предварительный счёт стола: шапка с реквизитами, кто/когда, позиции с ценой за штуку,
   // подытог, сервисный сбор и налог с процентом, ИТОГО, чаевые и чем оплатили
-  function printReceipt({ table, orders, bill, draft }) {
+  // чек и счёт — на языке, который выбрал владелец («Ресторан» → «Язык чека»), у всех одинаково
+  function printReceipt(args) { return S.withLang(S.settings?.receipt_lang || 'en', () => printReceiptIn(args)); }
+  function printReceiptIn({ table, orders, bill, draft }) {
     const st = S.settings || {};
     const lines = new Map();
     for (const o of orders) for (const i of o.items || []) {

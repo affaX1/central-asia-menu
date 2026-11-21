@@ -24,6 +24,7 @@ window.STAFF_T = (() => {
     loading: { ru: 'Загрузка…', en: 'Loading…', ms: 'Memuatkan…', uz: 'Yuklanmoqda…' },
     logout: { ru: 'Выйти', en: 'Log out', ms: 'Log keluar', uz: 'Chiqish' },
     role_owner: { ru: 'владелец', en: 'owner', ms: 'pemilik', uz: 'egasi' },
+    role_manager: { ru: 'менеджер', en: 'manager', ms: 'pengurus', uz: 'menejer' },
     role_waiter: { ru: 'официант', en: 'waiter', ms: 'pelayan', uz: 'ofitsiant' },
     role_cook: { ru: 'повар', en: 'cook', ms: 'tukang masak', uz: 'oshpaz' },
     role_none: { ru: 'без доступа', en: 'no access', ms: 'tiada akses', uz: 'ruxsat yo‘q' },

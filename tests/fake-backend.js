@@ -32,6 +32,7 @@
         { user_id: 'u-owner', email: 'owner@example.com', name: 'Владелец', role: 'owner', active: true, created_at: '2026-01-01' },
         { user_id: 'u-waiter', email: 'waiter@example.com', name: 'Азиз', role: 'waiter', active: true, created_at: '2026-01-02' },
         { user_id: 'u-cook', email: 'cook@example.com', name: 'Повар Бахтиёр', role: 'cook', active: true, created_at: '2026-01-03' },
+        { user_id: 'u-manager', email: 'manager@example.com', name: 'Дилшод', role: 'manager', active: true, created_at: '2026-01-04' },
       ],
       invites: [],
       calls: [],
@@ -46,11 +47,12 @@
   const role = () => localStorage.getItem('fake:role') || '';
   const delay = () => new Promise((r) => setTimeout(r, Number(localStorage.getItem('fake:delay') || 60)));
   const owner = () => { if (role() !== 'owner') throw new Error('forbidden'); };
-  const floor = () => { if (!['owner', 'waiter'].includes(role())) throw new Error('forbidden'); };
+  const floor = () => { if (!['owner', 'waiter', 'manager'].includes(role())) throw new Error('forbidden'); };
+  const mgr = () => { if (!['owner', 'manager'].includes(role())) throw new Error('forbidden'); };
   const kitchen = () => { if (!['owner', 'cook'].includes(role())) throw new Error('forbidden'); };
-  const staffOk = () => { if (!['owner', 'waiter', 'cook'].includes(role())) throw new Error('permission denied'); };
+  const staffOk = () => { if (!['owner', 'waiter', 'cook', 'manager'].includes(role())) throw new Error('permission denied'); };
   const offline = () => { if (localStorage.getItem('fake:offline') === '1') throw new TypeError('Failed to fetch'); };
-  const myName = () => ({ owner: 'Владелец', waiter: 'Азиз', cook: 'Повар Бахтиёр' })[role()] || '';
+  const myName = () => ({ owner: 'Владелец', waiter: 'Азиз', cook: 'Повар Бахтиёр', manager: 'Дилшод' })[role()] || '';
   const r2 = (x) => Math.round(x * 100) / 100;
   // как z_open_from / z_totals в базе
   const zFrom = (d) => {
@@ -112,7 +114,7 @@
     return { line: { id: dish.id, qty: it.qty, price: unit, name: dish.name, opts: snap, ...(note ? { note } : {}) }, key: `${dish.id}|${sel.join(',')}|${note}` };
   }
   const newToken = () => Array.from(crypto.getRandomValues(new Uint8Array(10)), (b) => b.toString(16).padStart(2, '0')).join('');
-  const uid = () => ({ owner: 'u-owner', waiter: 'u-waiter', cook: 'u-cook' })[role()] || 'u-waiter';
+  const uid = () => ({ owner: 'u-owner', waiter: 'u-waiter', cook: 'u-cook', manager: 'u-manager' })[role()] || 'u-waiter';
 
   window.MENU_BACKEND = { url: 'https://fake.supabase.co', key: 'sb_publishable_FAKE' };
 
@@ -126,7 +128,7 @@
       await delay();
       const r = role();
       if (!r) return null;
-      const base = { user_id: uid(), email: `${r === 'owner' || r === 'cook' ? r : 'waiter'}@example.com`, name: myName() || 'Азиз' };
+      const base = { user_id: uid(), email: `${['owner', 'cook', 'manager'].includes(r) ? r : 'waiter'}@example.com`, name: myName() || 'Азиз' };
       if (r === 'unconfirmed') return { ...base, role: 'waiter', active: true, email_confirmed: false };
       if (r === 'uninvited') return { ...base, role: null, active: false, email_confirmed: true };
       if (r === 'disabled') return { ...base, role: 'waiter', active: false, email_confirmed: true };
@@ -173,7 +175,7 @@
       return { id: o.id, no: o.no, status: o.status, accepted_at: o.accepted_at, accepted_by_name: o.accepted_by_name, changed };
     },
     async setOrderStatus(id, status) {
-      await delay(); owner();
+      await delay(); mgr();
       if (localStorage.getItem('fake:offline') === '1') throw new TypeError('Failed to fetch');
       const d = db(); const o = d.orders.find((x) => x.id === id);
       if (!['new', 'accepted', 'cooking', 'ready', 'served', 'cancelled'].includes(status)) throw new Error('violates check constraint');
@@ -243,7 +245,7 @@
       let subS = sen(sum('subtotal')); let srvS = sen(sum('service')); let taxS = sen(sum('tax')); let totS = sen(sum('total'));
       let D = 0; let dpct = null; let dreason = null;
       if (discount) {
-        if (!(role() === 'owner' || d.settings.waiter_discounts)) throw new Error('no_discount_rights');
+        if (!(['owner', 'manager'].includes(role()) || d.settings.waiter_discounts)) throw new Error('no_discount_rights');
         dreason = String(discount.reason || '').trim().slice(0, 100);
         if (!dreason) throw new Error('discount_reason');
         const v = Number(discount.value);
@@ -279,10 +281,16 @@
       (d.audit = d.audit || []).push({ id: Date.now(), at: bill.paid_at, who: myName(), entity: 'bill', entity_id: bill.id, label: `счёт №${bill.no} · стол ${bill.table_label}`, action: 'insert', changes: { total: bill.total, method } });
       save(d); return bill;
     },
+    async dump(table) {
+      await delay(); owner(); const d = db();
+      const map = { settings: [d.settings], categories: d.categories, dishes: d.dishes, tables: d.tables, staff: d.staff, staff_invites: d.invites, orders: d.orders, bills: d.bills || [], z_reports: d.z || [], reviews: d.reviews || [], calls: d.calls || [] };
+      return JSON.parse(JSON.stringify(map[table] || []));
+    },
+    async markBackup() { await delay(); owner(); const d = db(); d.settings.backup_at = new Date().toISOString(); save(d); return d.settings.backup_at; },
     async wifi() { await delay(); owner(); return db().wifi || { name: '', pass: '' }; },
     async saveWifi(name, pass) { await delay(); owner(); const d = db(); d.wifi = { name: String(name || '').slice(0, 64), pass: String(pass || '').slice(0, 64) }; save(d); },
     async voidBill(id, reason) {
-      await delay(); owner(); offline();
+      await delay(); mgr(); offline();
       const why = String(reason || '').replace(/\s+/g, ' ').trim().slice(0, 200);
       if (!why) throw new Error('void_reason');
       const d = db(); const b = (d.bills || []).find((x) => x.id === id);
@@ -311,18 +319,18 @@
       }
       save(d); return list.length;
     },
-    async zPreview() { await delay(); owner(); offline(); return zTotals(db(), zFrom(db()), new Date().toISOString()); },
+    async zPreview() { await delay(); mgr(); offline(); return zTotals(db(), zFrom(db()), new Date().toISOString()); },
     async closeDay(counted, note) {
-      await delay(); owner(); offline();
+      await delay(); mgr(); offline();
       if (counted != null && !(counted >= 0)) throw new Error('bad_amount');
       const d = db(); const from = zFrom(d); const to = new Date().toISOString();
       const z = { id: crypto.randomUUID(), no: (d.z || []).length + 1, opened_at: from, closed_at: to, closed_by_name: myName(), totals: zTotals(d, from, to),
         counted_cash: counted == null ? null : r2(counted), note: (note || '').trim().slice(0, 300) || null };
       d.z = (d.z || []).concat(z); save(d); return z;
     },
-    async zReports() { await delay(); owner(); return [...(db().z || [])].reverse(); },
+    async zReports() { await delay(); mgr(); return [...(db().z || [])].reverse(); },
     async editOrder(id, items) {
-      await delay(); owner(); offline();
+      await delay(); mgr(); offline();
       const d = db(); const o = d.orders.find((x) => x.id === id);
       if (!o) throw new Error('not_found');
       if (o.status === 'cancelled') throw new Error('cancelled');
@@ -350,7 +358,7 @@
       return o;
     },
     async audit(from, to) { await delay(); owner(); const f = new Date(from).getTime(); const t = new Date(to).getTime(); return (db().audit || []).filter((a) => { const x = new Date(a.at).getTime(); return x >= f && x < t; }).sort((a, b) => new Date(b.at) - new Date(a.at)); },
-    async reviews(from, to) { await delay(); owner(); const f = new Date(from).getTime(); const t2 = new Date(to).getTime(); return (db().reviews || []).filter((r) => { const x = new Date(r.created_at).getTime(); return x >= f && x < t2; }).sort((a, c) => new Date(c.created_at) - new Date(a.created_at)); },
+    async reviews(from, to) { await delay(); mgr(); const f = new Date(from).getTime(); const t2 = new Date(to).getTime(); return (db().reviews || []).filter((r) => { const x = new Date(r.created_at).getTime(); return x >= f && x < t2; }).sort((a, c) => new Date(c.created_at) - new Date(a.created_at)); },
     async setTelegramReviews(on) { await delay(); owner(); const d = db(); d.telegram = { ...(d.telegram || {}), reviews: on }; save(d); },
     async telegramStatus() { await delay(); owner(); const t = db().telegram || {}; return { connected: !!(t.token && t.chats?.length), bot_hint: t.token ? '…' + t.token.slice(-4) : null, chats: (t.chats || []).length, notify_orders: t.orders !== false, notify_calls: t.calls !== false, notify_bills: !!t.bills, net_ok: true, notify_reviews: t.reviews !== false }; },
     async setTelegram(token, chats, orders, calls, bills) {

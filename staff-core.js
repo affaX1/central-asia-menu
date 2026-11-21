@@ -34,6 +34,8 @@
     return typeof v === 'function' ? v(...args) : v;
   };
   const locale = () => ({ ru: 'ru-RU', en: 'en-GB', ms: 'ms-MY', uz: 'uz-UZ' })[lang] || 'ru-RU';
+  // временно другой язык (чек печатается на языке ресторана, а не сотрудника)
+  const withLang = (l, fn) => { const was = lang; if (LANGS.includes(l)) lang = l; try { return fn(); } finally { lang = was; } };
   const tr = (o) => (o == null ? '' : typeof o === 'string' ? o : o[lang] || o.en || o.ru || Object.values(o).find(Boolean) || '');
   // подписи в разметке страницы: <span data-t="tab_orders">
   const paintStatic = () => document.querySelectorAll('[data-t]').forEach((el) => { el.textContent = t(el.dataset.t); });
@@ -177,8 +179,8 @@
       if (!w.email_confirmed) { noAccessScreen('unconfirmed'); return; }
       if (!w.role) { noAccessScreen('uninvited'); return; }
       if (!w.active) { noAccessScreen('disabled'); return; }
-      if (opts.need === 'owner' && w.role !== 'owner') { noAccessScreen('owner'); return; }
-      if ((opts.need === 'waiter' || opts.need === 'floor') && !['waiter', 'owner'].includes(w.role)) { noAccessScreen('floor'); return; }
+      if (opts.need === 'owner' && !['owner', 'manager'].includes(w.role)) { noAccessScreen('owner'); return; }
+      if ((opts.need === 'waiter' || opts.need === 'floor') && !['waiter', 'owner', 'manager'].includes(w.role)) { noAccessScreen('floor'); return; }
       if (opts.need === 'kitchen' && !['cook', 'owner'].includes(w.role)) { noAccessScreen('kitchen'); return; }
       settings = await api.settings();
       renderUser();
@@ -341,7 +343,7 @@
 
   window.Staff = {
     $, esc, icon, tr, t, money, unitLabel, toast, errText, modal, closeModal, ask, processImage, paintStatic,
-    get lang() { return lang; }, locale, setLang,
+    get lang() { return lang; }, locale, setLang, withLang,
     get settings() { return settings; },
     set settings(v) { settings = v; },
     get me() { return me; },

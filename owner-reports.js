@@ -80,6 +80,46 @@
     R.loading = false;
   }
 
+  // ---------- Скорость подачи: от заказа до «Подано» ----------
+  // Не считаем заказы, отмеченные «подано» только при оплате (у них нет настоящего времени подачи),
+  // и явные забытые (больше 4 часов).
+  function speedHtml(valid) {
+    const served = valid.filter((o) => o.status === 'served' && o.served_at);
+    const auto = served.filter((o) => o.paid_at && Math.abs(new Date(o.served_at) - new Date(o.paid_at)) < 5000);
+    const rows = served.filter((o) => !auto.includes(o)).map((o) => ({ o, m: (new Date(o.served_at) - new Date(o.created_at)) / 60000 })).filter((x) => x.m >= 0 && x.m <= 240);
+    const head = '<section class="panel"><div class="panel-head"><h3>Скорость подачи</h3></div><div class="panel-body">';
+    if (rows.length < 3) {
+      return `${head}<p class="a-empty" style="padding:8px 0">Мало данных: нужно хотя бы 3 заказа, где официант нажал «Подано».${auto.length ? ` Ещё ${auto.length} отмечены поданными только при оплате — их время не настоящее.` : ''}</p></div></section>`;
+    }
+    const ms = rows.map((x) => x.m).sort((a, b) => a - b);
+    const q = (p) => ms[Math.min(ms.length - 1, Math.floor(p * ms.length))];
+    const avg = ms.reduce((a, b) => a + b, 0) / ms.length;
+    const fmt = (m) => `${Math.round(m)} мин`;
+    const groupAvg = (keyf) => {
+      const m = new Map();
+      for (const x of rows) { for (const k of [].concat(keyf(x.o)).filter(Boolean)) { const r = m.get(k) || { k, sum: 0, n: 0 }; r.sum += x.m; r.n += 1; m.set(k, r); } }
+      return [...m.values()].map((r) => ({ k: r.k, v: Math.round(r.sum / r.n), n: r.n }));
+    };
+    const byWaiter = groupAvg((o) => o.served_by_name).sort((a, b) => b.v - a.v);
+    const byHour = groupAvg((o) => `${pad(new Date(o.created_at).getHours())}:00`).sort((a, b) => a.k.localeCompare(b.k));
+    const slowDish = groupAvg((o) => [...new Set((o.items || []).map((i) => tr(i.name) || i.id))]).filter((r) => r.n >= 3).sort((a, b) => b.v - a.v).slice(0, 8);
+    const late = ms.filter((m) => m > 30).length;
+    return `${head}
+      <div class="a-stats" style="margin-top:0">
+        <div class="a-stat"><b>${fmt(avg)}</b><span>в среднем от заказа до подачи</span></div>
+        <div class="a-stat"><b>${fmt(q(0.5))}</b><span>половина заказов — быстрее</span></div>
+        <div class="a-stat"><b>${fmt(q(0.9))}</b><span>9 из 10 заказов — быстрее</span></div>
+        <div class="a-stat${late ? ' hot' : ''}"><b>${late}</b><span>заказов дольше 30 мин</span></div>
+      </div>
+      <div class="rp-two">
+        <div><p class="section-label">Официанты (в среднем)</p>${hbars(byWaiter, fmt, (r) => `заказов: ${r.n}`)}</div>
+        <div><p class="section-label">По часам (в среднем)</p>${hbars(byHour, fmt, (r) => `заказов: ${r.n}`)}</div>
+      </div>
+      ${slowDish.length ? `<p class="section-label">Самые долгие блюда (заказы с этим блюдом)</p>${hbars(slowDish, fmt, (r) => `заказов: ${r.n}`)}` : ''}
+      <p class="help">Учтено заказов: ${rows.length}.${auto.length ? ` Не учтено ${auto.length}: «Подано» не нажали, заказ отметился сам при оплате.` : ''} Чтобы цифры были точными, официанты должны нажимать «Подано», когда приносят заказ.</p>
+    </div></section>`;
+  }
+
   function reports(main, ctx) {
     const [f, t] = periodRange(R.period, R.from, R.to);
     const key = `${f.toISOString()}|${t.toISOString()}`;
@@ -137,6 +177,7 @@
     const byCashier = group(R.bills, (b) => b.paid_by_name, (b) => Number(b.total));
     const tipsBy = group(R.bills.filter((b) => Number(b.tip) > 0), (b) => b.paid_by_name, (b) => Number(b.tip));
 
+    const speed = speedHtml(valid);
     main.innerHTML = `
       ${toolbar()}
       <p class="help">${esc(dm(f))} — ${esc(dm(addDays(t, -1)))} · «Продажи» — все не отменённые заказы; «Оплачено» — закрытые счета.</p>
@@ -165,6 +206,7 @@
           ${tips ? `<p class="help">С чаевыми ${money(tips)}: всего получено ${money(received)}.</p>` : ''}
         </div></section>
       </div>
+      ${speed}
       <section class="panel"><div class="panel-head"><h3>Заказы по часам</h3></div><div class="panel-body">
         ${bars(byHour, (v) => `${v} заказ.`)}
       </div></section>
