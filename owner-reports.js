@@ -71,7 +71,9 @@
       const [o, b, rv] = await Promise.all([api.orders(f.toISOString(), t.toISOString()), api.bills(f.toISOString(), t.toISOString()),
         api.reviews ? api.reviews(f.toISOString(), t.toISOString()).catch(() => []) : []]);
       R.orders = o;
-      R.bills = b;
+      // отменённые оплаты не считаются в деньгах — показываем их отдельным списком
+      R.bills = b.filter((x) => !x.voided_at);
+      R.voided = b.filter((x) => x.voided_at);
       R.reviews = rv;
       R.loaded = key;
     } catch (ex) { R.error = S.errText(ex); }
@@ -154,6 +156,9 @@
           ${hbars(top.slice(0, 12).map((d) => ({ k: d.k, v: d.qty, sum: d.v })), (v) => `${v} шт.`, (r) => money(r.sum))}
           ${top.length > 12 ? `<details class="rp-table"><summary>Все блюда</summary><table><tbody>${top.map((d) => `<tr><td>${esc(d.k)}</td><td>${d.qty} шт.</td><td>${money(d.v)}</td></tr>`).join('')}</tbody></table></details>` : ''}
         </div></section>
+        ${(R.voided || []).length ? `<section class="panel"><div class="panel-head"><h3>Отменённые оплаты<small>${R.voided.length}</small></h3></div><div class="panel-body">
+          <ul class="z-hist">${R.voided.map((b) => `<li><span><b>Чек №${esc(b.no)}</b> · стол ${esc(b.table_label)} · ${esc(new Date(b.paid_at).toLocaleString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }))}<br><small>${esc(b.voided_by_name || '')}: ${esc(b.void_reason || '')}</small></span><b>${money(b.total)}</b></li>`).join('')}</ul>
+          <p class="help">Эти суммы не входят в «Оплачено». Заказы таких чеков оплачиваются заново или отменяются.</p></div></section>` : ''}
         ${discBy.length ? `<section class="panel"><div class="panel-head"><h3>Скидки по причинам<small>−${money(discounts)}</small></h3></div><div class="panel-body">${hbars(discBy, money, (r) => `счетов: ${r.n}`)}</div></section>` : ''}
         <section class="panel"><div class="panel-head"><h3>Способы оплаты</h3></div><div class="panel-body">
           ${hbars(byPay, money, (r) => `платежей: ${r.n} · ${received ? Math.round((r.v / received) * 100) : 0}%`)}
@@ -343,7 +348,177 @@
   document.addEventListener('focusout', hideTip);
   addEventListener('scroll', hideTip, { passive: true });
 
+  // =====================================================================
+  //  «Закрытие дня» (Z-отчёт): итоги с прошлого закрытия, сверка наличных,
+  //  закрыть день навсегда, история закрытий. Считает база (z_preview / close_day).
+  // =====================================================================
+  const Z = { preview: null, list: [], at: 0, loading: false, error: '', counted: '', note: '', busy: false };
+  const dt = (iso) => new Date(iso).toLocaleString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+  const signedMoney = (x) => `${x > 0 ? '+' : x < 0 ? '−' : ''}${money(Math.abs(x))}`;
+  const parseMoney = (v) => { const x = Number(String(v || '').replace(/\s/g, '').replace(',', '.')); return String(v || '').trim() && Number.isFinite(x) && x >= 0 ? r2(x) : null; };
+
+  async function loadDay(api) {
+    if (Z.loading) return;
+    Z.loading = true;
+    try {
+      const [p, l] = await Promise.all([api.zPreview(), api.zReports()]);
+      Z.preview = p; Z.list = l; Z.error = ''; Z.at = Date.now();
+    } catch (ex) { Z.error = S.errText(ex); }
+    Z.loading = false;
+  }
+
+  function zMoneyRows(z) {
+    const n = (k) => Number(z[k]) || 0;
+    const row = (k, v, cls = '') => `<li${cls ? ` class="${cls}"` : ''}><span>${esc(k)}</span><b>${esc(v)}</b></li>`;
+    return `<ul class="z-kv">
+      ${row('Блюда', money(n('subtotal')))}
+      ${n('discount') ? row(`Скидки (счетов ${n('discount_bills')})`, `−${money(n('discount'))}`) : ''}
+      ${n('service') ? row('Сервисный сбор', money(n('service'))) : ''}
+      ${n('tax') ? row('Налог', money(n('tax'))) : ''}
+      ${row('Выручка', money(n('total')), 'big')}
+      ${n('tip') ? row('Чаевые', money(n('tip'))) : ''}
+      ${n('rounding') ? row('Округление наличных', signedMoney(n('rounding'))) : ''}
+    </ul>`;
+  }
+  function zPayRows(z) {
+    const by = z.by_method || {};
+    const list = ['cash', 'card', 'qr', 'other'].filter((m) => Number(by[m]));
+    const got = r2(list.reduce((s, m) => s + Number(by[m]), 0));
+    return `<ul class="z-kv">${list.length ? list.map((m) => `<li><span>${esc(PAY[m])}</span><b>${money(by[m])}</b></li>`).join('') : '<li><span>Оплат не было</span><b>—</b></li>'}
+      ${list.length ? `<li class="big"><span>Всего получено</span><b>${money(got)}</b></li>` : ''}</ul>`;
+  }
+  function zOtherRows(z) {
+    const n = (k) => Number(z[k]) || 0;
+    const cashiers = Object.entries(z.by_cashier || {}).sort((a, b) => b[1] - a[1]);
+    return `<ul class="z-kv">
+      <li><span>Счетов</span><b>${n('bills')}</b></li>
+      <li><span>Средний чек</span><b>${money(n('bills') ? r2(n('total') / n('bills')) : 0)}</b></li>
+      <li><span>Заказов</span><b>${n('orders')}</b></li>
+      <li><span>Отменено заказов</span><b>${n('cancelled')}${n('cancelled') ? ` · ${money(n('cancelled_sum'))}` : ''}</b></li>
+      <li><span>Отменено оплат</span><b>${n('voided')}${n('voided') ? ` · ${money(n('voided_sum'))}` : ''}</b></li>
+      ${cashiers.map(([k, v]) => `<li><span>Кассир: ${esc(k)}</span><b>${money(v)}</b></li>`).join('')}
+    </ul>`;
+  }
+  function zDiffHtml() {
+    const c = parseMoney(Z.counted);
+    if (c === null || !Z.preview) return '<div class="z-diff" id="z-diff">Введите, сколько наличных насчитали в кассе — покажем разницу.</div>';
+    const d = r2(c - Number(Z.preview.cash || 0));
+    if (Math.abs(d) < 0.005) return `<div class="z-diff ok" id="z-diff">Сходится: ${money(c)}</div>`;
+    return `<div class="z-diff bad" id="z-diff">${d < 0 ? `Не хватает ${money(-d)}` : `Лишние ${money(d)}`} (по счетам ${money(Z.preview.cash || 0)}, в кассе ${money(c)})</div>`;
+  }
+
+  function day(main, ctx) {
+    if (Date.now() - Z.at > 15000 && !Z.loading) {
+      if (!Z.preview) main.innerHTML = `<p class="a-empty">${Z.error ? esc(Z.error) : 'Считаем…'}</p>`;
+      loadDay(ctx.api).then(() => { if (location.hash === '#day') day(main, ctx); });
+      if (!Z.preview) return;
+    }
+    if (!Z.preview) { main.innerHTML = `<p class="a-empty">${Z.error ? esc(Z.error) : 'Считаем…'}</p>`; return; }
+    const z = Z.preview;
+    const last = Z.list[0];
+    const openN = Number(z.open_orders) || 0;
+    main.innerHTML = `
+      <div class="toolbar"><p class="help" style="margin:0">${last ? `День открыт с ${esc(dt(last.closed_at))} — после Z-отчёта №${esc(last.no)}.` : 'Это первое закрытие: в отчёт войдёт всё с первого заказа.'}</p>
+        <span class="grow"></span><button type="button" class="btn small ghost" data-z-refresh>${icon('refresh', 'sm')}Обновить</button></div>
+      <div class="a-stats">
+        <div class="a-stat"><b>${money(z.total)}</b><span>выручка · счетов ${esc(z.bills)}</span></div>
+        <div class="a-stat"><b>${money(z.cash || 0)}</b><span>наличных должно быть в кассе</span></div>
+        <div class="a-stat"><b>${money(Number(z.by_method?.card || 0) + Number(z.by_method?.qr || 0))}</b><span>картой и QR</span></div>
+        <div class="a-stat${openN ? ' hot' : ''}"><b>${openN}</b><span>не оплачено заказов</span></div>
+      </div>
+      ${openN ? `<p class="notice">${icon('alert')}<span>Не оплачено заказов на столах: ${openN} (на ${money(z.open_sum)}). Лучше сначала закрыть их счета — иначе эти деньги попадут в следующий день.</span></p>` : ''}
+      <div class="z-grid">
+        <section class="panel"><div class="panel-head"><h3>Деньги</h3></div><div class="panel-body">${zMoneyRows(z)}</div></section>
+        <section class="panel"><div class="panel-head"><h3>Оплаты</h3></div><div class="panel-body">${zPayRows(z)}</div></section>
+        <section class="panel"><div class="panel-head"><h3>Счета и отмены</h3></div><div class="panel-body">${zOtherRows(z)}</div></section>
+      </div>
+      <section class="panel"><div class="panel-head"><h3>Закрыть день</h3></div><div class="panel-body z-count">
+        <label>Сколько наличных в кассе по факту<input id="z-counted" inputmode="decimal" autocomplete="off" placeholder="Например: ${esc(String(Number(z.cash || 0).toFixed(2)))}" value="${esc(Z.counted)}"></label>
+        ${zDiffHtml()}
+        <label>Заметка (не обязательно)<textarea id="z-note" rows="2" maxlength="300" placeholder="Например: смена Азиза, 20 RM размена оставили в кассе">${esc(Z.note)}</textarea></label>
+        <div><button type="button" class="btn" data-z-close${Z.busy ? ' disabled' : ''}>${icon('lock', 'sm')}Закрыть день и напечатать Z-отчёт</button></div>
+        <p class="help" style="margin:0">После закрытия итоги сохраняются навсегда, новый день начинается с этой минуты. Оплаты закрытого дня отменить уже нельзя.</p>
+      </div></section>
+      <section class="panel"><div class="panel-head"><h3>Прошлые закрытия<small>${Z.list.length}</small></h3></div><div class="panel-body">
+        ${Z.list.length ? `<ul class="z-hist">${Z.list.map((r) => {
+          const d = r.counted_cash != null ? r2(Number(r.counted_cash) - Number(r.totals?.cash || 0)) : null;
+          return `<li><span><b>Z-отчёт №${esc(r.no)}</b> · ${esc(dt(r.opened_at))} — ${esc(dt(r.closed_at))}${r.closed_by_name ? ` · ${esc(r.closed_by_name)}` : ''}<br>
+            <small>выручка ${money(r.totals?.total || 0)} · наличные ${money(r.totals?.cash || 0)}${d !== null ? (Math.abs(d) < 0.005 ? ' · касса сошлась' : ` · ${d < 0 ? 'не хватало' : 'лишние'} ${money(Math.abs(d))}`) : ''}</small></span>
+            <button type="button" class="btn small ghost" data-z-print="${esc(r.id)}">${icon('printer', 'sm')}Печать</button></li>`;
+        }).join('')}</ul>` : '<p class="a-empty" style="padding:8px 0">Пока ни разу не закрывали.</p>'}
+      </div></section>`;
+  }
+
+  function printZ(r) {
+    const z = r.totals || {};
+    const st = S.settings || {};
+    const num = (n) => new Intl.NumberFormat('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(n) || 0);
+    const row = (k, v, cls = '') => `<tr${cls ? ` class="${cls}"` : ''}><td>${esc(k)}</td><td class="s">${esc(v)}</td></tr>`;
+    const by = z.by_method || {};
+    const d = r.counted_cash != null ? r2(Number(r.counted_cash) - Number(z.cash || 0)) : null;
+    const full = (iso) => new Date(iso).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    window.Floor.printSlip(`Z-отчёт ${r.no}`, `
+      <h1>${esc(st.name || '')}</h1>
+      ${st.receipt_info ? `<div class="info">${esc(st.receipt_info)}</div>` : ''}
+      <hr class="dbl"><div class="doc">Z-ОТЧЁТ № ${esc(r.no)}</div><div class="doc-sub">ЗАКРЫТИЕ ДНЯ</div><hr>
+      <table class="kv">${row('С', full(r.opened_at))}${row('По', full(r.closed_at))}${r.closed_by_name ? row('Закрыл', r.closed_by_name) : ''}</table><hr>
+      <table class="sums">
+        ${row('Счетов', String(z.bills || 0))}${row('Заказов', String(z.orders || 0))}
+        ${row('Блюда', num(z.subtotal))}${Number(z.discount) ? row('Скидки', `−${num(z.discount)}`) : ''}
+        ${Number(z.service) ? row('Сервисный сбор', num(z.service)) : ''}${Number(z.tax) ? row(st.tax_name || 'Налог', num(z.tax)) : ''}
+      </table><hr class="dbl">
+      <table>${row('ВЫРУЧКА', `${st.currency || ''} ${num(z.total)}`.trim(), 'tot')}</table><hr>
+      <table class="sums">
+        ${Number(z.tip) ? row('Чаевые', num(z.tip)) : ''}${Number(z.rounding) ? row('Округление', num(z.rounding)) : ''}
+        ${['cash', 'card', 'qr', 'other'].filter((m) => Number(by[m])).map((m) => row(PAY[m], num(by[m]))).join('')}
+      </table><hr>
+      <table class="sums">
+        ${row('Наличных по счетам', num(z.cash))}
+        ${r.counted_cash != null ? row('В кассе по факту', num(r.counted_cash)) + row(Math.abs(d) < 0.005 ? 'Разница' : d < 0 ? 'Не хватает' : 'Лишние', num(Math.abs(d))) : ''}
+      </table><hr>
+      <table class="sums">
+        ${row('Отменено заказов', `${z.cancelled || 0} · ${num(z.cancelled_sum)}`)}
+        ${row('Отменено оплат', `${z.voided || 0} · ${num(z.voided_sum)}`)}
+        ${Number(z.open_orders) ? row('Не оплачено заказов', `${z.open_orders} · ${num(z.open_sum)}`) : ''}
+      </table>
+      ${r.note ? `<hr><div class="small">${esc(r.note)}</div>` : ''}
+      <hr><div class="c small muted">Напечатано ${esc(full(new Date().toISOString()))}</div>`);
+  }
+
+  async function closeDay(main, ctx) {
+    if (Z.busy || !Z.preview) return;
+    const raw = String(Z.counted || '').trim();
+    const counted = parseMoney(raw);
+    if (raw && counted === null) { S.toast('Сумма в кассе — только цифры, например 250.50', true); return; }
+    const openN = Number(Z.preview.open_orders) || 0;
+    const msg = `Закрыть день? Выручка ${money(Z.preview.total)}, счетов ${Z.preview.bills}.${counted !== null ? ` В кассе ${money(counted)}.` : ' Сумму в кассе не ввели.'}${openN ? ` Внимание: не оплачено заказов на столах — ${openN}.` : ''}`;
+    if (!await S.ask(msg, { ok: 'Закрыть день' })) return;
+    Z.busy = true; day(main, ctx);
+    try {
+      const r = await ctx.api.closeDay(counted, Z.note.trim());
+      Z.counted = ''; Z.note = ''; Z.at = 0;
+      S.toast(`День закрыт: Z-отчёт №${r.no}`);
+      printZ(r);
+    } catch (ex) { S.toast(/bad_amount/.test(String(ex?.message)) ? 'Проверьте сумму в кассе' : S.errText(ex), true); }
+    Z.busy = false;
+    Z.at = 0;
+    day(main, ctx);
+  }
+
+  document.addEventListener('input', (e) => {
+    if (e.target.id === 'z-counted') { Z.counted = e.target.value; const d = document.getElementById('z-diff'); if (d) d.outerHTML = zDiffHtml(); }
+    else if (e.target.id === 'z-note') Z.note = e.target.value.slice(0, 300);
+  });
+  document.addEventListener('click', (e) => {
+    if (location.hash !== '#day' || !ctxRef) return;
+    const main = document.getElementById('a-main');
+    if (e.target.closest('[data-z-refresh]')) { Z.at = 0; day(main, ctxRef); }
+    else if (e.target.closest('[data-z-close]')) closeDay(main, ctxRef);
+    else { const p = e.target.closest('[data-z-print]'); if (p) { const r = Z.list.find((x) => x.id === p.dataset.zPrint); if (r) printZ(r); } }
+  });
+
   window.OwnerReports = {
+    day(m, ctx) { ctxRef = ctx; day(m, ctx); },
     reports(m, ctx) { ctxRef = ctx; reports(m, ctx); },
     audit(m, ctx) { ctxRef = ctx; audit(m, ctx); },
   };

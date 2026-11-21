@@ -600,4 +600,66 @@ select t_fails($$select * from public.close_bill((select id from tv where label 
 create temp table b23b as select * from public.close_bill((select id from tv where label = '3'), 'mixed', array[(select id from o23b)], 0, '[{"method":"card","amount":20},{"method":"cash","amount":15}]');
 select t_ok((select rounding = 0.02 and total = 34.98 from b23b), 'карта 20 + наличные 14,98 → 15,00: округляется только наличная часть');
 reset role; reset request.jwt.claim.sub;
+-- ============ 24. Пересадить гостей / объединить столы ============
+set role authenticated; set request.jwt.claim.sub = '22222222-2222-2222-2222-222222222222';
+create temp table o24 as select * from public.staff_place_order((select id from tv where label = '2'), '[{"id":"green-tea","qty":1}]', null, gen_random_uuid());
+select t_ok(public.move_orders((select id from tv where label = '2'), (select id from tv where label = '1'), array[(select id from o24)]) = 1, 'официант пересаживает заказ на другой стол');
+select t_ok((select table_id = (select id from tv where label = '1') and table_label = '1' from public.orders where id = (select id from o24)), 'заказ теперь у стола 1');
+select t_fails($$select public.move_orders((select id from tv where label = '1'), (select id from tv where label = '1'))$$, 'same_table', 'на тот же стол пересадить нельзя');
+select t_fails($$select public.move_orders((select id from tv where label = '1'), (select id from tv where label = '4'))$$, 'not_found', 'на выключенный стол пересадить нельзя');
+select t_fails($$select public.move_orders((select id from tv where label = '1'), (select id from tv where label = '2'), array[(select id from o22)])$$, 'nothing_to_move', 'оплаченный заказ не пересаживается');
+select public.claim_table((select id from tv where label = '1'), true);
+reset role; reset request.jwt.claim.sub;
+delete from public.table_waiters where table_id = (select id from tv where label = 'VIP');
+set role authenticated; set request.jwt.claim.sub = '22222222-2222-2222-2222-222222222222';
+select t_ok(public.move_orders((select id from tv where label = '1'), (select id from tv where label = 'VIP')) >= 1, 'объединение: все заказы стола 1 переходят к VIP');
+reset role; reset request.jwt.claim.sub;
+select t_ok(not exists (select 1 from public.orders where table_id = (select id from tv where label = '1') and paid_at is null and status <> 'cancelled'), 'на старом столе ничего не осталось');
+select t_ok(not exists (select 1 from public.table_waiters where table_id = (select id from tv where label = '1'))
+        and (select user_id from public.table_waiters where table_id = (select id from tv where label = 'VIP')) = '22222222-2222-2222-2222-222222222222', 'официант перешёл к новому столу, старый стол свободен');
+set role anon;
+select t_fails($$select public.move_orders((select id from tv where label = 'VIP'), (select id from tv where label = '2'))$$, 'permission denied', 'гость не пересаживает заказы');
+reset role;
+-- ============ 25. Отмена оплаты ============
+set role authenticated; set request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
+create temp table b25 as select * from public.close_bill((select id from tv where label = 'VIP'), 'card', array[(select id from o24)]);
+reset role; reset request.jwt.claim.sub;
+grant select on b25, o24 to authenticated;
+set role authenticated; set request.jwt.claim.sub = '22222222-2222-2222-2222-222222222222';
+select t_fails($$select * from public.void_bill((select id from b25), 'ошибка')$$, 'forbidden', 'официант оплату не отменяет');
+reset role; reset request.jwt.claim.sub;
+set role authenticated; set request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
+select t_fails($$select * from public.void_bill((select id from b25), '  ')$$, 'void_reason', 'без причины оплату не отменить');
+select t_ok((select voided_by_name = 'Хозяин' and void_reason = 'Ошиблись способом оплаты' from public.void_bill((select id from b25), ' Ошиблись   способом оплаты ')), 'владелец отменяет оплату с причиной');
+select t_ok((select paid_at is null and bill_id is null and status = 'served' from public.orders where id = (select id from o24)), 'заказ снова ждёт оплаты, «подано» осталось');
+select t_ok((select voided_at is not null and total = (select total from b25) from public.bills where id = (select id from b25)), 'счёт не удалён, а помечен «отменён»');
+select t_fails($$select * from public.void_bill((select id from b25), 'ещё раз')$$, 'already_voided', 'дважды отменить нельзя');
+create temp table b25b as select * from public.close_bill((select id from tv where label = 'VIP'), 'cash', array[(select id from o24)]);
+select t_ok((select order_ids = array[(select id from o24)] from b25b), 'после отмены заказ оплачивается заново, правильным способом');
+select t_fails($$update public.bills set total = 0 where id = (select id from b25)$$, 'permission denied', 'счёт руками не поправить');
+reset role; reset request.jwt.claim.sub;
+select t_ok(exists (select 1 from net.sent where body ->> 'text' like 'Отменена оплата счёта №' || (select no from b25) || '%причина: Ошиблись способом оплаты'), 'владельцу в Telegram ушло «отменена оплата»');
+select t_ok(exists (select 1 from public.audit_log where entity = 'bill' and action = 'update' and entity_id = (select id::text from b25)), 'отмена оплаты записана в журнал');
+-- ============ 26. Закрытие дня (Z-отчёт) ============
+set role authenticated; set request.jwt.claim.sub = '22222222-2222-2222-2222-222222222222';
+select t_fails($$select public.z_preview()$$, 'forbidden', 'официант не видит Z-отчёт');
+select t_fails($$select * from public.close_day(0)$$, 'forbidden', 'официант не закрывает день');
+reset role; reset request.jwt.claim.sub;
+set role authenticated; set request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
+create temp table z0 as select public.z_preview() as z;
+select t_ok((select (z ->> 'voided')::int >= 1 and (z ->> 'bills')::int >= 3 from z0), 'в отчёте дня видны счета и отменённые оплаты');
+select t_ok((select (z ->> 'total')::numeric = (select sum(total) from public.bills where voided_at is null) from z0), 'выручка дня = все счета без отменённых');
+select t_ok((select (z ->> 'cash')::numeric = (select coalesce(sum((p ->> 'amount')::numeric), 0) from public.bills, jsonb_array_elements(payments) p where voided_at is null and p ->> 'method' = 'cash') from z0), 'наличные в кассе = все наличные части оплат');
+select t_fails($$select * from public.close_day(-5)$$, 'bad_amount', 'отрицательную сумму в кассе не ввести');
+create temp table z1 as select * from public.close_day(123.45, 'Смена Азиза');
+select t_ok((select no = 1 and counted_cash = 123.45 and closed_by_name = 'Хозяин' and (totals ->> 'bills') = (select z ->> 'bills' from z0) from z1), 'день закрыт: Z-отчёт №1 с итогами и суммой в кассе');
+select t_ok((select (z ->> 'bills')::int = 0 and (z ->> 'total')::numeric = 0 from (select public.z_preview() as z) x), 'после закрытия новый день начинается с нуля');
+select t_fails($$select * from public.void_bill((select id from b25b), 'поздно')$$, 'day_closed', 'оплату из закрытого дня отменить нельзя');
+create temp table z2 as select * from public.close_day();
+select t_ok((select no = 2 and opened_at = (select closed_at from z1) and counted_cash is null from z2), 'следующий Z-отчёт начинается ровно там, где закончился прошлый');
+reset role; reset request.jwt.claim.sub;
+select t_ok(exists (select 1 from net.sent where body ->> 'text' like 'Закрыт день, Z-отчёт №1:%'), 'владельцу в Telegram ушли итоги дня');
+set role anon;
+select t_fails($$select * from public.z_reports$$, 'permission denied', 'гость не видит Z-отчёты');
+reset role;
 \echo ALL DATABASE TESTS PASSED

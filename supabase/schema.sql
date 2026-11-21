@@ -960,6 +960,8 @@ begin
   if not public.is_floor() then raise exception 'forbidden'; end if;
   if p_method not in ('cash', 'card', 'qr', 'other', 'mixed') then raise exception 'bad_method'; end if;
   if v_tip < 0 or v_tip > 100000 then raise exception 'bad_tip'; end if;
+  -- закрытие дня ждёт, пока идут оплаты (и наоборот): счёт не потеряется между двумя Z-отчётами
+  perform pg_advisory_xact_lock_shared(hashtext('restoran_z_report'));
   perform 1 from public.orders o
     where o.table_id = p_table and o.paid_at is null and o.status <> 'cancelled'
       and (p_orders is null or o.id = any (p_orders))
@@ -1022,10 +1024,10 @@ begin
     if abs(v_sum - (v_tot + v_tip + v_round)) > 0.01 then raise exception 'bad_payments'; end if;
   end if;
   insert into public.bills (table_id, table_label, order_ids, order_nos, subtotal, service, tax, total, tip, payments, method, paid_by, paid_by_name,
-                            discount, discount_pct, discount_reason, discount_by_name, rounding)
+                            discount, discount_pct, discount_reason, discount_by_name, rounding, paid_at)
   values (p_table, coalesce((select label from public.tables where id = p_table), v_label), v_ids, v_nos, v_sub, v_srv, v_tax, v_tot, v_tip, v_pay,
           case when cardinality(v_methods) = 1 then v_methods[1] else 'mixed' end, auth.uid(), public.staff_name(),
-          v_disc, v_dpct, case when v_disc > 0 then v_dreason end, case when v_disc > 0 then public.staff_name() end, v_round)
+          v_disc, v_dpct, case when v_disc > 0 then v_dreason end, case when v_disc > 0 then public.staff_name() end, v_round, clock_timestamp())
   returning * into v_bill;
   -- оплаченный заказ точно на столе: если «Подано» забыли нажать — отмечаем сами
   update public.orders
@@ -1337,7 +1339,7 @@ create trigger audit_staff after insert or update or delete on public.staff for 
 drop trigger if exists audit_orders on public.orders;
 create trigger audit_orders after update or delete on public.orders for each row execute function public.audit_row('order');
 drop trigger if exists audit_bills on public.bills;
-create trigger audit_bills after insert on public.bills for each row execute function public.audit_row('bill');
+create trigger audit_bills after insert or update on public.bills for each row execute function public.audit_row('bill');
 
 alter table public.audit_log enable row level security;
 revoke all on public.audit_log from anon, authenticated;
@@ -1864,3 +1866,169 @@ begin
   end if;
 end $$;
 
+
+-- =====================================================================
+-- Отмена оплаты, закрытие дня (Z-отчёт), пересадка гостей (2026-11-21)
+-- =====================================================================
+
+-- ---------- Отмена оплаты ----------
+-- Счёт не удаляется: помечается «отменён» (кто, когда, почему), заказы снова ждут оплаты.
+-- Только владелец и только в незакрытом дне — закрытый Z-отчёт не меняется задним числом.
+alter table public.bills add column if not exists voided_at timestamptz;
+alter table public.bills add column if not exists voided_by uuid references auth.users (id) on delete set null;
+alter table public.bills add column if not exists voided_by_name text;
+alter table public.bills add column if not exists void_reason text check (void_reason is null or char_length(void_reason) <= 200);
+
+create or replace function public.void_bill(p_bill uuid, p_reason text)
+returns setof public.bills language plpgsql security definer set search_path = public, private as $$
+declare b public.bills%rowtype; v_reason text := left(nullif(btrim(regexp_replace(coalesce(p_reason, ''), '\s+', ' ', 'g')), ''), 200);
+begin
+  if not public.is_owner() then raise exception 'forbidden'; end if;
+  if v_reason is null then raise exception 'void_reason'; end if;
+  perform pg_advisory_xact_lock_shared(hashtext('restoran_z_report'));
+  select * into b from public.bills where id = p_bill for update;
+  if not found then raise exception 'not_found'; end if;
+  if b.voided_at is not null then raise exception 'already_voided'; end if;
+  if b.paid_at <= coalesce((select max(closed_at) from public.z_reports), '-infinity'::timestamptz) then raise exception 'day_closed'; end if;
+  update public.bills set voided_at = clock_timestamp(), voided_by = auth.uid(), voided_by_name = public.staff_name(), void_reason = v_reason
+   where id = p_bill returning * into b;
+  update public.orders set paid_at = null, bill_id = null where bill_id = p_bill;
+  begin
+    perform private.tg_send('Отменена оплата счёта №' || b.no || ' · стол ' || b.table_label || ': ' || public.tg_money(b.total)
+      || ' · ' || coalesce(b.voided_by_name, '') || ' · причина: ' || v_reason);
+  exception when others then null;
+  end;
+  return next b;
+end $$;
+
+-- ---------- Закрытие дня (Z-отчёт) ----------
+create table if not exists public.z_reports (
+  id             uuid primary key default gen_random_uuid(),
+  no             bigint generated always as identity (start with 1) unique,
+  opened_at      timestamptz not null,
+  closed_at      timestamptz not null,
+  closed_by      uuid references auth.users (id) on delete set null,
+  closed_by_name text,
+  totals         jsonb not null,
+  counted_cash   numeric(10, 2) check (counted_cash is null or counted_cash >= 0),
+  note           text check (note is null or char_length(note) <= 300)
+);
+create index if not exists z_reports_closed_idx on public.z_reports (closed_at desc);
+alter table public.z_reports enable row level security;
+revoke all on public.z_reports from anon, authenticated;
+grant select on public.z_reports to authenticated;
+drop policy if exists z_owner_read on public.z_reports;
+create policy z_owner_read on public.z_reports for select to authenticated using (public.is_owner());
+
+-- начало открытого дня: конец прошлого закрытия (первый раз — с первого счёта или заказа)
+create or replace function private.z_open_from()
+returns timestamptz language sql stable security definer set search_path = public as $$
+  select coalesce((select max(closed_at) from public.z_reports),
+                  least((select min(paid_at) from public.bills), (select min(created_at) from public.orders)) - interval '1 microsecond',
+                  now());
+$$;
+
+-- итоги за период: счета по оплате (p_from, p_to], заказы по времени заказа
+create or replace function private.z_totals(p_from timestamptz, p_to timestamptz)
+returns jsonb language sql stable security definer set search_path = public as $$
+  with b as (select * from public.bills where paid_at > p_from and paid_at <= p_to),
+  ok as (select * from b where voided_at is null),
+  pay as (
+    select p ->> 'method' as m, (p ->> 'amount')::numeric as a
+      from ok, jsonb_array_elements(case when jsonb_array_length(ok.payments) > 0 then ok.payments
+                                         else jsonb_build_array(jsonb_build_object('method', ok.method, 'amount', ok.total + ok.tip + ok.rounding)) end) p),
+  o as (select * from public.orders where created_at > p_from and created_at <= p_to)
+  select jsonb_build_object(
+    'from', p_from, 'to', p_to,
+    'bills', (select count(*) from ok),
+    'subtotal', (select coalesce(sum(subtotal), 0) from ok),
+    'discount', (select coalesce(sum(discount), 0) from ok),
+    'discount_bills', (select count(*) from ok where discount > 0),
+    'service', (select coalesce(sum(service), 0) from ok),
+    'tax', (select coalesce(sum(tax), 0) from ok),
+    'total', (select coalesce(sum(total), 0) from ok),
+    'tip', (select coalesce(sum(tip), 0) from ok),
+    'rounding', (select coalesce(sum(rounding), 0) from ok),
+    'by_method', (select coalesce(jsonb_object_agg(m, s), '{}'::jsonb) from (select m, sum(a) as s from pay group by m) x),
+    'cash', (select coalesce(sum(a), 0) from pay where m = 'cash'),
+    'voided', (select count(*) from b where voided_at is not null),
+    'voided_sum', (select coalesce(sum(total), 0) from b where voided_at is not null),
+    'orders', (select count(*) from o where status <> 'cancelled'),
+    'cancelled', (select count(*) from o where status = 'cancelled'),
+    'cancelled_sum', (select coalesce(sum(total), 0) from o where status = 'cancelled'),
+    'open_orders', (select count(*) from public.orders where paid_at is null and status <> 'cancelled' and created_at <= p_to),
+    'open_sum', (select coalesce(sum(total), 0) from public.orders where paid_at is null and status <> 'cancelled' and created_at <= p_to),
+    'by_cashier', (select coalesce(jsonb_object_agg(k, s), '{}'::jsonb) from (select coalesce(paid_by_name, '—') as k, sum(total) as s from ok group by 1) y)
+  );
+$$;
+
+-- что попадёт в Z-отчёт, если закрыть день сейчас
+create or replace function public.z_preview()
+returns jsonb language plpgsql stable security definer set search_path = public, private as $$
+begin
+  if not public.is_owner() then raise exception 'forbidden'; end if;
+  return private.z_totals(private.z_open_from(), now());
+end $$;
+
+-- закрыть день: итоги записываются навсегда, следующий день начинается с этой минуты
+create or replace function public.close_day(p_counted numeric default null, p_note text default null)
+returns setof public.z_reports language plpgsql security definer set search_path = public, private as $$
+declare v_from timestamptz; v_to timestamptz; r public.z_reports%rowtype;
+begin
+  if not public.is_owner() then raise exception 'forbidden'; end if;
+  if p_counted is not null and (p_counted < 0 or p_counted > 10000000) then raise exception 'bad_amount'; end if;
+  -- ждём, пока закончатся идущие оплаты; новые оплаты подождут нас
+  perform pg_advisory_xact_lock(hashtext('restoran_z_report'));
+  v_from := private.z_open_from();
+  v_to := clock_timestamp();
+  insert into public.z_reports (opened_at, closed_at, closed_by, closed_by_name, totals, counted_cash, note)
+  values (v_from, v_to, auth.uid(), public.staff_name(), private.z_totals(v_from, v_to), round(p_counted, 2),
+          left(nullif(btrim(coalesce(p_note, '')), ''), 300))
+  returning * into r;
+  begin
+    perform private.tg_send('Закрыт день, Z-отчёт №' || r.no || ': выручка ' || public.tg_money((r.totals ->> 'total')::numeric)
+      || ' · счетов ' || (r.totals ->> 'bills') || ' · наличными ' || public.tg_money((r.totals ->> 'cash')::numeric)
+      || case when r.counted_cash is not null then ' · в кассе ' || public.tg_money(r.counted_cash) else '' end
+      || coalesce(' · ' || r.closed_by_name, ''));
+  exception when others then null;
+  end;
+  return next r;
+end $$;
+
+-- ---------- Пересадить гостей / объединить столы ----------
+-- Неоплаченные заказы (все или выбранные) переходят на другой стол вместе с открытыми вызовами.
+-- Официант стола переходит к новому столу, если там своего нет. Старый стол освобождается, если на нём ничего не осталось.
+create or replace function public.move_orders(p_from uuid, p_to uuid, p_orders uuid[] default null)
+returns int language plpgsql security definer set search_path = public as $$
+declare v_label text; n int;
+begin
+  if not public.is_floor() then raise exception 'forbidden'; end if;
+  if p_from is null or p_to is null or p_from = p_to then raise exception 'same_table'; end if;
+  select label into v_label from public.tables where id = p_to and active;
+  if v_label is null then raise exception 'not_found'; end if;
+  perform 1 from public.orders where table_id = p_from and paid_at is null for update;
+  update public.orders set table_id = p_to, table_label = v_label
+   where table_id = p_from and paid_at is null and status <> 'cancelled'
+     and (p_orders is null or id = any (p_orders));
+  get diagnostics n = row_count;
+  if n = 0 then raise exception 'nothing_to_move'; end if;
+  insert into public.table_waiters (table_id, user_id)
+    select p_to, user_id from public.table_waiters where table_id = p_from
+  on conflict (table_id) do nothing;
+  if not exists (select 1 from public.orders where table_id = p_from and paid_at is null and status <> 'cancelled') then
+    update public.calls set table_id = p_to, table_label = v_label where table_id = p_from and done_at is null;
+    delete from public.table_waiters where table_id = p_from;
+  end if;
+  return n;
+end $$;
+
+revoke all on function public.void_bill(uuid, text) from public, anon;
+revoke all on function public.z_preview() from public, anon;
+revoke all on function public.close_day(numeric, text) from public, anon;
+revoke all on function public.move_orders(uuid, uuid, uuid[]) from public, anon;
+revoke all on function private.z_open_from() from public, anon, authenticated;
+revoke all on function private.z_totals(timestamptz, timestamptz) from public, anon, authenticated;
+grant execute on function public.void_bill(uuid, text) to authenticated;
+grant execute on function public.z_preview() to authenticated;
+grant execute on function public.close_day(numeric, text) to authenticated;
+grant execute on function public.move_orders(uuid, uuid, uuid[]) to authenticated;

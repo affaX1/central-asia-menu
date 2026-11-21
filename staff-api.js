@@ -141,6 +141,26 @@
         const { data, error } = await sb.rpc('close_bill', { p_table: tableId, p_method: method, p_orders: orderIds || null, p_tip: tip || 0, p_payments: payments, p_discount: discount });
         fail(error); return Array.isArray(data) ? data[0] : data;
       },
+      // владелец: отменить оплату (заказы снова ждут оплаты)
+      async voidBill(id, reason) {
+        const { data, error } = await sb.rpc('void_bill', { p_bill: id, p_reason: reason });
+        fail(error); return Array.isArray(data) ? data[0] : data;
+      },
+      // пересадить гостей: заказы (все или выбранные) на другой стол
+      async moveOrders(fromTable, toTable, orderIds) {
+        const { data, error } = await sb.rpc('move_orders', { p_from: fromTable, p_to: toTable, p_orders: orderIds || null });
+        fail(error); return data;
+      },
+      // закрытие дня (Z-отчёт)
+      async zPreview() { const { data, error } = await sb.rpc('z_preview'); fail(error); return data; },
+      async closeDay(counted, note) {
+        const { data, error } = await sb.rpc('close_day', { p_counted: counted ?? null, p_note: note || null });
+        fail(error); return Array.isArray(data) ? data[0] : data;
+      },
+      async zReports() {
+        const { data, error } = await sb.from('z_reports').select('*').order('closed_at', { ascending: false }).limit(60);
+        fail(error); return data || [];
+      },
       async claimTable(tableId, on) { const { error } = await sb.rpc('claim_table', { p_table: tableId, p_claim: on }); fail(error); },
       async staffPlaceOrder(tableId, items, note, key) {
         const { data, error } = await sb.rpc('staff_place_order', { p_table: tableId, p_items: items, p_note: note, p_client_key: key });

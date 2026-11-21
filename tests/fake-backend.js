@@ -52,6 +52,31 @@
   const offline = () => { if (localStorage.getItem('fake:offline') === '1') throw new TypeError('Failed to fetch'); };
   const myName = () => ({ owner: 'Владелец', waiter: 'Азиз', cook: 'Повар Бахтиёр' })[role()] || '';
   const r2 = (x) => Math.round(x * 100) / 100;
+  // как z_open_from / z_totals в базе
+  const zFrom = (d) => {
+    const z = (d.z || []).map((x) => x.closed_at).sort().pop();
+    if (z) return z;
+    const t = [...(d.bills || []).map((b) => b.paid_at), ...(d.orders || []).map((o) => o.created_at)].sort()[0];
+    return t ? new Date(new Date(t).getTime() - 1).toISOString() : new Date().toISOString();
+  };
+  const zTotals = (d, from, to) => {
+    const f = new Date(from).getTime(); const t = new Date(to).getTime();
+    const inP = (x) => { const v = new Date(x).getTime(); return v > f && v <= t; };
+    const b = (d.bills || []).filter((x) => inP(x.paid_at)); const ok = b.filter((x) => !x.voided_at);
+    const sum = (arr, k) => r2(arr.reduce((s, x) => s + Number(x[k] || 0), 0));
+    const by = {}; const cashier = {};
+    ok.forEach((x) => {
+      (x.payments?.length ? x.payments : [{ method: x.method, amount: Number(x.total) + Number(x.tip || 0) + Number(x.rounding || 0) }]).forEach((p) => { by[p.method] = r2((by[p.method] || 0) + Number(p.amount)); });
+      const k = x.paid_by_name || '—'; cashier[k] = r2((cashier[k] || 0) + Number(x.total));
+    });
+    const o = (d.orders || []).filter((x) => inP(x.created_at));
+    const open = (d.orders || []).filter((x) => !x.paid_at && x.status !== 'cancelled' && new Date(x.created_at).getTime() <= t);
+    const vd = b.filter((x) => x.voided_at); const cn = o.filter((x) => x.status === 'cancelled');
+    return { from, to, bills: ok.length, subtotal: sum(ok, 'subtotal'), discount: sum(ok, 'discount'), discount_bills: ok.filter((x) => Number(x.discount) > 0).length,
+      service: sum(ok, 'service'), tax: sum(ok, 'tax'), total: sum(ok, 'total'), tip: sum(ok, 'tip'), rounding: sum(ok, 'rounding'), by_method: by, cash: by.cash || 0,
+      voided: vd.length, voided_sum: sum(vd, 'total'), orders: o.length - cn.length, cancelled: cn.length, cancelled_sum: sum(cn, 'total'),
+      open_orders: open.length, open_sum: sum(open, 'total'), by_cashier: cashier };
+  };
   // как order_charges в базе
   const chargesOf = (st, sub) => {
     const service = r2(sub * (Number(st.service_pct) || 0) / 100);
@@ -254,6 +279,46 @@
       (d.audit = d.audit || []).push({ id: Date.now(), at: bill.paid_at, who: myName(), entity: 'bill', entity_id: bill.id, label: `счёт №${bill.no} · стол ${bill.table_label}`, action: 'insert', changes: { total: bill.total, method } });
       save(d); return bill;
     },
+    async voidBill(id, reason) {
+      await delay(); owner(); offline();
+      const why = String(reason || '').replace(/\s+/g, ' ').trim().slice(0, 200);
+      if (!why) throw new Error('void_reason');
+      const d = db(); const b = (d.bills || []).find((x) => x.id === id);
+      if (!b) throw new Error('not_found');
+      if (b.voided_at) throw new Error('already_voided');
+      const lastZ = Math.max(0, ...(d.z || []).map((z) => new Date(z.closed_at).getTime()));
+      if (new Date(b.paid_at).getTime() <= lastZ) throw new Error('day_closed');
+      Object.assign(b, { voided_at: new Date().toISOString(), voided_by_name: myName(), void_reason: why });
+      d.orders.forEach((o) => { if (o.bill_id === id) { o.paid_at = null; o.bill_id = null; } });
+      (d.audit = d.audit || []).push({ id: Date.now(), at: b.voided_at, who: myName(), entity: 'bill', entity_id: b.id, label: `счёт №${b.no} · стол ${b.table_label}`, action: 'update', changes: { voided_at: [null, b.voided_at], void_reason: [null, why] } });
+      save(d); return b;
+    },
+    async moveOrders(from, to, ids) {
+      await delay(); floor(); offline();
+      if (!from || !to || from === to) throw new Error('same_table');
+      const d = db(); const tb = d.tables.find((t) => t.id === to && t.active);
+      if (!tb) throw new Error('not_found');
+      const list = d.orders.filter((o) => o.table_id === from && !o.paid_at && o.status !== 'cancelled' && (!ids || ids.includes(o.id)));
+      if (!list.length) throw new Error('nothing_to_move');
+      list.forEach((o) => { o.table_id = to; o.table_label = tb.label; });
+      d.tableWaiters = d.tableWaiters || {};
+      if (d.tableWaiters[from] && !d.tableWaiters[to]) d.tableWaiters[to] = d.tableWaiters[from];
+      if (!d.orders.some((o) => o.table_id === from && !o.paid_at && o.status !== 'cancelled')) {
+        (d.calls || []).forEach((c) => { if (c.table_id === from && !c.done_at) { c.table_id = to; c.table_label = tb.label; } });
+        delete d.tableWaiters[from];
+      }
+      save(d); return list.length;
+    },
+    async zPreview() { await delay(); owner(); offline(); return zTotals(db(), zFrom(db()), new Date().toISOString()); },
+    async closeDay(counted, note) {
+      await delay(); owner(); offline();
+      if (counted != null && !(counted >= 0)) throw new Error('bad_amount');
+      const d = db(); const from = zFrom(d); const to = new Date().toISOString();
+      const z = { id: crypto.randomUUID(), no: (d.z || []).length + 1, opened_at: from, closed_at: to, closed_by_name: myName(), totals: zTotals(d, from, to),
+        counted_cash: counted == null ? null : r2(counted), note: (note || '').trim().slice(0, 300) || null };
+      d.z = (d.z || []).concat(z); save(d); return z;
+    },
+    async zReports() { await delay(); owner(); return [...(db().z || [])].reverse(); },
     async editOrder(id, items) {
       await delay(); owner(); offline();
       const d = db(); const o = d.orders.find((x) => x.id === id);

@@ -146,6 +146,7 @@
       ${st.receipt_info ? `<div class="info">${esc(st.receipt_info)}</div>` : ''}
       <hr class="dbl">
       <div class="doc">${esc(bill ? t('p_receipt_h', bill.no) : t('p_bill_h'))}</div>
+      ${bill?.voided_at ? `<div class="stamp">${esc(t('p_voided'))}${bill.void_reason ? `<br>${esc(bill.void_reason)}` : ''}</div>` : ''}
       <hr>
       <table class="kv">
         ${row(t('table'), table)}
@@ -205,6 +206,7 @@
       if (mineFresh.length) host.onCalls?.(mineFresh);
     }
     const openCalls = () => calls.filter((c) => !c.done_at);
+    const okBills = () => bills.filter((b) => !b.voided_at);   // отменённые оплаты не считаются
     const myTables = () => tables.filter((x) => x.waiter_id && x.waiter_id === host.me?.id);
     // сигналы: если у официанта есть свои столы — только по своим и ничьим
     const isMineOrFree = (tableId) => {
@@ -252,7 +254,7 @@
       const states = active.map((tb) => ({ tb, ...tableState(tb) }));
       const busyN = states.filter((x) => x.state !== 'free').length;
       const unpaidSum = r2(states.reduce((x, y) => x + y.total, 0));
-      const paidSum = r2(bills.reduce((x, b) => x + Number(b.total), 0));
+      const paidSum = r2(okBills().reduce((x, b) => x + Number(b.total), 0));
       main.innerHTML = `
         ${callsHtml()}
         <div class="toolbar">
@@ -267,7 +269,7 @@
           <div class="a-stat"><b>${busyN} ${esc(t('of'))} ${active.length}</b><span>${esc(t('fl_busy'))}</span></div>
           <div class="a-stat${openCalls().length ? ' hot' : ''}"><b>${openCalls().length}</b><span>${esc(t('fl_calls'))}</span></div>
           <div class="a-stat"><b>${money(unpaidSum)}</b><span>${esc(t('fl_unpaid'))}</span></div>
-          <div class="a-stat"><b>${money(paidSum)}</b><span>${esc(t('fl_paid', bills.length))}</span></div>
+          <div class="a-stat"><b>${money(paidSum)}</b><span>${esc(t('fl_paid', okBills().length))}</span></div>
         </div>
         ${mineOnly && !shownTables.length ? `<p class="notice info">${icon('table')}<span>${esc(t('no_my_tables'))}</span></p>` : ''}
         ${active.length ? `<div class="fl-grid">${states.filter((x) => shownTables.includes(x.tb)).map(({ tb, state, text, total, first, waiter, os }) => `
@@ -395,6 +397,7 @@
           <label class="switch"><input type="checkbox" data-fl-claim="${esc(id)}"${mine ? ' checked' : ''}><span class="track"></span>${esc(t('my_table'))}</label>
           ${tb.waiter_name && !mine ? `<span class="help" style="margin:0">${esc(t('served_by', tb.waiter_name))}</span>` : ''}
           <span class="grow"></span>
+          ${os.length ? `<button type="button" class="btn small ghost" data-fl-move="${esc(id)}">${icon('table', 'sm')}${esc(t('mv_btn'))}</button>` : ''}
           <button type="button" class="btn small" data-fl-compose="${esc(id)}">${icon('plus', 'sm')}${esc(t('new_order'))}</button>
         </div>
         ${openCalls().filter((c) => c.table_id === id && c.kind === 'waiter' && c.reason).map((c) => `<p class="notice">${icon('bell')}<span><b>${esc(t('reasons')[c.reason] || c.reason)}</b> · ${esc(ago(c.created_at))} <button type="button" class="link-btn" data-fl-done="${esc(c.id)}">${esc(t('call_done'))}</button></span></p>`).join('')}
@@ -407,8 +410,10 @@
           <div class="modal-foot"><button type="button" class="btn ghost" data-fl-prebill>${icon('printer', 'sm')}${esc(t('print_bill'))}</button><button type="button" class="btn ghost" data-modal-close>${esc(t('close'))}</button></div>`
         : `<p class="a-empty" style="padding:18px 0">${esc(t('no_unpaid'))}</p><div class="modal-foot"><button type="button" class="btn ghost" data-modal-close>${esc(t('close'))}</button></div>`}
         ${paid.length ? `<p class="section-label">${esc(t('paid_today'))}</p><ul class="fl-bills">${paid.map((b) => `
-          <li><span><b>${esc(t('p_receipt', b.no))}</b> · ${esc(hhmm(b.paid_at))} · ${esc(payName(b.method))}${Number(b.tip) ? ` · ${esc(t('tip'))} ${money(b.tip)}` : ''}${b.paid_by_name ? ` · ${esc(b.paid_by_name)}` : ''}</span>
-          <span>${money(b.total)} <button type="button" class="link-btn" data-fl-reprint="${esc(b.id)}">${icon('printer', 'sm')}${esc(t('receipt'))}</button></span></li>`).join('')}</ul>` : ''}`);
+          <li${b.voided_at ? ' class="is-void"' : ''}><span><b>${esc(t('p_receipt', b.no))}</b> · ${esc(hhmm(b.paid_at))} · ${esc(payName(b.method))}${Number(b.tip) ? ` · ${esc(t('tip'))} ${money(b.tip)}` : ''}${b.paid_by_name ? ` · ${esc(b.paid_by_name)}` : ''}
+            ${b.voided_at ? `<em class="void-note">${esc(t('void_done_by', b.voided_by_name || ''))}${b.void_reason ? `: ${esc(b.void_reason)}` : ''}</em>` : ''}</span>
+          <span><span class="b-sum">${money(b.total)}</span> <button type="button" class="link-btn" data-fl-reprint="${esc(b.id)}">${icon('printer', 'sm')}${esc(t('receipt'))}</button>
+            ${host.isOwner && !b.voided_at ? `<button type="button" class="link-btn danger" data-fl-void="${esc(b.id)}">${esc(t('void_btn'))}</button>` : ''}</span></li>`).join('')}</ul>` : ''}`);
       m.dataset.table = id;
       m.addEventListener('input', (e) => {
         if (e.target.matches('[data-fl-tip-in]')) { payState.tip = Math.max(0, Number(e.target.value) || 0); syncParts(); repaintPay(true); }
@@ -531,6 +536,76 @@
       } catch (ex) { S.toast(S.errText(ex), true); }
       host.rerender();
       if (document.querySelector('.modal')?.dataset.table === tableId) openTable(tableId, true);
+    }
+
+    // ---------- пересадить гостей / объединить столы ----------
+    function moveDialog(fromId) {
+      const from = tables.find((x) => x.id === fromId);
+      if (!from) return;
+      const os = unpaid(fromId);
+      if (!os.length) return;
+      // если в счёте отмечены не все заказы — пересаживаем только отмеченные
+      const picked = payState?.table === fromId ? os.filter((o) => payState.ids.has(o.id)) : os;
+      const some = picked.length && picked.length < os.length ? picked : null;
+      const others = tables.filter((x) => x.active && x.id !== fromId).map((tb) => ({ tb, ...tableState(tb) }));
+      S.modal(`
+        <h2 id="modal-title">${esc(t('mv_title', from.label))}</h2>
+        <p class="help" style="margin-top:0">${esc(some ? t('mv_some', some.length, os.length) : t('mv_all', os.length))}</p>
+        <div class="fl-move-grid">${others.map(({ tb, state, os: tos }) => `
+          <button type="button" class="fl-move-to is-${state === 'free' ? 'free' : 'busy'}" data-fl-move-to="${esc(tb.id)}" data-from="${esc(fromId)}">
+            <b>${esc(tb.label)}</b><small>${esc(tos.length ? t('mv_join') : t('fl_free'))}</small>
+          </button>`).join('') || `<p class="a-empty">${esc(t('fl_no_tables'))}</p>`}</div>
+        <div class="modal-foot"><button type="button" class="btn ghost" data-fl-table="${esc(fromId)}">${esc(t('back'))}</button></div>`);
+      document.querySelector('.modal').dataset.moveIds = some ? some.map((o) => o.id).join(',') : '';
+    }
+
+    async function moveTo(fromId, toId, ids) {
+      const from = tables.find((x) => x.id === fromId);
+      const to = tables.find((x) => x.id === toId);
+      if (!from || !to || busy.has('move')) return;
+      const join = unpaid(toId).length > 0;
+      const n = ids ? ids.length : unpaid(fromId).length;
+      if (!await S.ask(t(join ? 'mv_ask_join' : 'mv_ask', from.label, to.label, n), { ok: t(join ? 'mv_ok_join' : 'mv_ok') })) return;
+      busy.add('move');
+      try {
+        await host.api.moveOrders(fromId, toId, ids);
+        await Promise.all([host.reloadOrders(), load()]);
+        payState = null;
+        S.toast(t('mv_done', to.label));
+        host.rerender();
+        openTable(toId);
+      } catch (ex) {
+        const m = String(ex?.message || '');
+        S.toast(/nothing_to_move/.test(m) ? t('e_nothing') : /not_found/.test(m) ? t('mv_e_table') : S.errText(ex), true);
+        await Promise.all([host.reloadOrders(), load()]).catch(() => {});
+        host.rerender();
+        openTable(fromId);
+      }
+      busy.delete('move');
+    }
+
+    // ---------- владелец: отменить оплату ----------
+    async function voidBill(id) {
+      const b = bills.find((x) => x.id === id);
+      if (!b || b.voided_at || busy.has(id)) return;
+      const why = await S.ask(t('void_ask', b.no, money(b.total)), { ok: t('void_ok'), title: t('void_title'), input: '' });
+      if (why === null) return;
+      if (!why.trim()) { S.toast(t('void_need_why'), true); return; }
+      busy.add(id);
+      const open = document.querySelector('.modal')?.dataset.table;
+      try {
+        const nb = await host.api.voidBill(id, why.trim());
+        bills = bills.map((x) => (x.id === id ? { ...x, ...nb } : x));
+        await host.reloadOrders();
+        S.toast(t('void_toast', b.no));
+      } catch (ex) {
+        const m = String(ex?.message || '');
+        S.toast(/day_closed/.test(m) ? t('void_e_closed') : /already_voided/.test(m) ? t('void_e_again') : /void_reason/.test(m) ? t('void_need_why') : S.errText(ex), true);
+        await load().catch(() => {});
+      }
+      busy.delete(id);
+      host.rerender();
+      if (open) openTable(open);
     }
 
     // ---------- заказ от официанта ----------
@@ -727,6 +802,12 @@
       if (mine) { mineOnly = mine.dataset.flMine === '1'; try { localStorage.setItem('floor:mine', mineOnly ? '1' : '0'); } catch { /* ok */ } host.rerender(); return true; }
       const cp = e.target.closest('[data-fl-compose]');
       if (cp) { compose(cp.dataset.flCompose || ''); return true; }
+      const mv = e.target.closest('[data-fl-move]');
+      if (mv) { moveDialog(mv.dataset.flMove); return true; }
+      const mt = e.target.closest('[data-fl-move-to]');
+      if (mt) { const ids = document.querySelector('.modal')?.dataset.moveIds; moveTo(mt.dataset.from, mt.dataset.flMoveTo, ids ? ids.split(',') : null); return true; }
+      const vd = e.target.closest('[data-fl-void]');
+      if (vd) { voidBill(vd.dataset.flVoid); return true; }
       const sv = e.target.closest('[data-fl-serve]');
       if (sv) { serve(sv.dataset.flServe); return true; }
       if (e.target.closest('[data-fl-disc-open]') && payState) { payState.discOpen = true; repaintPay(); return true; }
@@ -791,9 +872,9 @@
 
     return {
       load, render, handleClick, openTable, editOrder, compose, serve,
-      openCalls, isMineOrFree, myTables, get bills() { return bills; }, get tables() { return tables; },
+      openCalls, isMineOrFree, myTables, get bills() { return okBills(); }, get tables() { return tables; },
     };
   }
 
-  window.Floor = { create, printTicket, printReceipt, optNames, lineTitle, noteHtml, trNote, ACTIVE, stOf };
+  window.Floor = { create, printSlip, printTicket, printReceipt, optNames, lineTitle, noteHtml, trNote, ACTIVE, stOf };
 })();

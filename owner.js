@@ -48,8 +48,11 @@
 
   // ---------- переключение разделов ----------
   function setTab(next) {
-    tab = ['floor', 'orders', 'menu', 'tables', 'reports', 'audit', 'restaurant', 'staff'].includes(next) ? next : 'orders';
+    tab = ['floor', 'orders', 'menu', 'tables', 'reports', 'day', 'audit', 'restaurant', 'staff'].includes(next) ? next : 'orders';
     document.querySelectorAll('.a-tab').forEach((a) => a.setAttribute('aria-current', a.dataset.tab === tab ? 'page' : 'false'));
+    // на телефоне нижняя панель прокручивается — показываем открытый раздел
+    const cur = document.querySelector(`.a-tab[data-tab="${tab}"]`); const bar = cur?.parentElement;
+    if (bar && bar.scrollWidth > bar.clientWidth) bar.scrollLeft = cur.offsetLeft - (bar.clientWidth - cur.offsetWidth) / 2;
     render();
   }
   window.addEventListener('hashchange', () => { if (api) setTab(location.hash.slice(1)); });
@@ -57,6 +60,7 @@
   function render() {
     if (tab === 'floor') { if (floor) floor.render($('#a-main')); else $('#a-main').innerHTML = '<p class="a-empty">Загрузка…</p>'; }
     else if (tab === 'reports') window.OwnerReports.reports($('#a-main'), { api });
+    else if (tab === 'day') window.OwnerReports.day($('#a-main'), { api });
     else if (tab === 'audit') window.OwnerReports.audit($('#a-main'), { api, dishes, cats });
     else if (tab === 'orders') renderOrders();
     else if (tab === 'menu') renderMenu();

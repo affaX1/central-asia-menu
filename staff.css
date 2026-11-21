@@ -505,3 +505,30 @@ body.signed #a-user .lang-pick select { width: 100%; }
 .fl-disc-open { display: inline-flex; align-items: center; gap: 6px; margin-top: 10px; }
 .fl-sum .disc dt, .fl-sum .disc dd { color: var(--ok); font-weight: 800; }
 .fl-round { margin: 6px 0 0; font-weight: 700; }
+
+/* ---------- пересадить гостей / отменённая оплата / закрытие дня (2026-11-21) ---------- */
+.fl-move-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; margin: 6px 0 4px; }
+.fl-move-to { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; min-height: 76px; padding: 12px; border-radius: 16px; border: 1.5px solid var(--line); background: var(--surface); color: var(--text); font: inherit; text-align: start; cursor: pointer; transition: transform .12s, border-color .15s; }
+.fl-move-to b { font: 700 24px var(--font-display, 'Playfair Display', Georgia, serif); line-height: 1; }
+.fl-move-to small { font-size: 12.5px; font-weight: 700; color: var(--ok); }
+.fl-move-to.is-busy small { color: var(--warn); }
+.fl-move-to:hover { border-color: var(--accent); }
+.fl-move-to:active { transform: scale(.97); }
+.fl-bills li.is-void { background: transparent; border: 1.5px dashed var(--line); color: var(--muted); }
+.fl-bills li.is-void .b-sum { text-decoration: line-through; }
+.void-note { display: block; margin-top: 2px; font-style: normal; font-size: 13px; font-weight: 700; color: var(--warn); }
+.link-btn.danger { color: var(--warn); }
+.z-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; }
+.z-kv { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.z-kv li { display: flex; justify-content: space-between; gap: 12px; padding: 7px 0; border-bottom: 1px solid var(--line); font-size: 14.5px; }
+.z-kv li:last-child { border-bottom: 0; }
+.z-kv li b { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.z-kv li.big { font-size: 17px; font-weight: 800; }
+.z-count { display: grid; gap: 10px; }
+.z-count label { display: grid; gap: 6px; font-weight: 700; font-size: 14px; }
+.z-count input, .z-count textarea { width: 100%; padding: 10px 12px; border: 1.5px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--text); font: inherit; font-size: 16px; }
+.z-diff { padding: 10px 12px; border-radius: 12px; font-weight: 800; background: var(--surface-2); }
+.z-diff.ok { background: var(--ok-soft); color: var(--ok); }
+.z-diff.bad { background: var(--warn-soft); color: var(--warn); }
+.z-hist { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.z-hist li { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; padding: 10px 12px; border-radius: 12px; background: var(--surface-2); font-size: 14px; }
