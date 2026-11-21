@@ -90,7 +90,7 @@
     const shownCats = new Set(d.categories.filter((c) => !c.hidden).map((c) => c.id));
     const dish = d.dishes.find((x) => x.id === it.id && !x.hidden && shownCats.has(x.category_id));
     if (!(it.qty >= 1 && it.qty <= 50)) throw new Error('bad_items');
-    if (!dish || !dish.available) throw new Error('unavailable:' + it.id);
+    if (!dish || !dish.available || dish.stock === 0) throw new Error('unavailable:' + it.id);
     const cat = d.categories.find((c) => c.id === dish.category_id);
     if (cat?.avail_from && cat?.avail_to) {
       const m = window.MenuSchedule.localNow(d.settings.timezone, new Date()).min;
@@ -98,7 +98,7 @@
       if (!(t2 > f ? m >= f && m < t2 : m >= f || m < t2)) throw new Error('not_now:' + it.id);
     }
     const sel = [...(it.opts || [])].sort();
-    let unit = Number(dish.price);
+    let unit = dishPrice(d, dish);
     const snap = [];
     for (const g of dish.options || []) {
       let n = 0;
@@ -112,6 +112,28 @@
     if (checkPrice && unit !== Number(it.price)) throw new Error('price_changed:' + it.id);
     const note = String(it.note || '').replace(/\s+/g, ' ').trim().slice(0, 120);
     return { line: { id: dish.id, qty: it.qty, price: unit, name: dish.name, opts: snap, ...(note ? { note } : {}) }, key: `${dish.id}|${sel.join(',')}|${note}` };
+  }
+  // как dish_price в базе: цена по акции, если акция идёт сейчас
+  function dishPrice(d, dish) {
+    if (dish.promo_price == null) return Number(dish.price);
+    if (dish.promo_from && dish.promo_to) {
+      const m = window.MenuSchedule.localNow(d.settings.timezone, new Date()).min;
+      const f = window.MenuSchedule.mins(dish.promo_from); const t2 = window.MenuSchedule.mins(dish.promo_to);
+      if (!(t2 > f ? m >= f && m < t2 : m >= f || m < t2)) return Number(dish.price);
+    }
+    return Number(dish.promo_price);
+  }
+  // как триггер orders_stock: заказ списывает порции, отмена возвращает
+  function applyStock(d, oldItems, newItems) {
+    const sum = (items) => (items || []).reduce((m, i) => ({ ...m, [i.id]: (m[i.id] || 0) + Number(i.qty) }), {});
+    const a = sum(oldItems); const b = sum(newItems);
+    const ids = new Set([...Object.keys(a), ...Object.keys(b)]);
+    for (const id of ids) {
+      const delta = (b[id] || 0) - (a[id] || 0); const x = d.dishes.find((y) => y.id === id);
+      if (!delta || !x || x.stock == null) continue;
+      if (x.stock - delta < 0) throw new Error('sold_out:' + id);
+    }
+    for (const id of ids) { const x = d.dishes.find((y) => y.id === id); if (x && x.stock != null) x.stock -= (b[id] || 0) - (a[id] || 0); }
   }
   const newToken = () => Array.from(crypto.getRandomValues(new Uint8Array(10)), (b) => b.toString(16).padStart(2, '0')).join('');
   const uid = () => ({ owner: 'u-owner', waiter: 'u-waiter', cook: 'u-cook', manager: 'u-manager' })[role()] || 'u-waiter';
@@ -180,6 +202,7 @@
       const d = db(); const o = d.orders.find((x) => x.id === id);
       if (!['new', 'accepted', 'cooking', 'ready', 'served', 'cancelled'].includes(status)) throw new Error('violates check constraint');
       const was = o.status;
+      applyStock(d, was === 'cancelled' ? [] : o.items, status === 'cancelled' ? [] : o.items);
       o.status = status; o.updated_at = new Date().toISOString();
       if (status === 'cancelled') o.cancelled_at = o.updated_at;
       (d.audit = d.audit || []).push({ id: Date.now(), at: o.updated_at, who: myName(), entity: 'order', entity_id: o.id, label: `№${o.no} · стол ${o.table_label}`, action: 'update', changes: { status: [was, status] } });
@@ -214,6 +237,7 @@
       d.seq = Math.max(1000, d.seq || 0) + 1;
       const now = new Date().toISOString();
       const o = { id: crypto.randomUUID(), no: d.seq, table_id: tb.id, table_label: tb.label, items: out, subtotal: sub, ...chargesOf(d.settings, sub), note, status: 'accepted', accepted_at: now, accepted_by: uid(), accepted_by_name: myName(), source: 'staff', created_by_name: myName(), client_key: key, guest_token: crypto.randomUUID(), created_at: now, updated_at: now };
+      applyStock(d, [], o.items);
       d.orders.push(o); save(d); return o;
     },
     async serveOrder(id) {
@@ -343,6 +367,7 @@
         out.push(old ? { ...old, qty: it.qty } : lineOf(d, it, false).line);
       }
       const sub = r2(out.reduce((s, i) => s + i.price * i.qty, 0));
+      applyStock(d, o.items, out);
       Object.assign(o, { items: out, subtotal: sub, ...chargesOf(d.settings, sub), edited_at: new Date().toISOString(), edited_by_name: myName(), updated_at: new Date().toISOString() });
       (d.audit = d.audit || []).push({ id: Date.now(), at: o.edited_at, who: myName(), entity: 'order', entity_id: o.id, label: `№${o.no} · стол ${o.table_label}`, action: 'update', changes: { total: [null, o.total] } });
       save(d); return o;
@@ -358,6 +383,48 @@
       return o;
     },
     async audit(from, to) { await delay(); owner(); const f = new Date(from).getTime(); const t = new Date(to).getTime(); return (db().audit || []).filter((a) => { const x = new Date(a.at).getTime(); return x >= f && x < t; }).sort((a, b) => new Date(b.at) - new Date(a.at)); },
+    async setDishAvailable(id, on) {
+      await delay(); if (!['owner', 'manager', 'cook'].includes(role())) throw new Error('forbidden');
+      const d = db(); const x = d.dishes.find((y) => y.id === id); if (!x) throw new Error('not_found');
+      x.available = !!on; if (on && x.stock === 0) x.stock = null; save(d); return x;
+    },
+    async setDishStock(id, stock) {
+      await delay(); if (!['owner', 'manager', 'cook'].includes(role())) throw new Error('forbidden');
+      const d = db(); const x = d.dishes.find((y) => y.id === id); if (!x) throw new Error('not_found');
+      x.stock = stock == null ? null : Number(stock); if (x.stock > 0) x.available = true; save(d); return x;
+    },
+    async dishCosts() { await delay(); owner(); return Object.entries(db().costs || {}).map(([dish_id, cost]) => ({ dish_id, cost })); },
+    async saveDishCost(id, cost) { await delay(); owner(); const d = db(); d.costs = d.costs || {}; if (cost == null) delete d.costs[id]; else d.costs[id] = Number(cost); save(d); },
+    async dishVotes(from, to) {
+      await delay(); mgr(); const f = new Date(from).getTime(); const t2 = new Date(to).getTime();
+      return (db().votes || []).filter((v) => { const x = new Date(v.created_at).getTime(); return x >= f && x < t2; });
+    },
+    async bookings(from, to) {
+      await delay(); floor(); const f = new Date(from).getTime(); const t2 = new Date(to).getTime();
+      return (db().bookings || []).filter((b) => { const x = new Date(b.at).getTime(); return x >= f && x < t2; }).sort((a, b) => a.at.localeCompare(b.at));
+    },
+    async setBooking(id, status, tableId = null) {
+      await delay(); floor(); const d = db(); const b = (d.bookings || []).find((x) => x.id === id); if (!b) throw new Error('not_found');
+      b.status = status; b.decided_by_name = myName(); b.updated_at = new Date().toISOString();
+      if (tableId) { b.table_id = tableId; b.table_label = d.tables.find((t) => t.id === tableId)?.label || null; }
+      save(d); return b;
+    },
+    async shiftStart() {
+      await delay(); staffOk(); const d = db(); d.shifts = d.shifts || [];
+      let s0 = d.shifts.find((x) => x.user_id === uid() && !x.ended_at);
+      if (!s0) { s0 = { id: 'sh-' + Date.now(), user_id: uid(), name: myName(), role: role(), started_at: new Date().toISOString(), ended_at: null }; d.shifts.push(s0); save(d); }
+      return s0;
+    },
+    async shiftEnd() {
+      await delay(); staffOk(); const d = db(); const s0 = (d.shifts || []).find((x) => x.user_id === uid() && !x.ended_at);
+      if (!s0) return null; s0.ended_at = new Date().toISOString(); save(d); return s0;
+    },
+    async myShift() { await delay(); staffOk(); return (db().shifts || []).find((x) => x.user_id === uid() && !x.ended_at) || null; },
+    async shifts(from, to) {
+      await delay(); staffOk(); const f = new Date(from).getTime(); const t2 = new Date(to).getTime();
+      return (db().shifts || []).filter((x) => (role() === 'owner' || role() === 'manager' || x.user_id === uid())
+        && new Date(x.started_at).getTime() < t2 && (!x.ended_at || new Date(x.ended_at).getTime() >= f));
+    },
     async reviews(from, to) { await delay(); mgr(); const f = new Date(from).getTime(); const t2 = new Date(to).getTime(); return (db().reviews || []).filter((r) => { const x = new Date(r.created_at).getTime(); return x >= f && x < t2; }).sort((a, c) => new Date(c.created_at) - new Date(a.created_at)); },
     async setTelegramReviews(on) { await delay(); owner(); const d = db(); d.telegram = { ...(d.telegram || {}), reviews: on }; save(d); },
     async telegramStatus() { await delay(); owner(); const t = db().telegram || {}; return { connected: !!(t.token && t.chats?.length), bot_hint: t.token ? '…' + t.token.slice(-4) : null, chats: (t.chats || []).length, notify_orders: t.orders !== false, notify_calls: t.calls !== false, notify_bills: !!t.bills, net_ok: true, notify_reviews: t.reviews !== false }; },
@@ -496,6 +563,7 @@
         d.seq = Math.max(1000, d.seq || 0) + 1; // как в базе: номера с 1001, не повторяются
         const now = new Date().toISOString();
         const o = { id: crypto.randomUUID(), no: d.seq, table_id: tb.id, table_label: tb.label, items, subtotal: sub, service: ch.service, tax: ch.tax, total: ch.total, note: b.p_note, lang: b.p_lang, status: 'new', client_key: b.p_client_key, guest_token: crypto.randomUUID(), created_at: now, updated_at: now };
+        try { applyStock(d, [], o.items); } catch (ex) { return fail(ex.message); }
         d.orders.push(o); save(d);
         if (localStorage.getItem('fake:drop-reply') === '1') { localStorage.removeItem('fake:drop-reply'); throw new TypeError('Failed to fetch'); } // заказ сохранён, но ответ «потерялся»
         return reply(200, out(o));

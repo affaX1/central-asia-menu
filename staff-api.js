@@ -208,6 +208,36 @@
           .order('created_at', { ascending: false }).limit(1000);
         fail(error); return data || [];
       },
+      // ---------- стоп-лист и остатки (владелец, менеджер, повар) ----------
+      async setDishAvailable(id, on) { const { data, error } = await sb.rpc('set_dish_available', { p_dish: id, p_on: on }); fail(error); return data?.[0]; },
+      async setDishStock(id, stock) { const { data, error } = await sb.rpc('set_dish_stock', { p_dish: id, p_stock: stock }); fail(error); return data?.[0]; },
+      // ---------- себестоимость (только владелец) ----------
+      async dishCosts() { const { data, error } = await sb.from('dish_costs').select('dish_id,cost'); fail(error); return data || []; },
+      async saveDishCost(id, cost) {
+        if (cost == null) { const { error } = await sb.from('dish_costs').delete().eq('dish_id', id); fail(error); return; }
+        const { error } = await sb.from('dish_costs').upsert({ dish_id: id, cost, updated_at: new Date().toISOString() }); fail(error);
+      },
+      // ---------- оценки блюд гостями (владелец, менеджер) ----------
+      async dishVotes(fromIso, toIso) {
+        return pages((from, to) => sb.from('dish_votes').select('*').gte('created_at', fromIso).lt('created_at', toIso).order('created_at').range(from, to));
+      },
+      // ---------- брони (зал) ----------
+      async bookings(fromIso, toIso) {
+        const { data, error } = await sb.from('reservations').select('*').gte('at', fromIso).lt('at', toIso).order('at').limit(1000);
+        fail(error); return data || [];
+      },
+      async setBooking(id, status, tableId = null) {
+        const { data, error } = await sb.rpc('set_booking', { p_id: id, p_status: status, p_table: tableId }); fail(error); return data?.[0];
+      },
+      // ---------- смены ----------
+      async shiftStart() { const { data, error } = await sb.rpc('shift_start'); fail(error); return data?.[0] || null; },
+      async shiftEnd() { const { data, error } = await sb.rpc('shift_end'); fail(error); return data?.[0] || null; },
+      async myShift(userId) {
+        const { data, error } = await sb.from('shifts').select('*').eq('user_id', userId).is('ended_at', null).limit(1); fail(error); return data?.[0] || null;
+      },
+      async shifts(fromIso, toIso) {
+        return pages((from, to) => sb.from('shifts').select('*').or(`ended_at.is.null,ended_at.gte.${fromIso}`).lt('started_at', toIso).order('started_at').range(from, to));
+      },
       async setTelegramReviews(on) { const { error } = await sb.rpc('set_telegram_reviews', { p_on: on }); fail(error); },
       // ---------- Telegram (только владелец; токен наружу не отдаётся) ----------
       async telegramStatus() {

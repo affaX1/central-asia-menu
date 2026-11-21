@@ -665,6 +665,27 @@ begin
   return query select v_srv, v_tax, (p_subtotal + v_srv + v_tax)::numeric(10, 2);
 end $$;
 
+-- ---------- Акция, блюдо дня, остатки (2026-11-21) ----------
+-- promo_price — цена по акции (меньше обычной); promo_from/promo_to — часы акции («счастливые часы»), пусто = весь день.
+alter table public.dishes add column if not exists promo_price numeric(10, 2);
+alter table public.dishes add column if not exists promo_from text;
+alter table public.dishes add column if not exists promo_to text;
+alter table public.dishes add column if not exists featured boolean not null default false;  -- «Блюдо дня»
+alter table public.dishes add column if not exists stock int;                                -- осталось порций; пусто = не считаем
+alter table public.dishes drop constraint if exists dishes_promo_check;
+alter table public.dishes add constraint dishes_promo_check check (
+  (promo_price is null or (promo_price >= 0 and promo_price < price))
+  and (promo_from is null) = (promo_to is null)
+  and (promo_from is null or (promo_price is not null and promo_from ~ '^([01][0-9]|2[0-3]):[0-5][0-9]$'
+       and promo_to ~ '^([01][0-9]|2[0-3]):[0-5][0-9]$' and promo_from <> promo_to)));
+alter table public.dishes drop constraint if exists dishes_stock_check;
+alter table public.dishes add constraint dishes_stock_check check (stock is null or stock between 0 and 100000);
+
+create or replace function public.dish_price(d public.dishes, p_at timestamptz default now())
+returns numeric language sql stable security definer set search_path = public as $$
+  select case when d.promo_price is not null and public.category_open(d.promo_from, d.promo_to, p_at) then d.promo_price else d.price end;
+$$;
+
 -- ---------- Проверить одну позицию заказа: блюдо, варианты, цена за штуку ----------
 -- p_item: { "id": "plov-tashkent", "qty": 2, "price": 28, "opts": ["half"] }
 -- Возвращает строку для снимка заказа: { id, qty, price (за штуку, с вариантами), name, opts: [{ g, c, name, price }] }
@@ -691,14 +712,14 @@ begin
 
   select d.* into v_dish from public.dishes d join public.categories c2 on c2.id = d.category_id
     where d.id = v_id and not d.hidden and not c2.hidden;
-  if not found or not v_dish.available then raise exception 'unavailable:%', v_id; end if;
+  if not found or not v_dish.available or v_dish.stock = 0 then raise exception 'unavailable:%', v_id; end if;
   -- блюдо из категории со временем подачи (например, завтрак) — только в эти часы
   if not public.category_open((select avail_from from public.categories where id = v_dish.category_id),
                               (select avail_to from public.categories where id = v_dish.category_id)) then
     raise exception 'not_now:%', v_id;
   end if;
 
-  v_unit := v_dish.price;
+  v_unit := public.dish_price(v_dish);   -- цена по акции, если она сейчас идёт
   -- каждый выбранный вариант должен быть у этого блюда; обязательные группы — выбраны; одиночные — не больше одного
   for g in select value from jsonb_array_elements(v_dish.options) loop
     n := 0;
@@ -1326,6 +1347,8 @@ begin
   if tg_op = 'UPDATE' then
     for k in select jsonb_object_keys(v_new) loop
       if k = any (v_skip) then continue; end if;
+      -- остатки, которые списал сам заказ, в журнал не пишем (иначе каждый заказ = запись)
+      if v_ent = 'dish' and k = 'stock' and coalesce(current_setting('restoran.stock_auto', true), '') = '1' then continue; end if;
       if (v_old -> k) is distinct from (v_new -> k) then
         -- секретный код стола не пишем в журнал, только факт замены
         if k = 'token' then v_ch := v_ch || jsonb_build_object('token', jsonb_build_array('…', 'новый'));
@@ -2109,3 +2132,288 @@ end $$;
 revoke all on function public.mark_backup() from public, anon;
 revoke all on function public.is_manager() from public;
 grant execute on function public.mark_backup() to authenticated;
+
+-- =====================================================================
+-- Большая партия (2026-11-21): стоп-лист с кухни, остатки, себестоимость, оценки блюд,
+-- бронь стола, смены, цель дня, бар-экран
+-- =====================================================================
+alter table public.settings add column if not exists day_goal numeric(10, 2) check (day_goal is null or (day_goal > 0 and day_goal < 10000000));
+alter table public.settings add column if not exists bookings_enabled boolean not null default true;
+-- где готовят блюда категории: кухня или бар (бар видит только свои напитки)
+alter table public.categories add column if not exists station text not null default 'kitchen';
+alter table public.categories drop constraint if exists categories_station_check;
+alter table public.categories add constraint categories_station_check check (station in ('kitchen', 'bar'));
+
+-- ---------- Остатки: заказ сам списывает порции, отмена возвращает ----------
+create or replace function private.order_qty(p_items jsonb)
+returns table (dish text, qty int) language sql immutable as $$
+  select i ->> 'id', sum((i ->> 'qty')::int)::int from jsonb_array_elements(coalesce(p_items, '[]'::jsonb)) i group by 1;
+$$;
+create or replace function public.orders_stock()
+returns trigger language plpgsql security definer set search_path = public, private as $$
+declare r record; v int;
+begin
+  for r in
+    select coalesce(n.dish, o.dish) as dish, coalesce(n.qty, 0) - coalesce(o.qty, 0) as delta
+    from (select * from private.order_qty(case when new.status <> 'cancelled' then new.items end)) n
+    full join (select * from private.order_qty(case when tg_op = 'UPDATE' and old.status <> 'cancelled' then old.items end)) o on o.dish = n.dish
+  loop
+    if r.delta = 0 then continue; end if;
+    select stock into v from public.dishes where id = r.dish for update;
+    if v is null then continue; end if;
+    if v - r.delta < 0 then raise exception 'sold_out:%', r.dish; end if;
+    perform set_config('restoran.stock_auto', '1', true);
+    update public.dishes set stock = v - r.delta where id = r.dish;
+    perform set_config('restoran.stock_auto', '', true);
+  end loop;
+  return new;
+end $$;
+drop trigger if exists orders_stock on public.orders;
+create trigger orders_stock before insert or update of items, status on public.orders
+  for each row execute function public.orders_stock();
+
+-- ---------- Стоп-лист и остатки: владелец, менеджер и повар ----------
+create or replace function public.set_dish_available(p_dish text, p_on boolean)
+returns setof public.dishes language plpgsql security definer set search_path = public as $$
+begin
+  if not (public.is_manager() or public.staff_role() = 'cook') then raise exception 'forbidden'; end if;
+  if p_on is null then raise exception 'bad_request'; end if;
+  return query update public.dishes set available = p_on,
+         stock = case when p_on and stock = 0 then null else stock end   -- снова в продаже — счётчик «0» больше не держит
+   where id = p_dish returning *;
+  if not found then raise exception 'not_found'; end if;
+end $$;
+create or replace function public.set_dish_stock(p_dish text, p_stock int)
+returns setof public.dishes language plpgsql security definer set search_path = public as $$
+begin
+  if not (public.is_manager() or public.staff_role() = 'cook') then raise exception 'forbidden'; end if;
+  if p_stock is not null and p_stock not between 0 and 100000 then raise exception 'bad_request'; end if;
+  return query update public.dishes set stock = p_stock, available = case when p_stock > 0 then true else available end
+   where id = p_dish returning *;
+  if not found then raise exception 'not_found'; end if;
+end $$;
+
+-- ---------- Себестоимость: только владелец (гость и персонал не видят) ----------
+create table if not exists public.dish_costs (
+  dish_id    text primary key references public.dishes (id) on update cascade on delete cascade,
+  cost       numeric(10, 2) not null check (cost >= 0 and cost < 100000),
+  updated_at timestamptz not null default now()
+);
+alter table public.dish_costs enable row level security;
+revoke all on public.dish_costs from anon, authenticated;
+grant select, insert, update, delete on public.dish_costs to authenticated;
+drop policy if exists dish_costs_owner on public.dish_costs;
+create policy dish_costs_owner on public.dish_costs for all to authenticated using (public.is_owner()) with check (public.is_owner());
+
+-- ---------- Оценка каждого блюда: понравилось (1) / не понравилось (-1) ----------
+create table if not exists public.dish_votes (
+  order_id   uuid not null references public.orders (id) on delete cascade,
+  dish_id    text not null,
+  vote       smallint not null check (vote in (-1, 1)),
+  created_at timestamptz not null default now(),
+  primary key (order_id, dish_id)
+);
+create index if not exists dish_votes_created_idx on public.dish_votes (created_at desc);
+alter table public.dish_votes enable row level security;
+revoke all on public.dish_votes from anon, authenticated;
+grant select on public.dish_votes to authenticated;
+drop policy if exists dish_votes_read on public.dish_votes;
+create policy dish_votes_read on public.dish_votes for select to authenticated using (public.is_manager());
+
+-- p_votes: { "plov-tashkent": 1, "samsa": -1, "tea": 0 } — 0 убирает оценку
+create or replace function public.vote_dishes(p_order uuid, p_token uuid, p_votes jsonb)
+returns int language plpgsql security definer set search_path = public as $$
+declare v_o public.orders%rowtype; k text; v int; n int := 0;
+begin
+  select * into v_o from public.orders where id = p_order and guest_token = p_token;
+  if not found then raise exception 'not_found'; end if;
+  if v_o.status in ('new', 'cancelled') then raise exception 'too_early'; end if;
+  if v_o.created_at < now() - interval '2 days' then raise exception 'too_late'; end if;
+  if p_votes is null or jsonb_typeof(p_votes) <> 'object' then raise exception 'bad_request'; end if;
+  for k, v in select key, (value #>> '{}')::int from jsonb_each(p_votes) loop
+    if not exists (select 1 from jsonb_array_elements(v_o.items) i where i ->> 'id' = k) then raise exception 'bad_request'; end if;
+    if v = 0 then delete from public.dish_votes where order_id = p_order and dish_id = k;
+    elsif v in (-1, 1) then
+      insert into public.dish_votes (order_id, dish_id, vote) values (p_order, k, v)
+      on conflict (order_id, dish_id) do update set vote = excluded.vote, created_at = now();
+      n := n + 1;
+    else raise exception 'bad_request'; end if;
+  end loop;
+  return n;
+end $$;
+
+-- ---------- Бронь стола ----------
+create table if not exists public.reservations (
+  id          uuid primary key default gen_random_uuid(),
+  no          bigint generated always as identity (start with 101) unique,
+  name        text not null check (char_length(btrim(name)) between 1 and 60),
+  phone       text not null check (phone ~ '^\+?[0-9][0-9 ()-]{5,19}$'),
+  at          timestamptz not null,
+  people      int not null check (people between 1 and 50),
+  note        text check (note is null or char_length(note) <= 300),
+  lang        text check (lang is null or char_length(lang) <= 5),
+  status      text not null default 'new' check (status in ('new', 'confirmed', 'seated', 'cancelled', 'no_show')),
+  table_id    uuid references public.tables (id) on delete set null,
+  table_label text,
+  client_key  uuid not null unique,
+  guest_token uuid not null default gen_random_uuid(),
+  decided_by_name text,
+  created_at  timestamptz not null default now(),
+  updated_at  timestamptz not null default now()
+);
+create index if not exists reservations_at_idx on public.reservations (at);
+alter table public.reservations enable row level security;
+revoke all on public.reservations from anon, authenticated;
+grant select on public.reservations to authenticated;
+drop policy if exists reservations_floor_read on public.reservations;
+create policy reservations_floor_read on public.reservations for select to authenticated using (public.is_floor());
+
+drop function if exists public.book_table(text, text, timestamptz, int, text, text, uuid);
+create or replace function public.book_table(p_name text, p_phone text, p_at timestamptz, p_people int, p_note text, p_lang text, p_client_key uuid)
+returns table (id uuid, no bigint, guest_token uuid, status text, at timestamptz, people int)
+language plpgsql security definer set search_path = public as $$
+declare v_set public.settings%rowtype; v_r public.reservations%rowtype;
+        v_phone text := regexp_replace(btrim(coalesce(p_phone, '')), '\s+', ' ', 'g');
+begin
+  if p_client_key is null then raise exception 'bad_request'; end if;
+  select * into v_r from public.reservations r where r.client_key = p_client_key;
+  if found then return query select v_r.id, v_r.no, v_r.guest_token, v_r.status, v_r.at, v_r.people; return; end if;
+  select * into v_set from public.settings s where s.id = 1;
+  if not v_set.bookings_enabled then raise exception 'bookings_off'; end if;
+  if p_at is null or p_at < now() + interval '30 minutes' or p_at > now() + interval '60 days' then raise exception 'bad_time'; end if;
+  if not public.restaurant_open(p_at) then raise exception 'closed_then'; end if;
+  if char_length(btrim(coalesce(p_name, ''))) not between 1 and 60 or v_phone !~ '^\+?[0-9][0-9 ()-]{5,19}$'
+     or p_people is null or p_people not between 1 and 50 then raise exception 'bad_request'; end if;
+  -- защита от спама: с одного номера не больше 3 будущих броней, со всех — 30 в час
+  if (select count(*) from public.reservations r where regexp_replace(r.phone, '\D', '', 'g') = regexp_replace(v_phone, '\D', '', 'g')
+        and r.status in ('new', 'confirmed') and r.at > now()) >= 3
+     or (select count(*) from public.reservations r where r.created_at > now() - interval '1 hour') >= 30 then
+    raise exception 'too_many';
+  end if;
+  insert into public.reservations as r (name, phone, at, people, note, lang, client_key)
+  values (btrim(p_name), v_phone, p_at, p_people, left(nullif(btrim(coalesce(p_note, '')), ''), 300), left(nullif(btrim(coalesce(p_lang, '')), ''), 5), p_client_key)
+  returning * into v_r;
+  return query select v_r.id, v_r.no, v_r.guest_token, v_r.status, v_r.at, v_r.people;
+end $$;
+
+-- гость смотрит свою бронь (нужен секрет брони)
+create or replace function public.my_booking(p_id uuid, p_token uuid)
+returns table (id uuid, no bigint, status text, at timestamptz, people int, table_label text)
+language sql stable security definer set search_path = public as $$
+  select r.id, r.no, r.status, r.at, r.people, r.table_label from public.reservations r
+  where r.id = p_id and r.guest_token = p_token and r.at > now() - interval '1 day';
+$$;
+create or replace function public.cancel_booking(p_id uuid, p_token uuid)
+returns text language plpgsql security definer set search_path = public as $$
+declare v text;
+begin
+  update public.reservations r set status = 'cancelled', updated_at = now(), decided_by_name = null
+   where r.id = p_id and r.guest_token = p_token and r.status in ('new', 'confirmed') and r.at > now()
+  returning r.status into v;
+  if v is null then raise exception 'not_found'; end if;
+  return v;
+end $$;
+
+-- зал: подтвердить, посадить, отменить, «не пришли»; можно сразу выбрать стол
+create or replace function public.set_booking(p_id uuid, p_status text, p_table uuid default null)
+returns setof public.reservations language plpgsql security definer set search_path = public as $$
+declare v_label text;
+begin
+  if not public.is_floor() then raise exception 'forbidden'; end if;
+  if p_status not in ('new', 'confirmed', 'seated', 'cancelled', 'no_show') then raise exception 'bad_status'; end if;
+  if p_table is not null then
+    select label into v_label from public.tables where id = p_table;
+    if v_label is null then raise exception 'bad_table'; end if;
+  end if;
+  return query update public.reservations r
+     set status = p_status, updated_at = now(), decided_by_name = public.staff_name(),
+         table_id = coalesce(p_table, r.table_id), table_label = coalesce(v_label, r.table_label)
+   where r.id = p_id returning *;
+  if not found then raise exception 'not_found'; end if;
+end $$;
+
+-- новая бронь — в Telegram владельцу и всем официантам
+create or replace function public.tg_on_booking()
+returns trigger language plpgsql security definer set search_path = public, private as $$
+declare v_tz text; v_txt text;
+begin
+  select timezone into v_tz from public.settings where id = 1;
+  v_txt := 'Бронь №' || new.no || ': ' || to_char(new.at at time zone v_tz, 'DD.MM HH24:MI') || ', гостей ' || new.people
+           || E'\n' || new.name || ' · ' || new.phone || coalesce(E'\n>> ' || new.note, '');
+  begin
+    perform private.tg_send(v_txt);
+    perform private.tg_send_to(private.tg_all_waiter_chats(), v_txt);
+  exception when others then null;
+  end;
+  return null;
+end $$;
+drop trigger if exists tg_booking on public.reservations;
+create trigger tg_booking after insert on public.reservations for each row execute function public.tg_on_booking();
+
+-- ---------- Смены: «Пришёл» / «Ушёл» ----------
+create table if not exists public.shifts (
+  id         uuid primary key default gen_random_uuid(),
+  user_id    uuid not null references auth.users (id) on delete cascade,
+  name       text,
+  role       text,
+  started_at timestamptz not null default now(),
+  ended_at   timestamptz,
+  check (ended_at is null or ended_at >= started_at)
+);
+create unique index if not exists shifts_open_uniq on public.shifts (user_id) where ended_at is null;
+create index if not exists shifts_started_idx on public.shifts (started_at desc);
+alter table public.shifts enable row level security;
+revoke all on public.shifts from anon, authenticated;
+grant select on public.shifts to authenticated;
+drop policy if exists shifts_read on public.shifts;
+create policy shifts_read on public.shifts for select to authenticated using (user_id = auth.uid() or public.is_manager());
+
+create or replace function public.shift_start()
+returns setof public.shifts language plpgsql security definer set search_path = public as $$
+begin
+  if not public.is_staff() then raise exception 'forbidden'; end if;
+  insert into public.shifts (user_id, name, role) values (auth.uid(), public.staff_name(), public.staff_role())
+  on conflict (user_id) where ended_at is null do nothing;
+  return query select * from public.shifts where user_id = auth.uid() and ended_at is null;
+end $$;
+create or replace function public.shift_end()
+returns setof public.shifts language plpgsql security definer set search_path = public as $$
+begin
+  if not public.is_staff() then raise exception 'forbidden'; end if;
+  return query update public.shifts set ended_at = now() where user_id = auth.uid() and ended_at is null returning *;
+end $$;
+
+revoke all on function public.dish_price(public.dishes, timestamptz) from public;
+grant execute on function public.dish_price(public.dishes, timestamptz) to anon, authenticated;
+revoke all on function private.order_qty(jsonb) from public;
+revoke all on function public.set_dish_available(text, boolean) from public, anon;
+revoke all on function public.set_dish_stock(text, int) from public, anon;
+revoke all on function public.vote_dishes(uuid, uuid, jsonb) from public;
+revoke all on function public.book_table(text, text, timestamptz, int, text, text, uuid) from public;
+revoke all on function public.my_booking(uuid, uuid) from public;
+revoke all on function public.cancel_booking(uuid, uuid) from public;
+revoke all on function public.set_booking(uuid, text, uuid) from public, anon;
+revoke all on function public.shift_start() from public, anon;
+revoke all on function public.shift_end() from public, anon;
+grant execute on function public.set_dish_available(text, boolean) to authenticated;
+grant execute on function public.set_dish_stock(text, int) to authenticated;
+grant execute on function public.vote_dishes(uuid, uuid, jsonb) to anon, authenticated;
+grant execute on function public.book_table(text, text, timestamptz, int, text, text, uuid) to anon, authenticated;
+grant execute on function public.my_booking(uuid, uuid) to anon, authenticated;
+grant execute on function public.cancel_booking(uuid, uuid) to anon, authenticated;
+grant execute on function public.set_booking(uuid, text, uuid) to authenticated;
+grant execute on function public.shift_start() to authenticated;
+grant execute on function public.shift_end() to authenticated;
+-- журнал: брони и смены тоже видны владельцу
+drop trigger if exists audit_reservations on public.reservations;
+create trigger audit_reservations after update on public.reservations for each row execute function public.audit_row('booking');
+-- живые обновления: брони и смены
+do $$ declare t text; begin
+  if exists (select 1 from pg_publication where pubname = 'supabase_realtime') then
+    foreach t in array array['reservations', 'shifts'] loop
+      if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = t) then
+        execute format('alter publication supabase_realtime add table public.%I', t);
+      end if;
+    end loop;
+  end if;
+end $$;
