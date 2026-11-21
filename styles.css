@@ -927,6 +927,173 @@ body.scrolled::before { content: ''; position: fixed; top: 0; left: 0; right: 0;
   .cart-line > .cl-row, .cart-line.removing { transition: none !important; }
 }
 
+/* =====================================================================
+   ВЗРОСЛЫЙ ВИД гостевой страницы (владелец, 2026-11-22: «не детский»).
+   Как бумажное меню хорошего ресторана: без картинок-заглушек, тихие метки
+   текстом, тонкие линии вместо пузатых карточек, меньше закруглений,
+   одна кнопка «Сервис» внизу, без прыгающих анимаций.
+   Только для body.g (index.html) — панели сотрудников не меняются.
+   ===================================================================== */
+body.g { --radius: 12px; --radius-sm: 10px; }
+
+/* шапка: название, одна тихая строка сведений */
+body.g .logo[hidden] { display: none; }
+body.g .logo { width: 52px; height: 52px; border-radius: 10px; box-shadow: none; }
+body.g .brand-text h1 { font-size: clamp(26px, 7vw, 38px); font-weight: 600; letter-spacing: -.005em; }
+body.g .brand-text p { margin-top: 6px; font-size: 11.5px; font-weight: 700; letter-spacing: .18em; text-transform: uppercase; color: var(--muted); }
+body.g .info { margin-top: 14px; }
+body.g .info-row { gap: 4px 16px; }
+body.g .badge, body.g button.badge {
+  min-height: 28px; padding: 0; border-radius: 0; background: transparent; color: var(--muted);
+  font-size: 13.5px; font-weight: 600;
+}
+body.g .badge .ic { opacity: .8; }
+body.g .badge.ok { background: transparent; color: var(--ok); }
+body.g .badge.off { background: transparent; color: var(--accent); }
+body.g .badge.halal { background: transparent; color: var(--ok); }
+body.g .bk-badge, body.g .bk-badge.on { border: 0 !important; outline: 0; background: transparent; color: var(--accent); text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; }
+body.g .bk-badge.on { text-decoration: none; }
+body.g .info-link { border-radius: var(--radius-sm); }
+body.g .pill, body.g .icon-btn { border-radius: 10px; }
+body.g .search-row { margin-top: 16px; }
+body.g .search, body.g .filter-btn { border-radius: 10px; box-shadow: none; }
+
+/* разделы меню: текстовые вкладки с линией под выбранной */
+body.g .cats { gap: 22px; }
+body.g .chip {
+  height: 42px; padding: 0 1px; border: 0; border-radius: 0; background: transparent; color: var(--muted);
+  font-size: 14.5px; font-weight: 600; border-bottom: 2px solid transparent;
+}
+body.g .chip.active { background: transparent; color: var(--text); border-bottom-color: var(--accent); }
+
+/* заголовок раздела: тонкие заглавные с линией, без счётчика */
+body.g .cat-title { flex-wrap: wrap; align-items: center; gap: 6px 12px; margin-bottom: 4px; }
+body.g .cat-title h2 {
+  flex: 1 1 auto; display: flex; align-items: center; gap: 14px;
+  font-family: var(--font-body); font-size: 12.5px; font-weight: 800; letter-spacing: .2em; text-transform: uppercase; color: var(--text);
+}
+body.g .cat-title h2::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+body.g .cat-title .cat-time { flex-basis: 100%; }
+body.g .cat { padding-top: 30px; }
+
+/* блюдо — строка меню: слева название и описание, справа цена и маленькая кнопка */
+body.g .grid { gap: 0; }
+body.g .card {
+  grid-template-columns: 84px minmax(0, 1fr); gap: 14px; padding: 16px 0;
+  border: 0; border-bottom: 1px solid var(--line); border-radius: 0; background: transparent; box-shadow: none;
+}
+body.g .card:last-child { border-bottom: 0; }
+body.g .card:active { transform: none; background: color-mix(in srgb, var(--surface-2) 45%, transparent); }
+@media (hover: hover) { body.g .card:hover { box-shadow: none; } }
+body.g .card.no-photo { grid-template-columns: minmax(0, 1fr); }
+body.g .card .photo { width: 84px; height: 84px; border-radius: 8px; }
+@media (min-width: 720px) {
+  body.g .grid { column-gap: 44px; }
+  body.g .card { grid-template-columns: 104px minmax(0, 1fr); padding: 18px 0; overflow: visible; gap: 16px; }
+  body.g .card.no-photo { grid-template-columns: minmax(0, 1fr); }
+  body.g .card .photo { width: 104px; height: 104px; aspect-ratio: auto; border-radius: 8px; }
+  body.g .card .card-body { padding: 0; }
+  body.g .card:nth-last-child(-n+2) { border-bottom: 0; }
+}
+body.g .card-body { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 16px; align-content: start; }
+body.g .card-body > :not(.card-foot) { grid-column: 1; }
+body.g .card-body > .card-foot {
+  grid-column: 2; grid-row: 1 / span 5; margin: 0; flex-direction: column; align-items: flex-end; justify-content: flex-start; gap: 8px;
+}
+body.g .card-foot .price-wrap { align-items: flex-end; text-align: end; }
+body.g .card h3 { font-family: var(--font-display); font-size: 18.5px; font-weight: 600; line-height: 1.25; }
+body.g .desc, body.g .compo { margin: 5px 0 0; font-size: 13.5px; line-height: 1.5; }
+body.g .desc:empty { display: none; }
+body.g .price { font-size: 16px; font-weight: 700; font-variant-numeric: tabular-nums; }
+body.g .price.big { font-size: 22px; }
+body.g .amount { font-size: 12px; font-weight: 500; white-space: nowrap; }
+body.g .old-price { font-size: 12.5px; }
+
+/* метки — тихим текстом через точку, не цветными пузырями */
+body.g .tags { gap: 0; margin: 8px 0 0; }
+body.g .tag, body.g .tag-hit, body.g .tag-new, body.g .tag-spicy, body.g .tag-veg, body.g .tag-left,
+:root[data-theme="dark"] body.g .tag-new, :root[data-theme="dark"] body.g .tag-spicy {
+  padding: 0; border-radius: 0; background: none; color: var(--muted);
+  font-size: 10.5px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase;
+}
+body.g .tag + .tag::before { content: "·"; margin-inline: 7px; color: var(--muted); }
+body.g .tag-promo { background: none; color: var(--accent); }
+body.g .tag-left { color: var(--warn); }
+body.g .sold-txt { grid-column: 1; margin-top: 8px; color: var(--muted); font-size: 10.5px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+
+/* кнопка «добавить»: маленькая, тонкая, без кляксы */
+body.g .add {
+  width: 36px; height: 36px; border-radius: 8px; border: 1px solid color-mix(in srgb, var(--accent) 55%, var(--line));
+  background: transparent; color: var(--accent);
+}
+body.g .add .ic { width: 18px; height: 18px; stroke-width: 1.8; }
+body.g .add:active { background: var(--accent-soft); }
+body.g .stepper { padding: 0; gap: 0; border-radius: 8px; background: transparent; border: 1px solid var(--line); }
+body.g .stepper button { width: 32px; height: 34px; border-radius: 7px; }
+body.g .stepper button .ic { stroke-width: 1.8; width: 17px; height: 17px; }
+body.g .stepper span { min-width: 18px; font-weight: 700; font-size: 14.5px; }
+body.g .sold { font-size: 11px; letter-spacing: .1em; text-transform: uppercase; }
+
+/* «Хиты», «Мои любимые»: строгие плитки */
+body.g .hits { margin-bottom: 0; padding-top: 22px; }
+body.g .hits-row { gap: 10px; padding-top: 10px; }
+body.g .mini { flex-basis: 164px; gap: 8px; padding: 12px; border-radius: 10px; box-shadow: none; }
+body.g .mini.no-photo { padding: 14px; min-height: 112px; }
+body.g .mini b { font-family: var(--font-display); font-size: 15.5px; font-weight: 600; }
+body.g .mini .photo { border-radius: 6px; }
+body.g .mini-foot .price { font-size: 14.5px; }
+body.g .mini-foot .add, body.g .mini-foot .stepper button { width: 32px; height: 32px; }
+
+/* «Блюдо дня»: рамка как вкладыш в меню */
+body.g .day-dish { padding-top: 22px; }
+body.g .feature { border-radius: 12px; box-shadow: none; margin-top: 10px; }
+body.g .feature.no-photo { border: 1px solid var(--line); background: var(--surface); }
+body.g .feature.no-photo .feature-body { padding: 22px 20px 18px; text-align: center; align-items: center; }
+body.g .feature h3 { font-weight: 600; font-size: 24px; }
+body.g .feature .desc { -webkit-line-clamp: 3; max-width: 46ch; }
+body.g .feature.no-photo .tags { justify-content: center; }
+body.g .feature .card-foot { margin-top: 16px; align-self: stretch; align-items: center; }
+body.g .feature.no-photo .card-foot { justify-content: center; gap: 18px; }
+body.g .feature.no-photo .price-wrap { align-items: center; }
+
+/* низ: «Сервис» и «Мой заказ» рядом, спокойные */
+body.g .dock {
+  position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(12px + var(--safe-b)); z-index: 20;
+  width: min(560px, calc(100% - 24px)); display: flex; justify-content: center; gap: 8px; pointer-events: none;
+}
+body.g .dock > * { pointer-events: auto; }
+body.g .dock .order-bar, body.g .dock .order-bar.compact, body.g .dock .order-bar.bump {
+  position: static; left: auto; bottom: auto; transform: none; width: auto; flex: 1 1 auto; min-width: 0; border-radius: 14px; animation: none;
+}
+body.g .dock .table-actions { margin: 0; display: flex; flex: none; max-width: 48%; }
+body.g .dock .table-actions[hidden] { display: none; }
+body.g .service-btn {
+  display: inline-flex; align-items: center; gap: 8px; min-height: 60px; max-width: 100%; padding: 0 18px;
+  border: 1px solid var(--line); border-radius: 14px; background: var(--surface); color: var(--text);
+  font: 600 15px var(--font-body); cursor: pointer;
+}
+body.g .service-btn .ic { flex: none; width: 20px; height: 20px; color: var(--accent); }
+body.g .service-btn span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+body.g .service-btn.on { background: var(--ok-soft); border-color: transparent; color: var(--ok); }
+body.g .service-btn.on .ic { color: var(--ok); }
+body.g .service-btn.morph { animation: fade-in .3s ease; }
+body.g.has-dock .foot { padding-bottom: calc(112px + var(--safe-b)); }
+body.g .svc-list { display: grid; gap: 8px; margin-top: 6px; }
+body.g .svc-list .call-btn { justify-content: flex-start; min-height: 56px; padding: 0 16px; border-radius: 10px; font-size: 15.5px; }
+body.g .svc-list .call-btn span { flex: 1; text-align: start; }
+body.g .svc-list .call-btn .chev { opacity: .5; }
+
+/* арабская вязь рвётся от разрядки — для арабского без неё и без заглавных */
+:root[lang="ar"] body.g .cat-title h2, :root[lang="ar"] body.g .tag, :root[lang="ar"] body.g .brand-text p,
+:root[lang="ar"] body.g .sold-txt, :root[lang="ar"] body.g .sold { letter-spacing: 0; text-transform: none; }
+:root[lang="ar"] body.g .cat-title h2 { font-size: 15px; }
+:root[lang="ar"] body.g .tag { font-size: 12px; }
+
+/* тише: без подпрыгиваний */
+body.g .order-bar.bump, body.g .fav-btn.pop .ic, body.g .track-card.pop, body.g .track .track-card.pop { animation: none; }
+body.g .sheet { border-radius: 16px 16px 0 0; }
+@media (min-width: 720px) { body.g .sheet { border-radius: 16px; } }
+
 /* верх и «Мой заказ»: чистый цвет, без стекла, теней и оттенков (владелец, 2026-11-21) */
 .cats { background: var(--bg); -webkit-backdrop-filter: none; backdrop-filter: none; border-bottom: 0; }
 body.scrolled::before { background: var(--bg); -webkit-backdrop-filter: none; backdrop-filter: none; }

@@ -17,9 +17,9 @@
       document.documentElement.dataset.theme = t;
     } catch (e) {}
   </script>
-  <link rel="stylesheet" href="styles.css?v=43">
+  <link rel="stylesheet" href="styles.css?v=44">
 </head>
-<body>
+<body class="g">
   <!-- Иконки: одна линейная коллекция для всего сайта -->
   <svg width="0" height="0" style="position:absolute" aria-hidden="true">
     <defs>
@@ -78,7 +78,6 @@
       </div>
     </div>
     <div class="info" id="r-info"></div>
-    <div class="table-actions" id="table-actions" hidden></div>
     <div class="search-row">
       <label class="search">
         <svg class="ic" aria-hidden="true"><use href="#i-search"/></svg>
@@ -94,7 +93,10 @@
   <main id="menu" tabindex="-1"></main>
   <footer class="foot" id="foot"></footer>
 
-  <button class="order-bar" id="order-bar" type="button" hidden></button>
+  <div class="dock" id="dock">
+    <div class="table-actions" id="table-actions" hidden></div>
+    <button class="order-bar" id="order-bar" type="button" hidden></button>
+  </div>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
   <div class="sheet-backdrop" id="backdrop" hidden></div>
@@ -104,9 +106,9 @@
     <div id="sheet-body"></div>
   </section>
 
-  <script src="config.js?v=43"></script>
-  <script src="data.js?v=43"></script>
-  <script src="schedule.js?v=43"></script>
-  <script src="app.js?v=43"></script>
+  <script src="config.js?v=44"></script>
+  <script src="data.js?v=44"></script>
+  <script src="schedule.js?v=44"></script>
+  <script src="app.js?v=44"></script>
 </body>
 </html>

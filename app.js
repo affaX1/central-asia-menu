@@ -70,7 +70,7 @@
       rateTitle: 'Как вам у нас?', ratePh: 'Что понравилось или что улучшить?', rateSend: 'Отправить отзыв', rateThanks: 'Спасибо за отзыв!', rateStar: (n) => `${n} из 5`,
       repeat: 'Повторить заказ', repeatDone: (n) => `Добавлено в список: ${n}`, repeatSome: 'Некоторых блюд сейчас нет — их не добавили.',
       prep: (n) => `≈ ${n} мин`, photoOf: (a, b) => `${a} из ${b}`,
-      callWaiter: 'Позвать официанта', askBill: 'Попросить счёт', waiterComing: 'Официант уже идёт', billComing: 'Счёт уже несут',
+      svcBtn: 'Сервис', callWaiter: 'Позвать официанта', askBill: 'Попросить счёт', waiterComing: 'Официант уже идёт', billComing: 'Счёт уже несут',
       callSent: 'Официант получил сигнал и скоро подойдёт.', billSent: 'Официант принесёт счёт.', callErr: 'Не получилось отправить сигнал. Позовите официанта рукой или попробуйте ещё раз.',
       payHow: 'Как будете платить?', payCash: 'Наличными', payCard: 'Картой', payQr: 'По QR-коду',
       subtotal: 'Блюда', service: (p) => `Сервисный сбор${p ? ` ${p}%` : ''}`, paid: 'Оплачено',
@@ -155,7 +155,7 @@
       rateTitle: 'Sizga yoqdimi?', ratePh: 'Nima yoqdi yoki nimani yaxshilash kerak?', rateSend: 'Fikr yuborish', rateThanks: 'Fikringiz uchun rahmat!', rateStar: (n) => `5 dan ${n}`,
       repeat: 'Buyurtmani takrorlash', repeatDone: (n) => `Ro'yxatga qo'shildi: ${n}`, repeatSome: "Ayrim taomlar hozir yo'q — ular qo'shilmadi.",
       prep: (n) => `≈ ${n} daq`, photoOf: (a, b) => `${b} dan ${a}`,
-      callWaiter: 'Ofitsiantni chaqirish', askBill: "Hisobni so'rash", waiterComing: 'Ofitsiant kelmoqda', billComing: 'Hisob olib kelinmoqda',
+      svcBtn: 'Xizmat', callWaiter: 'Ofitsiantni chaqirish', askBill: "Hisobni so'rash", waiterComing: 'Ofitsiant kelmoqda', billComing: 'Hisob olib kelinmoqda',
       callSent: 'Ofitsiant signalni oldi va tez orada keladi.', billSent: 'Ofitsiant hisobni olib keladi.', callErr: "Signal yuborilmadi. Ofitsiantni qo'l bilan chaqiring yoki qayta urinib ko'ring.",
       payHow: "Qanday to'laysiz?", payCash: 'Naqd pul', payCard: 'Karta', payQr: 'QR-kod orqali',
       subtotal: 'Taomlar', service: (p) => `Xizmat haqi${p ? ` ${p}%` : ''}`, paid: "To'langan",
@@ -240,7 +240,7 @@
       rateTitle: 'How was everything?', ratePh: 'What did you like, or what could be better?', rateSend: 'Send review', rateThanks: 'Thank you for your feedback!', rateStar: (n) => `${n} of 5`,
       repeat: 'Order again', repeatDone: (n) => `Added to your list: ${n}`, repeatSome: "Some dishes aren't available right now — they were skipped.",
       prep: (n) => `≈ ${n} min`, photoOf: (a, b) => `${a} of ${b}`,
-      callWaiter: 'Call waiter', askBill: 'Ask for the bill', waiterComing: 'Waiter is coming', billComing: 'Bill is on its way',
+      svcBtn: 'Service', callWaiter: 'Call waiter', askBill: 'Ask for the bill', waiterComing: 'Waiter is coming', billComing: 'Bill is on its way',
       callSent: 'The waiter got your call and will be with you shortly.', billSent: 'The waiter will bring your bill.', callErr: "Couldn't send the call. Please wave to a waiter or try again.",
       payHow: 'How would you like to pay?', payCash: 'Cash', payCard: 'Card', payQr: 'QR code',
       subtotal: 'Items', service: (p) => `Service charge${p ? ` ${p}%` : ''}`, paid: 'Paid',
@@ -326,7 +326,7 @@
       rateTitle: 'كيف كانت تجربتك؟', ratePh: 'ما الذي أعجبك أو ما الذي يمكن تحسينه؟', rateSend: 'إرسال التقييم', rateThanks: 'شكرًا على رأيك!', rateStar: (n) => `${n} من 5`,
       repeat: 'كرر الطلب', repeatDone: (n) => `أُضيف إلى القائمة: ${n}`, repeatSome: 'بعض الأطباق غير متوفرة الآن — لم تُضف.',
       prep: (n) => `≈ ${n} د`, photoOf: (a, b) => `${a} من ${b}`,
-      callWaiter: 'استدعاء النادل', askBill: 'طلب الفاتورة', waiterComing: 'النادل في الطريق', billComing: 'الفاتورة في الطريق',
+      svcBtn: 'الخدمة', callWaiter: 'استدعاء النادل', askBill: 'طلب الفاتورة', waiterComing: 'النادل في الطريق', billComing: 'الفاتورة في الطريق',
       callSent: 'وصل طلبك إلى النادل وسيأتي قريبًا.', billSent: 'سيُحضر النادل الفاتورة.', callErr: 'تعذّر إرسال الطلب. يرجى الإشارة إلى النادل أو المحاولة مجددًا.',
       payHow: 'كيف تودّ الدفع؟', payCash: 'نقدًا', payCard: 'بالبطاقة', payQr: 'رمز QR',
       subtotal: 'الأطباق', service: (p) => `رسوم الخدمة${p ? ` ${p}%` : ''}`, paid: 'مدفوع',
@@ -411,7 +411,7 @@
       rateTitle: 'Bagaimana pengalaman anda?', ratePh: 'Apa yang anda suka, atau apa yang boleh diperbaiki?', rateSend: 'Hantar ulasan', rateThanks: 'Terima kasih atas ulasan anda!', rateStar: (n) => `${n} daripada 5`,
       repeat: 'Pesan semula', repeatDone: (n) => `Ditambah ke senarai: ${n}`, repeatSome: 'Sesetengah hidangan tiada sekarang — tidak ditambah.',
       prep: (n) => `≈ ${n} min`, photoOf: (a, b) => `${a} daripada ${b}`,
-      callWaiter: 'Panggil pelayan', askBill: 'Minta bil', waiterComing: 'Pelayan sedang datang', billComing: 'Bil sedang dibawa',
+      svcBtn: 'Servis', callWaiter: 'Panggil pelayan', askBill: 'Minta bil', waiterComing: 'Pelayan sedang datang', billComing: 'Bil sedang dibawa',
       callSent: 'Pelayan telah menerima panggilan anda dan akan datang sebentar lagi.', billSent: 'Pelayan akan membawa bil anda.', callErr: 'Panggilan tidak dapat dihantar. Sila lambai pelayan atau cuba lagi.',
       payHow: 'Bagaimana anda mahu membayar?', payCash: 'Tunai', payCard: 'Kad', payQr: 'Kod QR',
       subtotal: 'Hidangan', service: (p) => `Caj perkhidmatan${p ? ` ${p}%` : ''}`, paid: 'Dibayar',
@@ -496,7 +496,7 @@
       rateTitle: '您觉得怎么样？', ratePh: '您喜欢什么，或者哪里可以更好？', rateSend: '提交评价', rateThanks: '感谢您的评价！', rateStar: (n) => `${n} 星（满分 5 星）`,
       repeat: '再点一次', repeatDone: (n) => `已加入列表：${n}`, repeatSome: '部分菜品暂时没有 — 已跳过。',
       prep: (n) => `约 ${n} 分钟`, photoOf: (a, b) => `${a} / ${b}`,
-      callWaiter: '呼叫服务员', askBill: '买单', waiterComing: '服务员马上来', billComing: '账单马上送来',
+      svcBtn: '服务', callWaiter: '呼叫服务员', askBill: '买单', waiterComing: '服务员马上来', billComing: '账单马上送来',
       callSent: '服务员已收到呼叫，马上过来。', billSent: '服务员会把账单送过来。', callErr: '呼叫没有发出。请向服务员招手或重试。',
       payHow: '您想怎么付款？', payCash: '现金', payCard: '刷卡', payQr: '扫码支付',
       subtotal: '菜品', service: (p) => `服务费${p ? ` ${p}%` : ''}`, paid: '已付款',
@@ -758,7 +758,7 @@
     if (!Number(c.service) && !Number(c.tax)) return total;
     return `<dl class="charges">
       <div><dt>${esc(t('subtotal'))}</dt><dd>${money(c.sub)}</dd></div>
-      ${Number(c.service) ? `<div><dt>${esc(t('service')(withPct ? pct(r.servicePct) : ''))}</dt><dd>${money(c.service)}</dd></div>` : ''}
+      ${Number(c.service) ? `<div><dt>${esc(t('svcBtn')(withPct ? pct(r.servicePct) : ''))}</dt><dd>${money(c.service)}</dd></div>` : ''}
       ${Number(c.tax) ? `<div><dt>${esc(withPct ? `${r.taxName} ${pct(r.taxPct)}%` : r.taxName)}</dt><dd>${money(c.tax)}</dd></div>` : ''}
     </dl>${total}`;
   }
@@ -830,12 +830,14 @@
     document.title = `${r.name} — ${t('menuWord')}`;
     $('#r-name').textContent = r.name;
     $('#r-tagline').textContent = L(r.tagline);
-    $('#logo').innerHTML = r.logoUrl ? `<img src="${esc(r.logoUrl)}" alt="">` : esc(monogram(r.name));
+    // без настоящего логотипа — только название (квадрат с буквами выглядел как иконка приложения)
+    $('#logo').innerHTML = r.logoUrl ? `<img src="${esc(r.logoUrl)}" alt="">` : '';
+    $('#logo').hidden = !r.logoUrl;
 
     const st = statusInfo();
     const badges = [];
     if (table && tableState !== 'invalid') badges.push(`<span class="badge">${icon('table', 'sm')}${esc(t('table'))} ${esc(table)}</span>`);
-    if (wifi && tableState !== 'invalid') badges.push(`<button type="button" class="badge" data-sheet="wifi">${icon('wifi', 'sm')}${esc(t('wifi'))}</button>`);
+    if (wifi && tableState !== 'invalid' && !tableToken) badges.push(`<button type="button" class="badge" data-sheet="wifi">${icon('wifi', 'sm')}${esc(t('wifi'))}</button>`);
     badges.push(`<button type="button" class="badge ${st.open ? 'ok' : 'off'}" data-sheet="hours" aria-label="${esc(`${st.text}. ${t('hours')}`)}"><span class="dot"></span>${esc(st.text)}${icon('chevron', 'sm chev')}</button>`);
     if (ONLINE && (booking || r.bookingsEnabled)) {
       const on = bkActive();
@@ -953,9 +955,9 @@
     const d = list[0];
     const desc = L(d.desc);
     return `<section class="day-dish" aria-labelledby="h-day">${title}
-      <article class="feature" data-open="${esc(d.id)}" tabindex="0" role="button" aria-label="${esc(L(d.name))}">
-        ${photo(d, 'feature-photo', false, favBtn(d.id))}
-        <div class="feature-body">${tagsHtml(d)}<h3>${esc(L(d.name))}</h3>${desc ? `<p class="desc">${esc(desc)}</p>` : ''}
+      <article class="feature${d.photo ? '' : ' no-photo'}" data-open="${esc(d.id)}" tabindex="0" role="button" aria-label="${esc(L(d.name))}">
+        ${d.photo ? photo(d, 'feature-photo') : ''}
+        <div class="feature-body"><h3>${esc(L(d.name))}</h3>${desc ? `<p class="desc">${esc(desc)}</p>` : ''}${tagsHtml(d)}
           <div class="card-foot"><div class="price-wrap">${priceHtml(d)}<span class="amount">${esc(amount(d))}</span></div><div class="slot" data-slot="${esc(d.id)}">${control(d.id)}</div></div>
         </div></article></section>`;
   }
@@ -993,12 +995,12 @@
     const desc = L(d.desc);
     const compo = compoHtml(d);
     return `
-      <article class="card${d.available ? '' : ' is-sold'}" data-open="${esc(d.id)}" tabindex="0" role="button" aria-label="${esc(L(d.name))}">
-        ${photo(d, '', true, favBtn(d.id))}
+      <article class="card${d.available ? '' : ' is-sold'}${d.photo ? '' : ' no-photo'}" data-open="${esc(d.id)}" tabindex="0" role="button" aria-label="${esc(L(d.name))}">
+        ${d.photo ? photo(d, '', true) : ''}
         <div class="card-body">
-          ${tagsHtml(d)}
           <h3>${esc(L(d.name))}</h3>
           ${compo || (desc ? `<p class="desc">${esc(desc)}</p>` : '<p class="desc"></p>')}
+          ${tagsHtml(d)}${d.photo || d.available ? '' : `<span class="sold-txt">${esc(t('soldOut'))}</span>`}
           <div class="card-foot">
             <div class="price-wrap">${priceHtml(d)}<span class="amount">${esc([amount(d), d.prepMin ? t('prep')(d.prepMin) : ''].filter(Boolean).join(' · '))}</span></div>
             <div class="slot" data-slot="${esc(d.id)}">${control(d.id)}</div>
@@ -1042,7 +1044,7 @@
     } else {
       main.innerHTML = offline + dayHtml() + favsHtml() + hitsHtml() + groups.map(({ c, items }) => `
         <section class="cat" id="cat-${esc(c.id)}" data-cat="${esc(c.id)}" aria-labelledby="h-${esc(c.id)}">
-          <div class="cat-title"><h2 id="h-${esc(c.id)}">${esc(L(c.name))}</h2><span>${items.length}</span>${c.from ? `<span class="cat-time${catOpen(c) ? ' now' : ''}">${icon('clock', 'sm')}${esc(catOpen(c) ? `${t('nowServing')} · ${clock(c.from)}–${clock(c.to)}` : t('servedAt')(clock(c.from), clock(c.to)))}</span>` : ''}</div>
+          <div class="cat-title"><h2 id="h-${esc(c.id)}">${esc(L(c.name))}</h2>${c.from ? `<span class="cat-time${catOpen(c) ? ' now' : ''}">${icon('clock', 'sm')}${esc(catOpen(c) ? `${t('nowServing')} · ${clock(c.from)}–${clock(c.to)}` : t('servedAt')(clock(c.from), clock(c.to)))}</span>` : ''}</div>
           <div class="grid">${items.map(card).join('')}</div>
         </section>`).join('');
     }
@@ -1072,8 +1074,8 @@
     return [...new Set(ids)].map((id) => byId[id]).filter((d) => d && d.available).slice(0, 8);
   }
   function miniCard(d) {
-    return `<article class="mini" data-open="${esc(d.id)}" tabindex="0" role="button" aria-label="${esc(L(d.name))}">
-      ${photo(d, 'mini-photo', false, favBtn(d.id))}<b>${esc(L(d.name))}</b>
+    return `<article class="mini${d.photo ? '' : ' no-photo'}" data-open="${esc(d.id)}" tabindex="0" role="button" aria-label="${esc(L(d.name))}">
+      ${d.photo ? photo(d, 'mini-photo') : ''}<b>${esc(L(d.name))}</b>
       <div class="mini-foot">${priceHtml(d)}<div class="slot" data-slot="${esc(d.id)}">${control(d.id)}</div></div></article>`;
   }
   function hitsHtml() {
@@ -1224,7 +1226,9 @@
   // ---------- Полёт блюда в «Мой заказ» ----------
   // круглая копия фото летит по дуге: X — равномерно, Y — сначала вверх, потом вниз (только transform/opacity)
   let flyHold = false;
+  const QUIET = true;
   function flyToBar(src) {
+    if (QUIET) return false;   // взрослый вид: без полёта, плашка просто обновляется
     const bar = $('#order-bar');
     if (bar.hidden || !src) return false;
     const a = src.getBoundingClientRect();
@@ -1469,7 +1473,7 @@
         <div class="rc-block">
           ${row(t('subtotal'), num(n('subtotal')))}
           ${n('discount') ? row(`${t('rcDiscount')}${b.discount_pct ? ` ${Number(b.discount_pct)}%` : ''}`, `−${num(n('discount'))}`) : ''}
-          ${n('service') ? row(t('service')(pctOf(n('service'), n('subtotal') - n('discount')).replace('%', '')), num(n('service'))) : ''}
+          ${n('service') ? row(t('svcBtn')(pctOf(n('service'), n('subtotal') - n('discount')).replace('%', '')), num(n('service'))) : ''}
           ${n('tax') ? row(`${r.taxName || 'SST'} ${pctOf(n('tax'), taxBase)}`.trim(), num(n('tax'))) : ''}
         </div>
         ${row(t('total'), cur(n('total')), 'rc-total')}
@@ -1666,12 +1670,23 @@
     if (!el) return;
     const show = ONLINE && !!tableToken && tableState !== 'invalid' && tableState !== 'none';
     el.hidden = !show;
+    document.body.classList.toggle('has-dock', show);
     if (!show) { el.innerHTML = ''; return; }
     // сразу после успешного вызова кнопка на пару секунд становится галочкой «Официант уже идёт» / «Счёт несут»
     const just = (k) => callJust?.kind === k && Date.now() < callJust.until;
     const morph = (k) => { if (!just(k) || callJust.played) return ''; callJust.played = true; return ' morph'; };
-    el.innerHTML = `<button type="button" class="call-btn${openCalls.waiter ? ' on' : ''}${just('waiter') ? ' just' : ''}${morph('waiter')}" data-act="call-waiter"${calling ? ' disabled' : ''}>${icon(openCalls.waiter ? 'check' : 'bell')}<span>${esc(just('waiter') ? t('callDone') : openCalls.waiter ? t('waiterComing') : t('callWaiter'))}</span></button>
-      <button type="button" class="call-btn${openCalls.bill ? ' on' : ''}${just('bill') ? ' just' : ''}${morph('bill')}" data-act="call-bill"${calling ? ' disabled' : ''}>${icon(openCalls.bill ? 'check' : 'list')}<span>${esc(just('bill') ? t('billDone') : openCalls.bill ? t('billComing') : t('askBill'))}</span></button>`;
+    // одна спокойная кнопка «Сервис» внизу; внутри — официант, счёт, Wi‑Fi, бронь
+    const kind = just('waiter') ? 'waiter' : just('bill') ? 'bill' : openCalls.bill ? 'bill' : openCalls.waiter ? 'waiter' : '';
+    const label = just('waiter') ? t('callDone') : just('bill') ? t('billDone') : openCalls.bill ? t('billComing') : openCalls.waiter ? t('waiterComing') : t('svcBtn');
+    el.innerHTML = `<button type="button" class="service-btn${kind ? ' on' : ''}${kind && just(kind) ? morph(kind) : ''}" data-act="service" aria-label="${esc(label)}">${icon(kind ? 'check' : 'bell')}<span>${esc(label)}</span></button>`;
+    if (sheet?.type === 'service') renderSheet();
+  }
+  function callsHtml() {
+    return `<div class="svc-list">
+      <button type="button" class="call-btn${openCalls.waiter ? ' on' : ''}" data-act="call-waiter"${calling ? ' disabled' : ''}>${icon(openCalls.waiter ? 'check' : 'bell')}<span>${esc(openCalls.waiter ? t('waiterComing') : t('callWaiter'))}</span>${icon('chevron', 'sm chev')}</button>
+      <button type="button" class="call-btn${openCalls.bill ? ' on' : ''}" data-act="call-bill"${calling ? ' disabled' : ''}>${icon(openCalls.bill ? 'check' : 'list')}<span>${esc(openCalls.bill ? t('billComing') : t('askBill'))}</span>${icon('chevron', 'sm chev')}</button>
+      ${wifi ? `<button type="button" class="call-btn" data-sheet="wifi">${icon('wifi')}<span>${esc(t('wifi'))}</span>${icon('chevron', 'sm chev')}</button>` : ''}
+    </div>`;
   }
   let callJust = null;   // { kind, until, played } — короткое «подтверждение» после вызова
   async function callStaff(kind, method, reason) {
@@ -2212,6 +2227,11 @@
       return;
     }
 
+    if (sheet.type === 'service') {
+      body.innerHTML = `<h2 class="sheet-title" id="sheet-title">${esc(t('svcBtn'))}</h2>${callsHtml()}`;
+      return;
+    }
+
     if (sheet.type === 'waiter') {
       const pend = openCalls.reasons || [];
       body.innerHTML = `<h2 class="sheet-title" id="sheet-title">${esc(t('reqTitle'))}</h2>
@@ -2561,6 +2581,7 @@
       else if (a === 'pick') openSheet({ type: 'dish', id: act.dataset.id });
       else if (a === 'pick-inc' || a === 'pick-dec') { if (sheet?.pick) { sheet.pick.qty = Math.min(99, Math.max(1, sheet.pick.qty + (a === 'pick-inc' ? 1 : -1))); updatePick(); } }
       else if (a === 'pick-add') addPicked();
+      else if (a === 'service') openSheet({ type: 'service' });
       else if (a === 'call-waiter') openSheet({ type: 'waiter' });
       else if (a === 'req') callStaff('waiter', null, act.dataset.reason || null);
       else if (a === 'call-bill') openBill();
