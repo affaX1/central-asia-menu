@@ -776,3 +776,8 @@ body.scrolled::before { content: ''; position: fixed; top: 0; left: 0; right: 0;
 .note-hint { color: var(--muted); font-weight: 600; font-size: 13px; line-height: 1.35; margin-top: -2px; }
 .note-field textarea { font-size: 16px; }
 @media (prefers-reduced-motion: reduce) { .dn-edit { animation: none; } }
+
+/* верх и «Мой заказ»: чистый цвет, без стекла, теней и оттенков (владелец, 2026-11-21) */
+.cats { background: var(--bg); -webkit-backdrop-filter: none; backdrop-filter: none; border-bottom: 0; }
+body.scrolled::before { background: var(--bg); -webkit-backdrop-filter: none; backdrop-filter: none; }
+.order-bar, .order-bar.status-bar, :root[data-theme="dark"] .order-bar { box-shadow: none; }
