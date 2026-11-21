@@ -34,6 +34,15 @@
   const norm = (s) => String(s || '').toLowerCase().replace(/ё/g, 'е');
   const amount = (d) => (d.weight ? `${d.weight} ${S.unitLabel[d.unit] || ''}` : '');
   const sw = (attr, on, label, disabled = false) => `<label class="switch"><input type="checkbox" ${attr}${on ? ' checked' : ''}${disabled ? ' disabled' : ''}><span class="track"></span>${esc(label)}</label>`;
+  // метки в списке меню: акция, блюдо дня, остаток порций
+  const dishTags = (d) => {
+    const t = [];
+    if (d.promo_price != null) t.push(`<span class="state-badge no">Акция ${esc(money(d.promo_price))}${d.promo_from ? ` · ${esc(d.promo_from)}–${esc(d.promo_to)}` : ''}</span>`);
+    if (d.featured) t.push('<span class="state-badge ok">Блюдо дня</span>');
+    if (d.stock === 0) t.push('<span class="state-badge no">Закончилось</span>');
+    else if (d.stock != null) t.push(`<span class="state-badge muted">Осталось ${esc(d.stock)}</span>`);
+    return t.length ? `<span class="d-tags">${t.join('')}</span>` : '';
+  };
   const photoBox = (url, cls = '') => `<div class="photo ${cls}${url ? ' has-img' : ''}">${url ? `<img src="${esc(url)}" alt="" loading="lazy" decoding="async">` : icon('dish')}</div>`;
 
   const TRANSLIT = { а: 'a', б: 'b', в: 'v', г: 'g', д: 'd', е: 'e', ё: 'e', ж: 'zh', з: 'z', и: 'i', й: 'y', к: 'k', л: 'l', м: 'm', н: 'n', о: 'o', п: 'p', р: 'r', с: 's', т: 't', у: 'u', ф: 'f', х: 'h', ц: 'ts', ч: 'ch', ш: 'sh', щ: 'sch', ъ: '', ы: 'y', ь: '', э: 'e', ю: 'yu', я: 'ya' };
@@ -48,8 +57,8 @@
 
   // ---------- переключение разделов ----------
   // менеджер (старший смены): зал, заказы, отчёты, закрытие дня. Меню, столы, настройки, сотрудники и журнал — только владелец.
-  const MANAGER_TABS = ['floor', 'orders', 'reports', 'day'];
-  const allowedTabs = () => (me?.role === 'owner' ? ['floor', 'orders', 'menu', 'tables', 'reports', 'day', 'audit', 'restaurant', 'staff'] : MANAGER_TABS);
+  const MANAGER_TABS = ['floor', 'orders', 'stop', 'reports', 'day'];
+  const allowedTabs = () => (me?.role === 'owner' ? ['floor', 'orders', 'stop', 'menu', 'tables', 'reports', 'day', 'audit', 'restaurant', 'staff'] : MANAGER_TABS);
   function applyRole() {
     const mgr = me?.role !== 'owner';
     document.querySelectorAll('.a-tab').forEach((a) => { a.hidden = !allowedTabs().includes(a.dataset.tab); });
@@ -57,7 +66,9 @@
     if (mgr && sub && /владельца/.test(sub.textContent)) sub.textContent = sub.textContent.replace('владельца', 'менеджера');
   }
   function setTab(next) {
+    const was = tab;
     tab = allowedTabs().includes(next) ? next : 'orders';
+    if (was === 'stop' && tab !== 'stop') closeStop();
     document.querySelectorAll('.a-tab').forEach((a) => a.setAttribute('aria-current', a.dataset.tab === tab ? 'page' : 'false'));
     // на телефоне нижняя панель прокручивается — показываем открытый раздел
     const cur = document.querySelector(`.a-tab[data-tab="${tab}"]`); const bar = cur?.parentElement;
@@ -67,8 +78,9 @@
   window.addEventListener('hashchange', () => { if (api) setTab(location.hash.slice(1)); });
 
   function render() {
-    if (tab === 'floor') { if (floor) floor.render($('#a-main')); else $('#a-main').innerHTML = '<p class="a-empty">Загрузка…</p>'; }
-    else if (tab === 'reports') window.OwnerReports.reports($('#a-main'), { api });
+    if (tab === 'floor') { if (floor) { floor.render($('#a-main')); paintGoal(); } else $('#a-main').innerHTML = '<p class="a-empty">Загрузка…</p>'; }
+    else if (tab === 'stop') renderStop();
+    else if (tab === 'reports') window.OwnerReports.reports($('#a-main'), { api, role: me?.role, dishes: () => dishes });
     else if (tab === 'day') window.OwnerReports.day($('#a-main'), { api });
     else if (tab === 'audit') window.OwnerReports.audit($('#a-main'), { api, dishes, cats });
     else if (tab === 'orders') renderOrders();
@@ -81,6 +93,86 @@
 
   async function loadMenu() {
     [cats, dishes] = await Promise.all([api.categories(), api.dishes()]);
+  }
+  // себестоимость блюд — отдельная таблица, читает только владелец
+  let costs = new Map();
+  let costsLoaded = false;
+  async function loadCosts() {
+    try {
+      costs = new Map((await api.dishCosts()).map((r) => [r.dish_id, Number(r.cost)]));
+      costsLoaded = true;
+    } catch { costsLoaded = false; }
+  }
+
+  // =================================================================
+  //  ЦЕЛЬ ДНЯ — полоска вверху «Зала» (владелец и менеджер)
+  // =================================================================
+  // Сумма — оплаченные сегодня (с полуночи по часам устройства) счета без отменённых оплат, без чаевых.
+  // Анимируем только от прошлого показанного значения: обновление раз в 15 секунд не начинает с нуля.
+  let goalShown = null;      // сколько было на полоске в прошлый раз, в сенах
+  let goalRaf = 0;
+  const reducedMotion = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+  const plainNum = (n) => new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 }).format(n);
+  function paintGoal() {
+    const goal = Math.round(Number(S.settings?.day_goal || 0) * 100);
+    const main = $('#a-main');
+    if (!goal || !floor || !main) return;
+    const since = dayStart().getTime();
+    const cur = floor.bills.filter((b) => new Date(b.paid_at).getTime() >= since).reduce((s, b) => s + Math.round(Number(b.total) * 100), 0);
+    const from = goalShown ?? 0;
+    goalShown = cur;
+    const share = (v) => Math.min(100, (v / goal) * 100);
+    const done = cur >= goal;
+    const text = (v) => (done
+      ? `Цель дня выполнена: ${money(v / 100)} из ${plainNum(goal / 100)}`
+      : `Сегодня ${money(v / 100)} из ${plainNum(goal / 100)}`);
+    main.insertAdjacentHTML('afterbegin', `<section class="goal${done ? ' is-done' : ''}" id="day-goal">
+      <div class="goal-top">${done ? icon('check', 'sm') : ''}<b class="goal-text">${esc(text(from))}</b>
+        <span class="goal-left">${done ? `${Math.round((cur / goal) * 100)}%` : `осталось ${esc(money((goal - cur) / 100))}`}</span></div>
+      <div class="goal-track" role="progressbar" aria-label="Цель дня" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(share(cur))}" aria-valuetext="${esc(text(cur))}">
+        <span class="goal-fill" style="width:${share(from).toFixed(2)}%"></span></div>
+    </section>`);
+    const box = $('#day-goal');
+    const fill = box.querySelector('.goal-fill');
+    const label = box.querySelector('.goal-text');
+    cancelAnimationFrame(goalRaf);
+    if (from === cur || reducedMotion()) { fill.style.width = `${share(cur).toFixed(2)}%`; label.textContent = text(cur); return; }
+    // полоска едет через CSS-переход, число догоняет её тем же темпом
+    requestAnimationFrame(() => requestAnimationFrame(() => { fill.style.width = `${share(cur).toFixed(2)}%`; }));
+    const t0 = performance.now();
+    const step = (now) => {
+      const k = Math.min(1, (now - t0) / 900);
+      const e = 1 - Math.pow(1 - k, 3);
+      if (label.isConnected) label.textContent = text(Math.round(from + (cur - from) * e));
+      if (k < 1 && label.isConnected) goalRaf = requestAnimationFrame(step);
+    };
+    goalRaf = requestAnimationFrame(step);
+  }
+
+  // =================================================================
+  //  СТОП-ЛИСТ — общий модуль stop-list.js (владелец, менеджер, повар)
+  // =================================================================
+  let stopHandle = null;
+  function closeStop() {
+    const h = stopHandle;
+    stopHandle = null;
+    try { (h?.close || h?.destroy || h?.unmount)?.call(h); } catch { /* модуль уже закрыт */ }
+  }
+  function renderStop() {
+    const main = $('#a-main');
+    const SL = window.StopList;
+    closeStop();
+    if (!SL || typeof SL.open !== 'function') {
+      main.innerHTML = `<div class="a-empty">${icon('ban')}<p>Стоп-лист не загрузился. Обновите страницу. Пока можно выключать блюда переключателем «В наличии» в разделе «Меню».</p></div>`;
+      return;
+    }
+    try {
+      // модуль сам берёт блюда и вешает обработчики на main; close() снимает их при уходе из раздела.
+      // onChange — блюдо выключили или поменяли остаток: обновляем свой список, чтобы «Меню» показало то же самое
+      stopHandle = SL.open(main, { api, onChange: () => { loadMenu().catch(() => {}); } }) || null;
+    } catch (ex) {
+      main.innerHTML = `<p class="notice bad">${icon('alert')}<span>Стоп-лист не открылся: ${esc(S.errText(ex))}</span></p>`;
+    }
   }
 
   // =================================================================
@@ -107,7 +199,7 @@
         if (words.length && !items.length) return '';
         return `<section class="panel">
           <div class="panel-head">
-            <h3>${esc(tr(c.name))}<small>${items.length}</small>${c.avail_from ? `<span class="state-badge muted">${icon('clock', 'sm')}${esc(c.avail_from)}–${esc(c.avail_to)}</span>` : ''}</h3>
+            <h3>${esc(tr(c.name))}<small>${items.length}</small>${c.avail_from ? `<span class="state-badge muted">${icon('clock', 'sm')}${esc(c.avail_from)}–${esc(c.avail_to)}</span>` : ''}${c.station === 'bar' ? '<span class="state-badge muted">готовит бар</span>' : ''}</h3>
             ${c.hidden ? '<span class="state-badge muted">скрыта от гостей</span>' : ''}
             <div class="row-btns">
               <button type="button" class="btn small ghost" data-act="cat-up" data-id="${esc(c.id)}" aria-label="Выше"${i === 0 ? ' disabled' : ''}>${icon('arrow-up', 'sm')}</button>
@@ -118,7 +210,7 @@
           ${items.length ? `<ul class="rows">${items.map((d) => `
             <li class="${d.available && !d.hidden ? '' : 'is-off'}">
               ${photoBox(d.photo_url)}
-              <div class="grow"><b>${esc(tr(d.name))}</b><small>${esc([amount(d), d.hidden ? 'скрыто от гостей' : '', d.photo_url ? '' : 'нет фото'].filter(Boolean).join(' · '))}</small></div>
+              <div class="grow"><b>${esc(tr(d.name))}</b><small>${esc([amount(d), d.hidden ? 'скрыто от гостей' : '', d.photo_url ? '' : 'нет фото'].filter(Boolean).join(' · '))}</small>${dishTags(d)}</div>
               <span class="price">${money(d.price)}</span>
               <div class="row-btns">
                 ${sw(`data-avail="${esc(d.id)}" aria-label="В наличии: ${esc(tr(d.name))}"`, d.available, 'В наличии')}
@@ -177,6 +269,22 @@
         <div class="checks">${ALLERGENS.map(([v, n]) => `<label><input type="checkbox" name="allergens" value="${v}"${d.allergens?.includes(v) ? ' checked' : ''}>${n}</label>`).join('')}</div>
         <div class="form-grid" style="margin-top:6px">
           <label class="field"><span>Время готовки, мин (необязательно)</span><input name="prep_min" type="number" min="1" max="240" step="1" inputmode="numeric" value="${esc(d.prep_min ?? '')}" placeholder="например 20"></label>
+        </div>
+        <p class="section-label">Акция (необязательно)</p>
+        <p class="help" style="margin:0 0 8px">Цена по акции должна быть меньше обычной — гость увидит обычную цену зачёркнутой. Часы — «счастливые часы»: акция действует только в это время. Часы пустые — акция весь день.</p>
+        <div class="form-grid">
+          <label class="field full"><span>Цена по акции, ${esc(S.settings?.currency || '')}</span><input name="promo_price" type="number" inputmode="decimal" min="0" max="99999" step="0.01" value="${esc(d.promo_price ?? '')}" placeholder="пусто — без акции"></label>
+          <label class="field"><span>Акция с</span><input name="promo_from" type="time" value="${esc(d.promo_from || '')}"></label>
+          <label class="field"><span>Акция до</span><input name="promo_to" type="time" value="${esc(d.promo_to || '')}"></label>
+        </div>
+        <div class="checks"><label><input type="checkbox" name="featured"${d.featured ? ' checked' : ''}>Блюдо дня</label></div>
+        <p class="help" style="margin:4px 0 0">«Блюдо дня» гости видят выделенным в меню. Снимите отметку, когда день прошёл.</p>
+        <p class="section-label">Остаток и себестоимость (необязательно)</p>
+        <div class="form-grid">
+          <label class="field"><span>Осталось порций</span><input name="stock" type="number" inputmode="numeric" min="0" max="100000" step="1" value="${esc(d.stock ?? '')}" placeholder="не считать">
+            <span class="hint">Пусто — не считать. Каждый заказ уменьшает число; на нуле блюдо заказать нельзя.</span></label>
+          ${me?.role === 'owner' ? `<label class="field"><span>Себестоимость, ${esc(S.settings?.currency || '')}</span><input name="cost" type="number" inputmode="decimal" min="0" max="99999" step="0.01" value="${esc(isNew ? '' : costs.get(d.id) ?? '')}"${costsLoaded ? ' placeholder="не указана"' : ' disabled placeholder="не загрузилась — обновите страницу"'}>
+            <span class="hint">Сколько стоят продукты на одну порцию. Видите только вы; нужна для отчёта «Прибыль по блюдам».</span></label>` : ''}
         </div>
         <p class="section-label">«С этим берут» (до 6 блюд, необязательно)</p>
         <p class="help" style="margin:0 0 8px">Гость увидит их в карточке блюда и в корзине. Если не выбрать — подберём сами по тому, что гости чаще заказывают вместе.</p>
@@ -325,6 +433,24 @@
       if (prepMin !== null && !(Number.isInteger(prepMin) && prepMin >= 1 && prepMin <= 240)) return err('Время готовки — от 1 до 240 минут.');
       const pairs = f.getAll('pairs');
       if (pairs.length > 6) return err('«С этим берут» — не больше 6 блюд.');
+      // акция: цена меньше обычной; часы — оба или ни одного, и только вместе с ценой
+      const promoRaw = String(f.get('promo_price') ?? '').trim().replace(',', '.');
+      const promo = promoRaw === '' ? null : Number(promoRaw);
+      if (promo !== null && !(Number.isFinite(promo) && promo >= 0)) return err('Цена по акции — число, например 12.50. Или оставьте пусто.');
+      if (promo !== null && Math.round(promo * 100) >= Math.round(price * 100)) return err(`Цена по акции должна быть меньше обычной цены (${money(price)}).`);
+      const pFrom = String(f.get('promo_from') || '').slice(0, 5);
+      const pTo = String(f.get('promo_to') || '').slice(0, 5);
+      if (!!pFrom !== !!pTo) return err('Часы акции: укажите оба времени — «с» и «до», или оставьте оба пустыми.');
+      if (pFrom && pFrom === pTo) return err('Часы акции: время «с» и «до» совпадает.');
+      if (pFrom && promo === null) return err('Часы акции работают только с ценой по акции — впишите цену или очистите часы.');
+      const stockRaw = String(f.get('stock') ?? '').trim();
+      const stock = stockRaw === '' ? null : Number(stockRaw);
+      if (stock !== null && !(Number.isInteger(stock) && stock >= 0 && stock <= 100000)) return err('Осталось порций — целое число от 0 до 100 000, или пусто.');
+      const costEl = e.target.querySelector('[name="cost"]');
+      const costRaw = costEl && !costEl.disabled ? String(costEl.value).trim().replace(',', '.') : '';
+      const cost = costRaw === '' ? null : Number(costRaw);
+      if (cost !== null && !(Number.isFinite(cost) && cost >= 0 && cost < 100000)) return err('Себестоимость — число, например 4.20. Или оставьте пусто.');
+      const costChanged = !!costEl && !costEl.disabled && (cost === null ? null : Math.round(cost * 100)) !== (costs.has(d.id) && !isNew ? Math.round(costs.get(d.id) * 100) : null);
 
       const btn = e.target.querySelector('[type="submit"]');
       btn.disabled = true;
@@ -344,16 +470,32 @@
           available: !!f.get('available'), hidden: !f.get('shown'),
           sort: Number(f.get('sort')) || 0,
           photo_url: uploaded || (removePhoto ? null : d.photo_url || null),
+          promo_price: promo === null ? null : Math.round(promo * 100) / 100,
+          promo_from: pFrom || null, promo_to: pTo || null,
+          featured: !!f.get('featured'),
         };
+        // остаток уменьшают заказы, пока форма открыта: пишем его, только если владелец сам поменял число
+        if (isNew || stock !== (d.stock ?? null)) row.stock = stock;
         const saved = await api.saveDish(row);
         if ((uploaded || removePhoto) && d.photo_url) api.deleteImage(d.photo_url);
         dishes = dishes.filter((x) => x.id !== saved.id).concat(saved);
+        // себестоимость — отдельная таблица; блюдо уже сохранено, поэтому её ошибку показываем отдельно
+        let costErr = '';
+        if (costChanged) {
+          try {
+            await api.saveDishCost(saved.id, cost === null ? null : Math.round(cost * 100) / 100);
+            if (cost === null) costs.delete(saved.id); else costs.set(saved.id, Math.round(cost * 100) / 100);
+          } catch (ex) { costErr = S.errText(ex); }
+        }
         S.closeModal();
-        S.toast(isNew ? 'Блюдо добавлено' : 'Сохранено');
+        if (costErr) S.toast(`Блюдо сохранено, но себестоимость — нет: ${costErr}`, true);
+        else S.toast(isNew ? 'Блюдо добавлено' : 'Сохранено');
         render();
       } catch (ex) {
         if (uploaded) api.deleteImage(uploaded);
-        err(S.errText(ex));
+        const msg = String(ex?.message || '');
+        err(/dishes_promo_check/.test(msg) ? 'Акция: цена по акции должна быть меньше обычной, а часы — оба или ни одного.'
+          : /dishes_stock_check/.test(msg) ? 'Осталось порций — целое число от 0 до 100 000.' : S.errText(ex));
         btn.disabled = false;
         btn.innerHTML = `${icon('check', 'sm')}Сохранить`;
       }
@@ -370,6 +512,12 @@
         <h2 id="modal-title">${isNew ? 'Новая категория' : 'Категория'}</h2>
         ${langFields('name', c.name, { label: 'Название', required: true })}
         <div style="margin-top:14px">${sw('name="shown"', !c.hidden, 'Показывать гостям')}</div>
+        <p class="section-label">Где готовят</p>
+        <div class="checks" role="radiogroup" aria-label="Где готовят">
+          <label><input type="radio" name="station" value="kitchen"${c.station !== 'bar' ? ' checked' : ''}>Кухня</label>
+          <label><input type="radio" name="station" value="bar"${c.station === 'bar' ? ' checked' : ''}>Бар</label>
+        </div>
+        <p class="help" style="margin:4px 0 0">Блюда этой категории попадут на экран кухни или на экран бара.</p>
         <p class="section-label">Время подачи (необязательно)</p>
         <p class="help" style="margin:0 0 8px">Например, «Завтрак» с 06:00 до 11:00. В эти часы категория стоит первой в меню, в другое время гость видит её, но заказать не может. Пусто — весь день.</p>
         <div class="form-grid">
@@ -408,6 +556,7 @@
         const saved = await api.saveCategory({
           id: c.id || slug(name.en || name.ru, new Set(cats.map((x) => x.id))),
           name, hidden: !f.get('shown'), sort: c.sort, avail_from: af || null, avail_to: at || null,
+          station: f.get('station') === 'bar' ? 'bar' : 'kitchen',
         });
         cats = cats.filter((x) => x.id !== saved.id).concat(saved);
         S.closeModal();
@@ -523,6 +672,11 @@
             <div class="field full"><span>Онлайн-заказы</span>
               ${sw('name="orders_enabled"', st.orders_enabled, 'Принимать заказы из меню')}
               ${sw('name="orders_when_closed"', st.orders_when_closed, 'Принимать и когда ресторан закрыт по расписанию')}</div>
+            <div class="field full"><span>Брони</span>
+              ${sw('name="bookings_enabled"', st.bookings_enabled !== false, 'Принимать брони столов')}
+              <span class="hint">Выключите, если брони сейчас не принимаете: гости не смогут отправить новую заявку. Заявки, которые уже пришли, остаются в «Зале».</span></div>
+            <label class="field"><span>Цель дня, ${esc(st.currency || '')}</span><input name="day_goal" type="number" inputmode="decimal" min="1" max="9999999" step="1" value="${esc(st.day_goal ?? '')}" placeholder="не задана">
+              <span class="hint">Сколько хотите выручить за день. Вверху «Зала» появится полоска: сколько уже оплачено сегодня. Пусто — полоски нет.</span></label>
             <div class="field full"><span>Халяль</span>
               ${sw('name="halal"', st.halal, 'Показывать гостям «Халяль»')}
               <span class="hint">Включайте, только если ресторан действительно халяльный. Данные сертификата — ниже, если они есть.</span>
@@ -630,6 +784,9 @@
       const wifiName = String(f.get('wifi_name') || '').trim().slice(0, 64);
       const wifiPass = String(f.get('wifi_pass') || '').trim().slice(0, 64);
       if (wifiPass && !wifiName) return err('Wi‑Fi: впишите название сети или уберите пароль.');
+      const goalRaw = String(f.get('day_goal') ?? '').trim().replace(/\s/g, '').replace(',', '.');
+      const dayGoal = goalRaw === '' ? null : Number(goalRaw);
+      if (dayGoal !== null && !(Number.isFinite(dayGoal) && dayGoal > 0 && dayGoal < 10000000)) return err('Цель дня — сумма больше нуля, например 1000. Или оставьте пусто.');
       const receiptInfo = String(f.get('receipt_info') || '').split('\n').map((x) => x.trim()).filter(Boolean).slice(0, 5).join('\n').slice(0, 300);
       const schedule = [];
       for (let i = 0; i < 7; i++) {
@@ -668,6 +825,8 @@
           google_review_url: googleUrl || null,
           receipt_lang: ['en', 'ms', 'ru', 'uz'].includes(f.get('receipt_lang')) ? f.get('receipt_lang') : 'en',
           cash_rounding: !!f.get('cash_rounding'), waiter_discounts: !!f.get('waiter_discounts'),
+          day_goal: dayGoal === null ? null : Math.round(dayGoal * 100) / 100,
+          bookings_enabled: !!f.get('bookings_enabled'),
         };
         const saved = await api.saveSettings(patch);
         if (form.dataset.wifiLoaded === '1') await api.saveWifi(wifiName, wifiPass);
@@ -1343,21 +1502,23 @@
       });
       try {
         applyRole();
-        await Promise.all([loadMenu(), me?.role === 'owner' ? loadStaff() : null, loadOrders(), me?.role === 'owner' ? loadTables() : null, floor.load()]);
+        await Promise.all([loadMenu(), me?.role === 'owner' ? loadStaff() : null, loadOrders(), me?.role === 'owner' ? loadTables() : null, me?.role === 'owner' ? loadCosts() : null, floor.load()]);
       } catch (ex) { S.toast(S.errText(ex), true); }
       updateCount();
       setTab(location.hash.slice(1) || 'orders');
       renderBanner();
       stop?.();
       // заказы — сразу, как пришли; меню — если его меняют на другом устройстве (не мешая открытой форме)
-      stop = api.subscribe(['orders', 'dishes', 'categories', 'tables', 'calls', 'bills', 'table_waiters'], async (table) => {
+      stop = api.subscribe(['orders', 'dishes', 'categories', 'tables', 'calls', 'bills', 'table_waiters', 'reservations'], async (table) => {
         try {
-          if (table === 'calls' || table === 'bills' || table === 'table_waiters') { await floor.load(); updateCount(); if (tab === 'floor' && !document.querySelector('.modal')) render(); return; }
+          if (table === 'calls' || table === 'bills' || table === 'table_waiters' || table === 'reservations') { await floor.load(); updateCount(); if (tab === 'floor' && !document.querySelector('.modal')) render(); return; }
           if (table === 'orders') { await loadOrders(); if (tab === 'orders') renderOrders(); else if (tab === 'floor' && !document.querySelector('.modal')) render(); return; }
           if (document.querySelector('.modal')) return;
           if (table === 'tables') { await Promise.all([loadTables(), floor.load()]); if (tab === 'tables') renderTables(); return; }
           await loadMenu();
           if (tab === 'menu') renderMenu();
+          // стоп-лист: модуль сам заново берёт блюда и не сбивает число, которое сейчас вводят
+          else if (tab === 'stop') stopHandle?.reload?.();
         } catch { /* позже */ }
       }, (ok) => { ordersLive = ok; if (tab === 'orders') renderOrders(); });
       clearInterval(ordersTimer);
@@ -1369,6 +1530,6 @@
         } catch { /* нет сети */ }
       }, 15000);
     },
-    onLogout() { stop?.(); stop = null; clearInterval(ordersTimer); bannerMsg = ''; renderBanner(); },
+    onLogout() { stop?.(); stop = null; clearInterval(ordersTimer); closeStop(); goalShown = null; bannerMsg = ''; renderBanner(); },
   });
 })();

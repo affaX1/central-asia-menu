@@ -81,6 +81,17 @@
       rcDate: 'Дата', rcWaiter: 'Официант', rcCashier: 'Кассир', rcOrders: 'Заказы', rcDiscount: 'Скидка', rcRounding: 'Округление', rcToPay: 'К оплате', rcTip: 'Чаевые', rcPaidTotal: 'Всего оплачено', rcThanks: 'Спасибо, что были у нас!',
       rcPay: { cash: 'Наличные', card: 'Карта', qr: 'QR', other: 'Другое' },
       googleAsk: 'Спасибо! Если вам понравилось — расскажите о нас в Google. Это очень помогает ресторану.', googleBtn: 'Оставить отзыв в Google',
+      favAdd: 'Добавить в любимые', favRemove: 'Убрать из любимых', favs: 'Мои любимые',
+      promo: 'Акция', promoUntil: (x) => `Акция до ${x}`, oldPrice: 'Обычная цена', dayDish: 'Блюдо дня',
+      stockLeft: (n) => `Осталось ${n}`, stockMax: (n) => `Больше добавить нельзя — осталось ${n}`, errStockLeft: (a, n) => `${a}: осталось только ${n}. Уменьшите количество и отправьте ещё раз.`,
+      bkBtn: 'Забронировать стол', bkTitle: 'Бронь стола', bkName: 'Имя', bkPhone: 'Телефон', bkPhonePh: '+60 12 345 6789', bkDate: 'День', bkTime: 'Время', bkPeople: 'Сколько гостей',
+      bkNote: 'Пожелание', bkNotePh: 'Например: будем с ребёнком, нужен детский стул', bkSend: 'Забронировать', bkNoTimes: 'В этот день свободного времени уже нет — выберите другой день.', bkDayOff: 'выходной',
+      bkNo: (n) => `Бронь №${n}`, bkGuests: (n) => { const a = n % 10; const b = n % 100; return `${n} ${a === 1 && b !== 11 ? 'гость' : a >= 2 && a <= 4 && (b < 12 || b > 14) ? 'гостя' : 'гостей'}`; },
+      bkStatus: { new: 'Ждём подтверждения', confirmed: 'Подтверждена', seated: 'Вы уже за столом', cancelled: 'Отменена', no_show: 'Бронь закрыта' }, bkTable: (x) => `стол ${x}`,
+      bkWait: 'Ресторан подтвердит бронь — статус обновится здесь.', bkCancel: 'Отменить бронь', bkCancelAsk: (n) => `Отменить бронь №${n}?`, bkCancelYes: 'Да, отменить', bkCancelNo: 'Нет',
+      bkCancelled: 'Бронь отменена', bkNew: 'Новая бронь', bkSent: 'Бронь отправлена', bkNeedName: 'Напишите имя.', bkNeedPhone: 'Проверьте телефон: только цифры, в начале можно +.', bkNeedTime: 'Выберите время.',
+      bkErr: { bookings_off: 'Бронь через меню сейчас не принимается. Пожалуйста, позвоните в ресторан.', bad_time: 'Это время уже недоступно: бронь — минимум за 30 минут. Выберите другое время.', closed_then: 'В это время ресторан закрыт. Выберите другое время.', bad_request: 'Проверьте имя, телефон и число гостей.', too_many: 'С этого номера уже есть несколько броней. Если нужно ещё — позвоните в ресторан.' },
+      voteTitle: 'Как вам блюда?', voteUp: 'Понравилось', voteDown: 'Не понравилось', del: 'Удалить', callDone: 'Официант уже идёт', billDone: 'Счёт несут', bkNet: 'Нет связи — бронь не изменилась. Проверьте интернет и попробуйте ещё раз.',
     },
     uz: {
       langName: "O'zbekcha", locale: 'uz-Latn-UZ', dir: 'ltr',
@@ -155,6 +166,17 @@
       rcDate: 'Sana', rcWaiter: 'Ofitsiant', rcCashier: 'Kassir', rcOrders: 'Buyurtmalar', rcDiscount: 'Chegirma', rcRounding: 'Yaxlitlash', rcToPay: "To'lovga", rcTip: 'Choychaqa', rcPaidTotal: "Jami to'landi", rcThanks: 'Kelganingiz uchun rahmat!',
       rcPay: { cash: 'Naqd', card: 'Karta', qr: 'QR', other: 'Boshqa' },
       googleAsk: "Rahmat! Yoqqan bo'lsa, Google'da biz haqimizda yozing. Bu restoranga juda yordam beradi.", googleBtn: "Google'da sharh qoldirish",
+      favAdd: "Sevimlilarga qo'shish", favRemove: 'Sevimlilardan olib tashlash', favs: 'Sevimlilarim',
+      promo: 'Aksiya', promoUntil: (x) => `Aksiya ${x} gacha`, oldPrice: 'Oddiy narx', dayDish: 'Kun taomi',
+      stockLeft: (n) => `${n} ta qoldi`, stockMax: (n) => `Boshqa qo'shib bo'lmaydi — ${n} ta qoldi`, errStockLeft: (a, n) => `${a}: faqat ${n} ta qoldi. Sonini kamaytirib, qayta yuboring.`,
+      bkBtn: 'Stol band qilish', bkTitle: 'Stol band qilish', bkName: 'Ism', bkPhone: 'Telefon', bkPhonePh: '+60 12 345 6789', bkDate: 'Kun', bkTime: 'Vaqt', bkPeople: 'Necha kishi',
+      bkNote: 'Istak', bkNotePh: 'Masalan: bola bilan kelamiz, bolalar stuli kerak', bkSend: 'Band qilish', bkNoTimes: "Bu kunda bo'sh vaqt qolmadi — boshqa kunni tanlang.", bkDayOff: 'dam olish',
+      bkNo: (n) => `Bron №${n}`, bkGuests: (n) => `${n} kishi`,
+      bkStatus: { new: 'Tasdiq kutilmoqda', confirmed: 'Tasdiqlandi', seated: 'Siz stoldasiz', cancelled: 'Bekor qilindi', no_show: 'Bron yopildi' }, bkTable: (x) => `stol ${x}`,
+      bkWait: 'Restoran bronni tasdiqlaydi — holat shu yerda yangilanadi.', bkCancel: 'Bronni bekor qilish', bkCancelAsk: (n) => `Bron №${n} bekor qilinsinmi?`, bkCancelYes: 'Ha, bekor qilish', bkCancelNo: "Yo'q",
+      bkCancelled: 'Bron bekor qilindi', bkNew: 'Yangi bron', bkSent: 'Bron yuborildi', bkNeedName: 'Ismingizni yozing.', bkNeedPhone: "Telefonni tekshiring: faqat raqamlar, boshida + bo'lishi mumkin.", bkNeedTime: 'Vaqtni tanlang.',
+      bkErr: { bookings_off: "Hozir menyu orqali bron qabul qilinmayapti. Iltimos, restoranga qo'ng'iroq qiling.", bad_time: "Bu vaqt endi mavjud emas: bron kamida 30 daqiqa oldin qilinadi. Boshqa vaqtni tanlang.", closed_then: 'Bu vaqtda restoran yopiq. Boshqa vaqtni tanlang.', bad_request: 'Ism, telefon va mehmonlar sonini tekshiring.', too_many: "Bu raqamdan bir nechta bron bor. Yana kerak bo'lsa, restoranga qo'ng'iroq qiling." },
+      voteTitle: 'Taomlar yoqdimi?', voteUp: 'Yoqdi', voteDown: 'Yoqmadi', del: "O'chirish", callDone: 'Ofitsiant kelmoqda', billDone: 'Hisob olib kelinmoqda', bkNet: "Aloqa yo'q — bron o'zgarmadi. Internetni tekshirib, qayta urinib ko'ring.",
     },
     en: {
       langName: 'English', locale: 'en-US', dir: 'ltr',
@@ -229,6 +251,17 @@
       rcDate: 'Date', rcWaiter: 'Waiter', rcCashier: 'Cashier', rcOrders: 'Orders', rcDiscount: 'Discount', rcRounding: 'Rounding', rcToPay: 'To pay', rcTip: 'Tip', rcPaidTotal: 'Total paid', rcThanks: 'Thank you for visiting us!',
       rcPay: { cash: 'Cash', card: 'Card', qr: 'QR', other: 'Other' },
       googleAsk: 'Thank you! If you enjoyed it, please tell others on Google. It really helps the restaurant.', googleBtn: 'Leave a Google review',
+      favAdd: 'Add to favourites', favRemove: 'Remove from favourites', favs: 'My favourites',
+      promo: 'Special', promoUntil: (x) => `Special until ${x}`, oldPrice: 'Regular price', dayDish: 'Dish of the day',
+      stockLeft: (n) => `Only ${n} left`, stockMax: (n) => `Can't add more — only ${n} left`, errStockLeft: (a, n) => `${a}: only ${n} left. Lower the quantity and send again.`,
+      bkBtn: 'Book a table', bkTitle: 'Table booking', bkName: 'Name', bkPhone: 'Phone', bkPhonePh: '+60 12 345 6789', bkDate: 'Day', bkTime: 'Time', bkPeople: 'Guests',
+      bkNote: 'Request', bkNotePh: 'For example: coming with a child, need a high chair', bkSend: 'Book', bkNoTimes: 'No free time left on this day — please pick another day.', bkDayOff: 'closed',
+      bkNo: (n) => `Booking #${n}`, bkGuests: (n) => `${n} ${n === 1 ? 'guest' : 'guests'}`,
+      bkStatus: { new: 'Waiting for confirmation', confirmed: 'Confirmed', seated: "You're seated", cancelled: 'Cancelled', no_show: 'Booking closed' }, bkTable: (x) => `table ${x}`,
+      bkWait: 'The restaurant will confirm your booking — the status updates here.', bkCancel: 'Cancel booking', bkCancelAsk: (n) => `Cancel booking #${n}?`, bkCancelYes: 'Yes, cancel', bkCancelNo: 'No',
+      bkCancelled: 'Booking cancelled', bkNew: 'New booking', bkSent: 'Booking sent', bkNeedName: 'Please enter your name.', bkNeedPhone: 'Check the phone number: digits only, + allowed at the start.', bkNeedTime: 'Please pick a time.',
+      bkErr: { bookings_off: 'Bookings through the menu are closed right now. Please call the restaurant.', bad_time: 'This time is no longer available: book at least 30 minutes ahead. Please pick another time.', closed_then: 'The restaurant is closed at that time. Please pick another time.', bad_request: 'Please check the name, phone and number of guests.', too_many: 'This number already has several bookings. Please call the restaurant if you need more.' },
+      voteTitle: 'How were the dishes?', voteUp: 'Liked it', voteDown: "Didn't like it", del: 'Delete', callDone: 'A waiter is coming', billDone: 'Bill is on its way', bkNet: 'No connection — the booking was not changed. Check the internet and try again.',
     },
     ar: {
       // цифры привычные (0–9), как на ценниках и в часах работы
@@ -304,6 +337,17 @@
       rcDate: 'التاريخ', rcWaiter: 'النادل', rcCashier: 'أمين الصندوق', rcOrders: 'الطلبات', rcDiscount: 'خصم', rcRounding: 'التقريب', rcToPay: 'المبلغ المستحق', rcTip: 'إكرامية', rcPaidTotal: 'إجمالي المدفوع', rcThanks: 'شكرًا لزيارتكم!',
       rcPay: { cash: 'نقدًا', card: 'بطاقة', qr: 'QR', other: 'أخرى' },
       googleAsk: 'شكرًا لك! إذا أعجبك المكان، شارك رأيك على Google. هذا يساعد المطعم كثيرًا.', googleBtn: 'اكتب تقييمًا على Google',
+      favAdd: 'أضف إلى المفضلة', favRemove: 'إزالة من المفضلة', favs: 'المفضلة لدي',
+      promo: 'عرض', promoUntil: (x) => `عرض حتى ${x}`, oldPrice: 'السعر العادي', dayDish: 'طبق اليوم',
+      stockLeft: (n) => `بقي ${n}`, stockMax: (n) => `لا يمكن إضافة المزيد — بقي ${n}`, errStockLeft: (a, n) => `${a}: بقي ${n} فقط. قلّل الكمية وأرسل مرة أخرى.`,
+      bkBtn: 'احجز طاولة', bkTitle: 'حجز طاولة', bkName: 'الاسم', bkPhone: 'الهاتف', bkPhonePh: '+60 12 345 6789', bkDate: 'اليوم', bkTime: 'الوقت', bkPeople: 'عدد الضيوف',
+      bkNote: 'طلب خاص', bkNotePh: 'مثلًا: سنأتي مع طفل ونحتاج كرسيًا للأطفال', bkSend: 'احجز', bkNoTimes: 'لا يوجد وقت متاح في هذا اليوم — اختر يومًا آخر.', bkDayOff: 'مغلق',
+      bkNo: (n) => `حجز رقم ${n}`, bkGuests: (n) => (n === 1 ? 'ضيف واحد' : n === 2 ? 'ضيفان' : `${n} ${n <= 10 ? 'ضيوف' : 'ضيفًا'}`),
+      bkStatus: { new: 'بانتظار التأكيد', confirmed: 'تم التأكيد', seated: 'أنتم على الطاولة', cancelled: 'أُلغي', no_show: 'أُغلق الحجز' }, bkTable: (x) => `طاولة ${x}`,
+      bkWait: 'سيؤكد المطعم الحجز — ستتحدث الحالة هنا.', bkCancel: 'إلغاء الحجز', bkCancelAsk: (n) => `إلغاء الحجز رقم ${n}؟`, bkCancelYes: 'نعم، ألغِ', bkCancelNo: 'لا',
+      bkCancelled: 'تم إلغاء الحجز', bkNew: 'حجز جديد', bkSent: 'تم إرسال الحجز', bkNeedName: 'اكتب اسمك.', bkNeedPhone: 'تحقق من رقم الهاتف: أرقام فقط، ويمكن البدء بـ +.', bkNeedTime: 'اختر الوقت.',
+      bkErr: { bookings_off: 'الحجز عبر القائمة غير متاح الآن. يرجى الاتصال بالمطعم.', bad_time: 'هذا الوقت لم يعد متاحًا: الحجز قبل 30 دقيقة على الأقل. اختر وقتًا آخر.', closed_then: 'المطعم مغلق في هذا الوقت. اختر وقتًا آخر.', bad_request: 'تحقق من الاسم والهاتف وعدد الضيوف.', too_many: 'لدى هذا الرقم عدة حجوزات بالفعل. اتصل بالمطعم إذا احتجت المزيد.' },
+      voteTitle: 'ما رأيك في الأطباق؟', voteUp: 'أعجبني', voteDown: 'لم يعجبني', del: 'حذف', callDone: 'النادل في الطريق', billDone: 'الفاتورة في الطريق', bkNet: 'لا يوجد اتصال — لم يتغير الحجز. تحقق من الإنترنت وحاول مرة أخرى.',
     },
     ms: {
       langName: 'Bahasa Melayu', locale: 'ms-MY', dir: 'ltr',
@@ -378,6 +422,17 @@
       rcDate: 'Tarikh', rcWaiter: 'Pelayan', rcCashier: 'Juruwang', rcOrders: 'Pesanan', rcDiscount: 'Diskaun', rcRounding: 'Pembundaran', rcToPay: 'Perlu dibayar', rcTip: 'Tip', rcPaidTotal: 'Jumlah dibayar', rcThanks: 'Terima kasih kerana berkunjung!',
       rcPay: { cash: 'Tunai', card: 'Kad', qr: 'QR', other: 'Lain-lain' },
       googleAsk: 'Terima kasih! Jika anda suka, kongsi pengalaman anda di Google. Ia sangat membantu restoran.', googleBtn: 'Tulis ulasan di Google',
+      favAdd: 'Tambah ke kegemaran', favRemove: 'Buang dari kegemaran', favs: 'Kegemaran saya',
+      promo: 'Promosi', promoUntil: (x) => `Promosi hingga ${x}`, oldPrice: 'Harga biasa', dayDish: 'Hidangan hari ini',
+      stockLeft: (n) => `Tinggal ${n}`, stockMax: (n) => `Tidak boleh tambah lagi — tinggal ${n}`, errStockLeft: (a, n) => `${a}: tinggal ${n} sahaja. Kurangkan kuantiti dan hantar semula.`,
+      bkBtn: 'Tempah meja', bkTitle: 'Tempahan meja', bkName: 'Nama', bkPhone: 'Telefon', bkPhonePh: '+60 12 345 6789', bkDate: 'Hari', bkTime: 'Masa', bkPeople: 'Bilangan tetamu',
+      bkNote: 'Permintaan', bkNotePh: 'Contoh: datang bersama anak, perlukan kerusi bayi', bkSend: 'Tempah', bkNoTimes: 'Tiada masa kosong pada hari ini — sila pilih hari lain.', bkDayOff: 'tutup',
+      bkNo: (n) => `Tempahan #${n}`, bkGuests: (n) => `${n} orang`,
+      bkStatus: { new: 'Menunggu pengesahan', confirmed: 'Disahkan', seated: 'Anda sudah di meja', cancelled: 'Dibatalkan', no_show: 'Tempahan ditutup' }, bkTable: (x) => `meja ${x}`,
+      bkWait: 'Restoran akan mengesahkan tempahan — status dikemas kini di sini.', bkCancel: 'Batalkan tempahan', bkCancelAsk: (n) => `Batalkan tempahan #${n}?`, bkCancelYes: 'Ya, batalkan', bkCancelNo: 'Tidak',
+      bkCancelled: 'Tempahan dibatalkan', bkNew: 'Tempahan baharu', bkSent: 'Tempahan dihantar', bkNeedName: 'Sila tulis nama anda.', bkNeedPhone: 'Semak nombor telefon: angka sahaja, boleh bermula dengan +.', bkNeedTime: 'Sila pilih masa.',
+      bkErr: { bookings_off: 'Tempahan melalui menu ditutup buat masa ini. Sila hubungi restoran.', bad_time: 'Masa ini tidak lagi tersedia: tempah sekurang-kurangnya 30 minit lebih awal. Sila pilih masa lain.', closed_then: 'Restoran tutup pada masa itu. Sila pilih masa lain.', bad_request: 'Sila semak nama, telefon dan bilangan tetamu.', too_many: 'Nombor ini sudah ada beberapa tempahan. Hubungi restoran jika perlu lagi.' },
+      voteTitle: 'Bagaimana hidangannya?', voteUp: 'Suka', voteDown: 'Tidak suka', del: 'Padam', callDone: 'Pelayan sedang datang', billDone: 'Bil sedang dibawa', bkNet: 'Tiada sambungan — tempahan tidak berubah. Semak internet dan cuba lagi.',
     },
     zh: {
       langName: '中文', locale: 'zh-CN', dir: 'ltr',
@@ -452,6 +507,17 @@
       rcDate: '日期', rcWaiter: '服务员', rcCashier: '收银员', rcOrders: '订单', rcDiscount: '折扣', rcRounding: '四舍五入', rcToPay: '应付', rcTip: '小费', rcPaidTotal: '实付合计', rcThanks: '感谢光临！',
       rcPay: { cash: '现金', card: '刷卡', qr: '扫码', other: '其他' },
       googleAsk: '谢谢！如果您喜欢，请在 Google 上分享您的体验。这对餐厅帮助很大。', googleBtn: '在 Google 上评价',
+      favAdd: '加入收藏', favRemove: '取消收藏', favs: '我的收藏',
+      promo: '特价', promoUntil: (x) => `特价至 ${x}`, oldPrice: '原价', dayDish: '今日推荐',
+      stockLeft: (n) => `仅剩 ${n} 份`, stockMax: (n) => `无法再加 — 仅剩 ${n} 份`, errStockLeft: (a, n) => `${a}：仅剩 ${n} 份。请减少数量后再次发送。`,
+      bkBtn: '预订餐桌', bkTitle: '预订餐桌', bkName: '姓名', bkPhone: '电话', bkPhonePh: '+60 12 345 6789', bkDate: '日期', bkTime: '时间', bkPeople: '人数',
+      bkNote: '备注', bkNotePh: '例如：带小孩来，需要儿童椅', bkSend: '预订', bkNoTimes: '这一天已没有可订时间 — 请选择其他日期。', bkDayOff: '休息',
+      bkNo: (n) => `预订 #${n}`, bkGuests: (n) => `${n} 位`,
+      bkStatus: { new: '等待确认', confirmed: '已确认', seated: '您已入座', cancelled: '已取消', no_show: '预订已关闭' }, bkTable: (x) => `${x} 号桌`,
+      bkWait: '餐厅会确认您的预订 — 状态会在这里更新。', bkCancel: '取消预订', bkCancelAsk: (n) => `取消预订 #${n}？`, bkCancelYes: '是，取消', bkCancelNo: '不',
+      bkCancelled: '预订已取消', bkNew: '新预订', bkSent: '预订已发送', bkNeedName: '请填写姓名。', bkNeedPhone: '请检查电话号码：只能是数字，开头可以有 +。', bkNeedTime: '请选择时间。',
+      bkErr: { bookings_off: '目前无法通过菜单预订。请致电餐厅。', bad_time: '该时间已不可订：至少需提前 30 分钟预订。请选择其他时间。', closed_then: '餐厅在该时间不营业。请选择其他时间。', bad_request: '请检查姓名、电话和人数。', too_many: '该号码已有多个预订。如需更多，请致电餐厅。' },
+      voteTitle: '菜品怎么样？', voteUp: '喜欢', voteDown: '不喜欢', del: '删除', callDone: '服务员马上来', billDone: '账单马上送到', bkNet: '没有网络 — 预订没有变化。请检查网络后重试。',
     },
   };
 
@@ -484,7 +550,7 @@
         ordersEnabled: false, ordersWhenClosed: false,
         servicePct: 0, taxPct: 0, taxName: 'SST', taxOnService: true,
         halal: !!r.halal, halalNote: nonEmpty(r.halalNote),
-        defaultLanguage: b.defaultLanguage,
+        defaultLanguage: b.defaultLanguage, bookingsEnabled: false,
       },
       categories: b.categories.map((c) => ({ id: c.id, name: c.name, from: c.from || null, to: c.to || null })),
       dishes: b.dishes.filter((d) => !d.hidden).map((d) => ({
@@ -492,6 +558,7 @@
         price: Number(d.price), weight: d.weight ?? null, unit: d.unit || 'g', kcal: d.kcal ?? null, photo: d.photo || null,
         tags: d.tags || [], allergens: d.allergens || [], meat: d.meat || [], available: d.available !== false,
         options: Array.isArray(d.options) ? d.options : [], prepMin: d.prepMin || null, pairs: d.pairs || [],
+        promoPrice: null, promoFrom: null, promoTo: null, featured: false, stock: null,
       })),
     };
   }
@@ -508,7 +575,7 @@
         ordersEnabled: !!st.orders_enabled, ordersWhenClosed: !!st.orders_when_closed,
         servicePct: Number(st.service_pct) || 0, taxPct: Number(st.tax_pct) || 0, taxName: st.tax_name || 'SST', taxOnService: st.tax_on_service !== false,
         halal: !!st.halal, halalNote: nonEmpty(st.halal_note),
-        defaultLanguage: st.default_language,
+        defaultLanguage: st.default_language, bookingsEnabled: st.bookings_enabled !== false,
       },
       categories: shown.map((c) => ({ id: c.id, name: c.name, from: c.avail_from || null, to: c.avail_to || null })),
       dishes: dishes.filter((d) => !d.hidden && ids.has(d.category_id))
@@ -516,8 +583,13 @@
         .map((d) => ({
           id: d.id, category: d.category_id, name: d.name, desc: nonEmpty(d.desc), ingredients: nonEmpty(d.ingredients),
           price: Number(d.price), weight: d.weight, unit: d.unit, kcal: d.kcal, photo: d.photo_url || null,
-          tags: d.tags || [], allergens: d.allergens || [], meat: d.meat || [], available: d.available,
+          // остаток 0 = то же, что «нет в наличии» (сервер такой заказ не примет)
+          tags: d.tags || [], allergens: d.allergens || [], meat: d.meat || [], available: !!d.available && d.stock !== 0,
           options: Array.isArray(d.options) ? d.options : [], prepMin: d.prep_min || null, pairs: Array.isArray(d.pairs) ? d.pairs : [],
+          // акция: цена ниже обычной, весь день или в свои часы; «Блюдо дня»; остаток порций (пусто — не считаем)
+          promoPrice: d.promo_price != null && Number(d.promo_price) < Number(d.price) ? Number(d.promo_price) : null,
+          promoFrom: d.promo_from && d.promo_to ? d.promo_from : null, promoTo: d.promo_from && d.promo_to ? d.promo_to : null,
+          featured: !!d.featured, stock: d.stock == null ? null : Number(d.stock),
         })),
     };
   }
@@ -621,15 +693,25 @@
   };
   // время подачи категории (например, завтрак 06:00–11:00) — по часам ресторана
   const catOf = (d) => (M?.categories || []).find((c) => c.id === d?.category);
+  // сейчас внутри часов «с–до» (может переходить через полночь) — по часам ресторана, как category_open на сервере
+  function inHours(from, to) {
+    const m = SCH.localNow(R().timezone, new Date()).min;
+    const f = SCH.mins(from);
+    const e = SCH.mins(to);
+    return e > f ? m >= f && m < e : m >= f || m < e;
+  }
   function catOpen(c) {
     if (!c?.from || !c?.to) return true;
-    const m = SCH.localNow(R().timezone, new Date()).min;
-    const f = SCH.mins(c.from);
-    const to = SCH.mins(c.to);
-    return to > f ? m >= f && m < to : m >= f || m < to;
+    return inHours(c.from, c.to);
   }
+  // цена по акции идёт прямо сейчас? Та же проверка, что dish_price на сервере
+  const promoNow = (d) => !!d && d.promoPrice != null && d.promoPrice < Number(d.price) && (!d.promoFrom || !d.promoTo || inHours(d.promoFrom, d.promoTo));
+  const priceOf = (d) => (promoNow(d) ? Number(d.promoPrice) : Number(d.price));
+  // меняется со временем: завтрак открылся, акция началась или закончилась
+  const timeSig = () => `${(M?.categories || []).map((c) => catOpen(c)).join()}|${(M?.dishes || []).filter(promoNow).map((d) => d.id).join()}`;
   const orderable = (d) => !!d && d.available && catOpen(catOf(d));
-  const smooth = () => (matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth');
+  const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const smooth = () => (reduced() ? 'auto' : 'smooth');
   const itemName = (id) => L(byId[id]?.name) || L((seen[id] || Object.entries(seen).find(([k]) => parseKey(k).id === id)?.[1])?.name) || '…';
 
   // Строка списка: ключ «блюдо» или «блюдо|группа:вариант,…» — одно блюдо с разными вариантами = разные строки
@@ -639,7 +721,7 @@
   // выбранные варианты по ТЕКУЩЕМУ меню: подходят ли, цена за штуку, подписи
   function optInfo(d, opts) {
     if (!d) return { ok: false, unit: 0, names: [] };
-    let unit = Number(d.price);
+    let unit = priceOf(d);   // цена по акции, если она сейчас идёт
     let found = 0;
     let ok = true;
     const names = [];
@@ -755,6 +837,10 @@
     if (table && tableState !== 'invalid') badges.push(`<span class="badge">${icon('table', 'sm')}${esc(t('table'))} ${esc(table)}</span>`);
     if (wifi && tableState !== 'invalid') badges.push(`<button type="button" class="badge" data-sheet="wifi">${icon('wifi', 'sm')}${esc(t('wifi'))}</button>`);
     badges.push(`<button type="button" class="badge ${st.open ? 'ok' : 'off'}" data-sheet="hours" aria-label="${esc(`${st.text}. ${t('hours')}`)}"><span class="dot"></span>${esc(st.text)}${icon('chevron', 'sm chev')}</button>`);
+    if (ONLINE && (booking || r.bookingsEnabled)) {
+      const on = bkActive();
+      badges.push(`<button type="button" class="badge bk-badge${on ? ' on' : ''}" data-act="booking">${icon('calendar', 'sm')}${esc(on ? t('bkNo')(booking.no) : t('bkBtn'))}</button>`);
+    }
     if (r.halal) {
       badges.push(r.halalNote
         ? `<button type="button" class="badge halal" data-sheet="halal">${icon('check', 'sm')}${esc(t('halal'))}</button>`
@@ -788,18 +874,90 @@
     const hay = `${c?.id || ''} ${Object.values(c?.name || {}).join(' ')}`;
     return (PH.find(([, re]) => re.test(hay)) || ['dish'])[0];
   }
-  function photo(d, cls = '', flag = false) {
+  function photo(d, cls = '', flag = false, extra = '') {
     const kind = d?.photo ? '' : phKind(d);
     const img = d?.photo
       ? `<img src="${esc(d.photo)}" alt="${esc(L(d.name))}" loading="lazy" decoding="async" width="800" height="600" onload="this.dataset.ok=1" onerror="this.dataset.ok=1">`
       : icon(kind === 'dish' ? 'dish' : `ph-${kind}`);
     const sold = flag && d && !d.available ? `<span class="sold-flag">${esc(t('soldOut'))}</span>` : '';
-    return `<div class="photo ${cls}${d?.photo ? ' has-img' : ` ph ph-${kind}`}">${img}${sold}</div>`;
+    return `<div class="photo ${cls}${d?.photo ? ' has-img' : ` ph ph-${kind}`}">${img}${sold}${extra}</div>`;
   }
 
+  // метки: акция (с часами — «до 17:00»), «осталось 3», потом метки ресторана
   function tagsHtml(d) {
-    if (!d.tags?.length) return '';
-    return `<div class="tags">${d.tags.map((k) => `<span class="tag tag-${esc(k)}">${esc(t('tags')[k] || k)}</span>`).join('')}</div>`;
+    const list = [];
+    if (promoNow(d)) list.push(`<span class="tag tag-promo">${esc(d.promoTo ? t('promoUntil')(clock(d.promoTo)) : t('promo'))}</span>`);
+    if (d.available && d.stock > 0 && d.stock <= 5) list.push(`<span class="tag tag-left">${esc(t('stockLeft')(d.stock))}</span>`);
+    for (const k of d.tags || []) list.push(`<span class="tag tag-${esc(k)}">${esc(t('tags')[k] || k)}</span>`);
+    return list.length ? `<div class="tags">${list.join('')}</div>` : '';
+  }
+
+  // цена: по акции — обычная зачёркнута, цена акции акцентом
+  function priceHtml(d, cls = '') {
+    if (!promoNow(d)) return `<span class="price${cls ? ` ${cls}` : ''}">${money(d.price)}</span>`;
+    return `<span class="price-promo"><span class="price promo${cls ? ` ${cls}` : ''}">${money(d.promoPrice)}</span><s class="old-price"><span class="sr-only">${esc(t('oldPrice'))}: </span>${money(d.price)}</s></span>`;
+  }
+
+  // ---------- Любимые блюда (только на этом телефоне) ----------
+  let favs = (() => { const v = store.get('favs', []); return Array.isArray(v) ? v.filter((x) => typeof x === 'string').slice(0, 100) : []; })();
+  const isFav = (id) => favs.includes(id);
+  const favLabel = (id) => `${t(isFav(id) ? 'favRemove' : 'favAdd')}: ${itemName(id)}`;
+  function favBtn(id) {
+    const on = isFav(id);
+    return `<button type="button" class="fav-btn${on ? ' on' : ''}" data-act="fav" data-id="${esc(id)}" aria-pressed="${on}" aria-label="${esc(favLabel(id))}">${icon('heart')}</button>`;
+  }
+  function favsHtml() {
+    if (query || filterCount()) return '';
+    const list = favs.map((id) => byId[id]).filter(Boolean);
+    if (!list.length) return '';
+    return `<section class="hits favs" aria-labelledby="h-favs"><div class="cat-title"><h2 id="h-favs">${esc(t('favs'))}</h2></div>
+      <div class="hits-row">${list.map(miniCard).join('')}</div></section>`;
+  }
+  // меняем только сердечки и ряд «Мои любимые» — остальное меню не перерисовываем (фото не мигают)
+  function toggleFav(id, btn) {
+    favs = isFav(id) ? favs.filter((x) => x !== id) : [id, ...favs];
+    store.set('favs', favs);
+    // точка опоры: нажатое сердечко в меню (или первый видимый раздел) — после вставки ряда экран не прыгает
+    const anchor = btn?.closest('#menu') && !btn.closest('.favs') ? btn
+      : [...document.querySelectorAll('#menu > section.cat')].find((x) => x.getBoundingClientRect().bottom > 0) || null;
+    const top0 = anchor?.getBoundingClientRect().top;
+    document.querySelectorAll('.fav-btn').forEach((b) => {
+      const on = isFav(b.dataset.id);
+      b.classList.toggle('on', on);
+      b.setAttribute('aria-pressed', String(on));
+      b.setAttribute('aria-label', favLabel(b.dataset.id));
+    });
+    const old = $('#menu > .favs');
+    const html = favsHtml();
+    if (old) { if (html) old.outerHTML = html; else old.remove(); } else if (html) $('#menu > .hits:not(.day-dish), #menu > section.cat')?.insertAdjacentHTML('beforebegin', html);
+    if (anchor && document.contains(anchor)) {
+      const dy = anchor.getBoundingClientRect().top - top0;
+      if (dy) window.scrollBy({ top: dy, behavior: 'instant' });
+    }
+    // сердечко «подпрыгивает» — только по нажатию
+    if (!reduced()) {
+      document.querySelectorAll(`.fav-btn[data-id="${CSS.escape(id)}"]`).forEach((b) => {
+        b.classList.remove('pop'); void b.offsetWidth; b.classList.add('pop');
+        b.addEventListener('animationend', () => b.classList.remove('pop'), { once: true });
+      });
+    }
+  }
+
+  // ---------- «Блюдо дня» ----------
+  function dayHtml() {
+    if (query || filterCount()) return '';
+    const list = (M?.dishes || []).filter((d) => d.featured && d.available);
+    if (!list.length) return '';
+    const title = `<div class="cat-title"><h2 id="h-day">${esc(t('dayDish'))}</h2></div>`;
+    if (list.length > 1) return `<section class="hits day-dish" aria-labelledby="h-day">${title}<div class="hits-row">${list.map(miniCard).join('')}</div></section>`;
+    const d = list[0];
+    const desc = L(d.desc);
+    return `<section class="day-dish" aria-labelledby="h-day">${title}
+      <article class="feature" data-open="${esc(d.id)}" tabindex="0" role="button" aria-label="${esc(L(d.name))}">
+        ${photo(d, 'feature-photo', false, favBtn(d.id))}
+        <div class="feature-body">${tagsHtml(d)}<h3>${esc(L(d.name))}</h3>${desc ? `<p class="desc">${esc(desc)}</p>` : ''}
+          <div class="card-foot"><div class="price-wrap">${priceHtml(d)}<span class="amount">${esc(amount(d))}</span></div><div class="slot" data-slot="${esc(d.id)}">${control(d.id)}</div></div>
+        </div></article></section>`;
   }
 
   function control(id) {
@@ -836,13 +994,13 @@
     const compo = compoHtml(d);
     return `
       <article class="card${d.available ? '' : ' is-sold'}" data-open="${esc(d.id)}" tabindex="0" role="button" aria-label="${esc(L(d.name))}">
-        ${photo(d, '', true)}
+        ${photo(d, '', true, favBtn(d.id))}
         <div class="card-body">
           ${tagsHtml(d)}
           <h3>${esc(L(d.name))}</h3>
           ${compo || (desc ? `<p class="desc">${esc(desc)}</p>` : '<p class="desc"></p>')}
           <div class="card-foot">
-            <div class="price-wrap"><span class="price">${money(d.price)}</span><span class="amount">${esc([amount(d), d.prepMin ? t('prep')(d.prepMin) : ''].filter(Boolean).join(' · '))}</span></div>
+            <div class="price-wrap">${priceHtml(d)}<span class="amount">${esc([amount(d), d.prepMin ? t('prep')(d.prepMin) : ''].filter(Boolean).join(' · '))}</span></div>
             <div class="slot" data-slot="${esc(d.id)}">${control(d.id)}</div>
           </div>
         </div>
@@ -870,7 +1028,7 @@
       .map((c, i) => ({ c, i, items: M.dishes.filter((d) => d.category === c.id && matches(d)) }))
       .filter((g) => g.items.length)
       .sort((a, b) => ((b.c.from && catOpen(b.c)) - (a.c.from && catOpen(a.c))) || a.i - b.i);
-    lastOpenSig = M.categories.map((c) => catOpen(c)).join();
+    lastOpenSig = timeSig();
 
     cats.innerHTML = groups.map(({ c }) => `<button type="button" class="chip" data-cat="${esc(c.id)}">${esc(L(c.name))}</button>`).join('');
 
@@ -882,7 +1040,7 @@
       main.innerHTML = `${offline}<div class="state">${icon('search')}<h2>${esc(t('nothing'))}</h2>
         <p>${esc(t('nothingHint'))}</p><button type="button" class="btn ghost" data-act="show-all">${esc(t('showAll'))}</button></div>`;
     } else {
-      main.innerHTML = offline + hitsHtml() + groups.map(({ c, items }) => `
+      main.innerHTML = offline + dayHtml() + favsHtml() + hitsHtml() + groups.map(({ c, items }) => `
         <section class="cat" id="cat-${esc(c.id)}" data-cat="${esc(c.id)}" aria-labelledby="h-${esc(c.id)}">
           <div class="cat-title"><h2 id="h-${esc(c.id)}">${esc(L(c.name))}</h2><span>${items.length}</span>${c.from ? `<span class="cat-time${catOpen(c) ? ' now' : ''}">${icon('clock', 'sm')}${esc(catOpen(c) ? `${t('nowServing')} · ${clock(c.from)}–${clock(c.to)}` : t('servedAt')(clock(c.from), clock(c.to)))}</span>` : ''}</div>
           <div class="grid">${items.map(card).join('')}</div>
@@ -915,8 +1073,8 @@
   }
   function miniCard(d) {
     return `<article class="mini" data-open="${esc(d.id)}" tabindex="0" role="button" aria-label="${esc(L(d.name))}">
-      ${photo(d, 'mini-photo')}<b>${esc(L(d.name))}</b>
-      <div class="mini-foot"><span class="price">${money(d.price)}</span><div class="slot" data-slot="${esc(d.id)}">${control(d.id)}</div></div></article>`;
+      ${photo(d, 'mini-photo', false, favBtn(d.id))}<b>${esc(L(d.name))}</b>
+      <div class="mini-foot">${priceHtml(d)}<div class="slot" data-slot="${esc(d.id)}">${control(d.id)}</div></div></article>`;
   }
   function hitsHtml() {
     if (query || filterCount()) return '';
@@ -940,7 +1098,7 @@
   function pairsHtml(list, title) {
     if (!list.length) return '';
     return `<h4>${esc(title)}</h4><ul class="pair-list">${list.map((d) => `<li data-open="${esc(d.id)}" role="button" tabindex="0">
-      ${photo(d, 'pair-photo')}<span class="grow"><b>${esc(L(d.name))}</b><small>${money(d.price)}</small></span>
+      ${photo(d, 'pair-photo')}<span class="grow"><b>${esc(L(d.name))}</b><small>${money(priceOf(d))}</small></span>
       <span class="slot" data-slot="${esc(d.id)}">${control(d.id)}</span></li>`).join('')}</ul>`;
   }
 
@@ -1018,16 +1176,78 @@
       const tot = charges(sum).total;
       bar.innerHTML = `<span class="bar-left"><span class="count">${count}</span>${esc(t('order'))}${attention ? '<span class="warn-dot" aria-hidden="true"></span>' : ''}</span><span class="bar-sum">${money(tot)}</span>`;
       bar.setAttribute('aria-label', `${t('order')}: ${count}, ${t('total')} ${money(tot)}`);
+      roll('bar', [bar.querySelector('.bar-sum')], tot);
     } else if (last) {
       bar.dataset.go = 'track:' + last.id;
       const st = guestStatus(last.data.status);
       bar.innerHTML = `<span class="bar-left">${icon('list')}<span class="bar-txt">${esc(t('orderNo')(last.no))}</span></span><span class="bar-sum st-${esc(st)}">${st === 'accepted' ? icon('check', 'sm') : ''}<span class="bar-txt">${esc(t('statuses')[st])}</span></span>`;
       bar.setAttribute('aria-label', `${t('orderNo')(last.no)}: ${t('statuses')[st]}`);
     }
-    if (count > (renderBar.lastCount || 0) && !bar.hidden) { bar.classList.remove('bump'); void bar.offsetWidth; bar.classList.add('bump'); }
+    // пока блюдо летит в плашку, она «подпрыгнет» в момент приземления
+    if (count > (renderBar.lastCount || 0) && !bar.hidden && !flyHold) bumpBar();
     renderBar.lastCount = count;
+    if (!count) delete rolls.bar;
     bar.hidden = !count && !last;
     document.body.classList.toggle('has-bar', !bar.hidden);
+  }
+
+  function bumpBar() {
+    const bar = $('#order-bar');
+    bar.classList.remove('bump'); void bar.offsetWidth; bar.classList.add('bump');
+  }
+
+  // ---------- Сумма плавно «докручивается» до нового значения ----------
+  // В конце всегда ставим точное значение, новая перерисовка прерывает старую анимацию.
+  const rolls = {};   // где → { cur, raf }
+  function roll(where, els, to) {
+    els = els.filter(Boolean);
+    const r = rolls[where] || (rolls[where] = { cur: null, raf: 0 });
+    cancelAnimationFrame(r.raf);
+    const from = r.cur;
+    r.cur = to;
+    if (from == null || from === to || reduced() || !els.length) { els.forEach((el) => { el.textContent = money(to); }); return; }
+    const whole = Number.isInteger(from) && Number.isInteger(to);
+    const t0 = performance.now();
+    const step = (now) => {
+      const p = Math.min(1, (now - t0) / 350);
+      const v = p < 1 ? from + (to - from) * (1 - (1 - p) ** 3) : to;
+      const shown = p < 1 ? (whole ? Math.round(v) : Math.round(v * 100) / 100) : to;
+      els.forEach((el) => { el.textContent = money(shown); });
+      r.cur = v;
+      if (p < 1) r.raf = requestAnimationFrame(step); else r.cur = to;
+    };
+    els.forEach((el) => { el.textContent = money(from); });
+    r.cur = from;
+    r.raf = requestAnimationFrame(step);
+  }
+
+  // ---------- Полёт блюда в «Мой заказ» ----------
+  // круглая копия фото летит по дуге: X — равномерно, Y — сначала вверх, потом вниз (только transform/opacity)
+  let flyHold = false;
+  function flyToBar(src) {
+    const bar = $('#order-bar');
+    if (bar.hidden || !src) return false;
+    const a = src.getBoundingClientRect();
+    const b = (bar.querySelector('.count') || bar).getBoundingClientRect();
+    if (!a.width || !b.width) return false;
+    const size = 44;
+    const x0 = a.left + a.width / 2 - size / 2;
+    const y0 = a.top + a.height / 2 - size / 2;
+    const outer = document.createElement('div');
+    outer.className = 'fly';
+    outer.setAttribute('aria-hidden', 'true');
+    outer.style.cssText = `left:${x0}px;top:${y0}px;--dx:${b.left + b.width / 2 - size / 2 - x0}px;--dy:${b.top + b.height / 2 - size / 2 - y0}px`;
+    const dot = document.createElement('div');
+    dot.className = `${src.className} fly-dot`;
+    dot.innerHTML = src.innerHTML;
+    dot.querySelectorAll('.fav-btn, .sold-flag').forEach((x) => x.remove());
+    outer.appendChild(dot);
+    document.body.appendChild(outer);
+    let done = false;
+    const land = () => { if (done) return; done = true; outer.remove(); bumpBar(); };
+    dot.addEventListener('animationend', land, { once: true });
+    setTimeout(land, 1200);   // на всякий случай: анимацию могли не показать
+    return true;
   }
 
   function remember(key) {
@@ -1041,8 +1261,19 @@
     document.querySelectorAll('[data-slot]').forEach((el) => { el.innerHTML = control(el.dataset.slot); });
   }
 
+  // сколько порций ещё можно добавить (ресторан ведёт остаток — больше, чем есть, сервер не примет)
+  const room = (d) => (d?.stock == null ? 99 : d.stock - dishCount(d.id));
+  function stockBlocked(d, add) {
+    if (!d || d.stock == null || room(d) >= add) return false;
+    toast(t('stockMax')(d.stock), 'bad');
+    return true;
+  }
+
+  // возвращает true, если блюдо добавилось (для полёта в «Мой заказ»)
   function change(key, delta) {
-    if (delta > 0 && !orderable(byId[parseKey(key).id])) return;
+    if (delta > 0 && !orderable(byId[parseKey(key).id])) return false;
+    if (delta > 0 && stockBlocked(byId[parseKey(key).id], delta)) return false;
+    const was = order[key] || 0;
     const n = Math.min(99, Math.max(0, (order[key] || 0) + delta));
     if (n) { order[key] = n; remember(key); } else { delete order[key]; delete seen[key]; store.set('seen', seen); if (dishNotes[key]) { delete dishNotes[key]; saveDishNotes(); } if (noteOpen === key) noteOpen = null; }
     priceChanges = priceChanges.filter((p) => order[p.key]);
@@ -1050,6 +1281,7 @@
     refreshSlots();
     renderBar();
     if (sheet?.type === 'order') renderSheet();
+    return n > was;
   }
 
   // Почему сейчас нельзя отправить заказ (пустая строка — можно)
@@ -1093,14 +1325,18 @@
       const txt = priceChanges.map((p) => `${lineName(p.key)} ${money(p.from)} → ${money(p.to)}`).join('; ');
       out.push(`<p class="notice" role="status">${icon('alert')}<span>${esc(t('priceNotice')(txt))}</span></p>`);
     }
-    out.push(`<ul class="order-list">${ls.map(({ key, id, n, d, ok, unit, names }) => `
-      <li class="${ok ? '' : 'gone'}">
+    // строку можно смахнуть влево — под ней терракотовая кнопка «Удалить»
+    out.push(`<ul class="order-list cart-list">${ls.map(({ key, id, n, d, ok, unit, names }) => `
+      <li class="cart-line${ok ? '' : ' gone'}" data-line="${esc(key)}">
+        <button type="button" class="swipe-del" data-act="swipe-del" data-key="${esc(key)}" tabindex="-1" aria-hidden="true">${icon('trash')}<span>${esc(t('del'))}</span></button>
+        <div class="cl-row">
         ${photo(d)}
         <span class="o-name"><b>${esc(itemName(id))}</b>${names.length ? `<em class="o-opts">${esc(names.join(', '))}</em>` : ''}<small>${ok ? `${money(unit)} × ${n}` : esc(d?.available && !catOpen(catOf(d)) ? t('notNowRow')(clock(catOf(d).from), clock(catOf(d).to)) : t('soldOutRow'))}</small></span>
         <span class="o-sum">${ok ? money(unit * n) : ''}</span>
         <div class="o-ctl">${ok ? lineControl(key) : '<span></span>'}
           <button type="button" class="o-remove" data-act="del" data-key="${esc(key)}">${icon('trash', 'sm')}${esc(t('removeItem'))}</button></div>
         ${ok && ONLINE ? `<div class="o-dn">${dishNoteHtml(key)}</div>` : ''}
+        </div>
       </li>`).join('')}</ul>`);
     if (ONLINE) {
       out.push(`<section class="note-field" aria-labelledby="note-l"><span id="note-l">${esc(t('noteLabel'))}</span>
@@ -1284,22 +1520,57 @@
   let reviewed = store.get('reviewed', {}) || {};
   let reviewDraft = { rating: 0, text: '' };
   let reviewBusy = false;
+  // оценки блюд гостя: { заказ: { блюдо: 1 | -1 } } — помним, чтобы кнопки оставались выбранными
+  let dishVotes = store.get('votes', {}) || {};
+  // анимации отзыва играют только по действию гостя и один раз — перерисовка статуса их не повторяет
+  const starsIntro = new Set();   // у каких заказов звёзды уже «пробежали» при появлении
+  let starsLit = false;           // гость только что поставил оценку
+  let thanksFor = null;           // отзыв только что ушёл — «спасибо» появляется мягко
   function reviewHtml(id, o) {
     if (!ONLINE || (!['served', 'ready', 'cooking'].includes(o.status) && !o.paid_at)) return '';
     if (reviewed[id]) {
+      const fresh = thanksFor === id ? ' thanks-in' : '';
+      thanksFor = null;
       const g = R().googleReviewUrl;
       if (g && reviewed[id] >= 4) {
-        return `<section class="review google-ask"><p>${esc(t('googleAsk'))}</p>
+        return `<section class="review google-ask${fresh}"><p>${esc(t('googleAsk'))}</p>
           <a class="btn block" href="${esc(g)}" target="_blank" rel="noopener">${icon('star', 'sm')}<span>${esc(t('googleBtn'))}</span></a></section>`;
       }
-      return `<p class="notice ok">${icon('check')}<span>${esc(t('rateThanks'))}</span></p>`;
+      return `<p class="notice ok${fresh}">${icon('check')}<span>${esc(t('rateThanks'))}</span></p>`;
     }
     const r = reviewDraft.rating;
+    const anim = starsLit ? ' lit' : starsIntro.has(id) ? '' : ' intro';
+    starsLit = false;
+    starsIntro.add(id);
     return `<section class="review" aria-labelledby="rv-t"><h4 id="rv-t">${esc(t('rateTitle'))}</h4>
-      <div class="stars" role="radiogroup" aria-label="${esc(t('rateTitle'))}">${[1, 2, 3, 4, 5].map((n) => `<button type="button" class="star${n <= r ? ' on' : ''}" data-act="rate" data-n="${n}" role="radio" aria-checked="${n === r}" aria-label="${esc(t('rateStar')(n))}"><svg class="ic" aria-hidden="true"><use href="#i-star"/></svg></button>`).join('')}</div>
+      <div class="stars${anim}" role="radiogroup" aria-label="${esc(t('rateTitle'))}">${[1, 2, 3, 4, 5].map((n) => `<button type="button" class="star${n <= r ? ' on' : ''}" style="--i:${n - 1}" data-act="rate" data-n="${n}" role="radio" aria-checked="${n === r}" aria-label="${esc(t('rateStar')(n))}"><svg class="ic" aria-hidden="true"><use href="#i-star"/></svg></button>`).join('')}</div>
+      ${r ? votesHtml(id, o) : ''}
       ${r ? `<textarea id="review-text" rows="2" maxlength="500" placeholder="${esc(t('ratePh'))}">${esc(reviewDraft.text)}</textarea>
         <button type="button" class="btn block" data-act="review-send" data-id="${esc(id)}"${reviewBusy ? ' disabled' : ''}>${esc(t('rateSend'))}</button>` : ''}
     </section>`;
+  }
+  // блюда заказа (без повторов) с «понравилось / не понравилось»
+  function votesHtml(id, o) {
+    const ids = new Set();
+    const list = (o.items || []).filter((i) => i.id && !ids.has(i.id) && ids.add(i.id));
+    if (!list.length) return '';
+    const v = dishVotes[id] || {};
+    const btn = (i, n, kind, label) => `<button type="button" class="vote ${kind}${v[i.id] === n ? ' on' : ''}" data-act="vote" data-id="${esc(id)}" data-dish="${esc(i.id)}" data-vote="${n}" aria-pressed="${v[i.id] === n}" aria-label="${esc(`${t(label)}: ${L(i.name) || i.id}`)}">${icon(`thumb-${kind}`)}</button>`;
+    return `<div class="votes"><p class="votes-t">${esc(t('voteTitle'))}</p><ul class="vote-list">${list.map((i) => `
+      <li><span class="grow">${esc(L(i.name) || i.id)}</span>${btn(i, 1, 'up', 'voteUp')}${btn(i, -1, 'down', 'voteDown')}</li>`).join('')}</ul></div>`;
+  }
+  // нажали ещё раз на выбранное — оценка снимается; меняем кнопки на месте, без перерисовки шторки
+  function vote(btn) {
+    const { id, dish } = btn.dataset;
+    const n = Number(btn.dataset.vote);
+    const m = dishVotes[id] || (dishVotes[id] = {});
+    if (m[dish] === n) delete m[dish]; else m[dish] = n;
+    store.set('votes', dishVotes);
+    btn.closest('li')?.querySelectorAll('.vote').forEach((b) => {
+      const on = m[dish] === Number(b.dataset.vote);
+      b.classList.toggle('on', on);
+      b.setAttribute('aria-pressed', String(on));
+    });
   }
   async function sendReview(id) {
     const mine = myOrders.find((x) => x.id === id);
@@ -1307,10 +1578,16 @@
     reviewBusy = true;
     renderSheet();
     try {
+      // оценки блюд — вместе с отзывом (повторная отправка безопасна: сервер перезаписывает)
+      const votes = Object.fromEntries(Object.entries(dishVotes[id] || {}).filter(([, v]) => v === 1 || v === -1));
+      if (Object.keys(votes).length) {
+        try { await rpc('vote_dishes', { p_order: id, p_token: mine.token, p_votes: votes }); } catch (e) { if (e?.net) throw e; /* отзыв важнее оценок блюд */ }
+      }
       await rpc('leave_review', { p_order: id, p_token: mine.token, p_rating: reviewDraft.rating, p_comment: reviewDraft.text.trim() || null, p_lang: lang });
       reviewed[id] = reviewDraft.rating;
       store.set('reviewed', reviewed);
       reviewDraft = { rating: 0, text: '' };
+      thanksFor = id;
       toast(t('rateThanks'), 'good');
     } catch { toast(t('errServer'), 'bad'); }
     reviewBusy = false;
@@ -1326,11 +1603,15 @@
       const d = byId[i.id];
       const opts = (i.opts || []).map((x) => `${x.g}:${x.c}`);
       if (!orderable(d) || !optInfo(d, opts).ok) { skipped += 1; continue; }
+      // остаток меньше, чем было в заказе: берём сколько есть
+      const q = Math.min(Number(i.qty), room(d));
+      if (q <= 0) { skipped += 1; continue; }
+      if (q < Number(i.qty)) skipped += 1;
       const key = makeKey(d.id, opts);
-      order[key] = Math.min(99, (order[key] || 0) + Number(i.qty));
+      order[key] = Math.min(99, (order[key] || 0) + q);
       remember(key);
       if (i.note && !dishNotes[key]) dishNotes[key] = String(i.note).slice(0, 120);
-      added += Number(i.qty);
+      added += q;
     }
     saveDishNotes();
     store.set('order', order);
@@ -1357,6 +1638,7 @@
     if (!d || !sheet.pick || !orderable(d)) return;
     const opts = pickedOpts();
     if (!optInfo(d, opts).ok) { updatePick(); return; }
+    if (stockBlocked(d, sheet.pick.qty)) return;
     const key = makeKey(d.id, opts);
     order[key] = Math.min(99, (order[key] || 0) + sheet.pick.qty);
     remember(key);
@@ -1385,9 +1667,13 @@
     const show = ONLINE && !!tableToken && tableState !== 'invalid' && tableState !== 'none';
     el.hidden = !show;
     if (!show) { el.innerHTML = ''; return; }
-    el.innerHTML = `<button type="button" class="call-btn${openCalls.waiter ? ' on' : ''}" data-act="call-waiter"${calling ? ' disabled' : ''}>${icon(openCalls.waiter ? 'check' : 'bell')}<span>${esc(openCalls.waiter ? t('waiterComing') : t('callWaiter'))}</span></button>
-      <button type="button" class="call-btn${openCalls.bill ? ' on' : ''}" data-act="call-bill"${calling ? ' disabled' : ''}>${icon(openCalls.bill ? 'check' : 'list')}<span>${esc(openCalls.bill ? t('billComing') : t('askBill'))}</span></button>`;
+    // сразу после успешного вызова кнопка на пару секунд становится галочкой «Официант уже идёт» / «Счёт несут»
+    const just = (k) => callJust?.kind === k && Date.now() < callJust.until;
+    const morph = (k) => { if (!just(k) || callJust.played) return ''; callJust.played = true; return ' morph'; };
+    el.innerHTML = `<button type="button" class="call-btn${openCalls.waiter ? ' on' : ''}${just('waiter') ? ' just' : ''}${morph('waiter')}" data-act="call-waiter"${calling ? ' disabled' : ''}>${icon(openCalls.waiter ? 'check' : 'bell')}<span>${esc(just('waiter') ? t('callDone') : openCalls.waiter ? t('waiterComing') : t('callWaiter'))}</span></button>
+      <button type="button" class="call-btn${openCalls.bill ? ' on' : ''}${just('bill') ? ' just' : ''}${morph('bill')}" data-act="call-bill"${calling ? ' disabled' : ''}>${icon(openCalls.bill ? 'check' : 'list')}<span>${esc(just('bill') ? t('billDone') : openCalls.bill ? t('billComing') : t('askBill'))}</span></button>`;
   }
+  let callJust = null;   // { kind, until, played } — короткое «подтверждение» после вызова
   async function callStaff(kind, method, reason) {
     if (calling || !ONLINE || !tableToken) return;
     calling = true;
@@ -1395,6 +1681,8 @@
     try {
       await rpc('call_staff', { p_table: tableToken, p_kind: kind, p_method: method || null, p_reason: reason || null });
       openCalls[kind] = true;
+      callJust = { kind, until: Date.now() + 3000, played: false };
+      setTimeout(() => { if (callJust && Date.now() >= callJust.until) { callJust = null; renderTableActions(); } }, 3050);
       if (reason && !openCalls.reasons.includes(reason)) openCalls.reasons.push(reason);
       if (sheet?.type === 'bill' || sheet?.type === 'waiter') closeSheet();
       toast(t(kind === 'bill' ? 'billSent' : 'callSent'), 'good');
@@ -1474,7 +1762,7 @@
     const d = byId[viewer.ids[viewer.i]];
     const many = viewer.ids.length > 1;
     el.innerHTML = `<button type="button" class="v-close" aria-label="${esc(t('close'))}" data-v="close">${icon('x')}</button>
-      <figure class="v-in"><img src="${esc(d.photo)}" alt="${esc(L(d.name))}"><figcaption><b>${esc(L(d.name))}</b><span>${money(d.price)}</span>${many ? `<small>${esc(t('photoOf')(viewer.i + 1, viewer.ids.length))}</small>` : ''}</figcaption></figure>
+      <figure class="v-in"><img src="${esc(d.photo)}" alt="${esc(L(d.name))}"><figcaption><b>${esc(L(d.name))}</b><span>${money(priceOf(d))}</span>${many ? `<small>${esc(t('photoOf')(viewer.i + 1, viewer.ids.length))}</small>` : ''}</figcaption></figure>
       ${many ? `<button type="button" class="v-nav v-prev" data-v="prev" aria-label="‹">${icon('chevron')}</button><button type="button" class="v-nav v-next" data-v="next" aria-label="›">${icon('chevron')}</button>` : ''}`;
     el.querySelector('.v-close').focus({ preventScroll: true });
   }
@@ -1545,7 +1833,12 @@
     } catch (e) {
       const m = String(e?.message || '');
       if (e?.net) sendError = t('errNetwork');
-      else if (/price_changed|unavailable|options|not_now/.test(m)) { await refreshMenu(true); sendError = t('errChanged'); }
+      else if (/sold_out/.test(m)) {
+        // порций осталось меньше, чем в заказе: свежее меню и точная подсказка, сколько осталось
+        await refreshMenu(true);
+        const d = byId[(m.match(/sold_out:([^\s"]+)/) || [])[1]];
+        sendError = d && d.stock > 0 ? t('errStockLeft')(L(d.name), d.stock) : t('errChanged');
+      } else if (/price_changed|unavailable|options|not_now/.test(m)) { await refreshMenu(true); sendError = t('errChanged'); }
       else if (/bad_table/.test(m)) { tableState = 'invalid'; table = ''; store.set('table', null); sendError = ''; }
       else if (/closed|orders_off/.test(m)) { await refreshMenu(true); sendError = ''; }
       else if (/too_many/.test(m)) sendError = t('errTooMany');
@@ -1629,6 +1922,221 @@
     if (sheet?.type === 'order') renderSheet();
   }
 
+  // ---------- Бронь стола ----------
+  // На телефоне — только номер брони, её секрет и последний известный статус; правду знает сервер.
+  let booking = (() => { const b = store.get('booking', null); return b && b.id && b.token ? b : null; })();
+  const bkForm = { day: null, time: null, people: 2, name: '', phone: '', note: '', busy: false, error: '', key: null, sig: '', ask: false };
+  { const c = store.get('bookingContact', null); if (c) { bkForm.name = String(c.name || '').slice(0, 60); bkForm.phone = String(c.phone || '').slice(0, 20); } }
+  let bkTimer = null;
+  const pad2 = (n) => String(n).padStart(2, '0');
+  const bkActive = () => !!booking && ['new', 'confirmed'].includes(booking.status) && new Date(booking.at).getTime() > Date.now();
+
+  // смещение часового пояса ресторана в момент ms (как сервер считает «at time zone»)
+  let tzFmt = null;   // один форматтер на часовой пояс: создавать его на каждый слот дорого
+  function tzOffset(ms) {
+    try {
+      if (tzFmt?.zone !== R().timezone) {
+        tzFmt = { zone: R().timezone, f: new Intl.DateTimeFormat('en-US', { timeZone: R().timezone, hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) };
+      }
+      const p = Object.fromEntries(tzFmt.f.formatToParts(new Date(ms)).map((x) => [x.type, x.value]));
+      return Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour % 24, +p.minute) - Math.floor(ms / 60000) * 60000;
+    } catch { return -new Date(ms).getTimezoneOffset() * 60000; }
+  }
+  // день (полночь UTC с датой ресторана) + минуты по часам ресторана → настоящий момент
+  function zoned(dayUtc, min) {
+    const guess = dayUtc + min * 60000;
+    let at = guess - tzOffset(guess);
+    at = guess - tzOffset(at);   // переход на летнее время (в Малайзии его нет, но пусть будет верно везде)
+    return at;
+  }
+  // открыт ли ресторан в этот день недели и минуту — та же логика, что restaurant_open на сервере
+  function openAt(wd, m) {
+    const s = R().schedule;
+    if (!Array.isArray(s) || s.length !== 7) return false;
+    const p = s[(wd + 6) % 7];
+    if (p && !p.closed && SCH.mins(p.close) < SCH.mins(p.open) && m < SCH.mins(p.close)) return true;
+    const d = s[wd];
+    if (!d || d.closed) return false;
+    const o = SCH.mins(d.open);
+    const c = SCH.mins(d.close);
+    return c > o ? m >= o && m < c : m >= o;
+  }
+  // 14 дней вперёд; время — каждые 30 минут, когда ресторан открыт и не раньше чем через 30 минут
+  function bkDays() {
+    let today;
+    try {
+      const p = Object.fromEntries(new Intl.DateTimeFormat('en-US', { timeZone: R().timezone, year: 'numeric', month: '2-digit', day: '2-digit' })
+        .formatToParts(new Date()).map((x) => [x.type, x.value]));
+      today = Date.UTC(+p.year, +p.month - 1, +p.day);
+    } catch { const n = new Date(); today = Date.UTC(n.getFullYear(), n.getMonth(), n.getDate()); }
+    const soon = Date.now() + 31 * 60000;   // минута запаса: сервер требует не меньше 30 минут
+    const out = [];
+    for (let k = 0; k < 14; k++) {
+      const day = today + k * 86400000;
+      const u = new Date(day);
+      const wd = (u.getUTCDay() + 6) % 7;
+      const slots = [];
+      for (let m = 0; m < 1440; m += 30) {
+        if (!openAt(wd, m)) continue;
+        const at = zoned(day, m);
+        if (at >= soon) slots.push({ m, iso: new Date(at).toISOString() });
+      }
+      out.push({ key: `${u.getUTCFullYear()}-${pad2(u.getUTCMonth() + 1)}-${pad2(u.getUTCDate())}`, k, u, wd, slots });
+    }
+    return out;
+  }
+  // «сб, 22 нояб., 19:30» — по часам ресторана
+  function bkWhen(iso) {
+    const d = new Date(iso);
+    try {
+      const day = new Intl.DateTimeFormat(t('locale'), { weekday: 'short', day: 'numeric', month: 'short', timeZone: R().timezone }).format(d);
+      const time = new Intl.DateTimeFormat(t('locale'), { hour: '2-digit', minute: '2-digit', hour12: lang === 'en', timeZone: R().timezone }).format(d);
+      return `${day}, ${time}`;
+    } catch { return d.toLocaleString(); }
+  }
+
+  function bookingHtml() {
+    const title = `<h2 class="sheet-title" id="sheet-title">${esc(t('bkTitle'))}</h2>`;
+    if (booking) return title + bookingCardHtml();
+    if (!R().bookingsEnabled) return `${title}<p class="notice">${icon('alert')}<span>${esc(t('bkErr').bookings_off)}</span></p>`;
+    const f = bkForm;
+    const days = bkDays();
+    if (!days.some((d) => d.key === f.day && d.slots.length)) f.day = days.find((d) => d.slots.length)?.key || null;
+    const day = days.find((d) => d.key === f.day);
+    if (f.time && !day?.slots.some((x) => x.iso === f.time)) f.time = null;
+    const fmt = (o) => { try { return new Intl.DateTimeFormat(t('locale'), { ...o, timeZone: 'UTC' }); } catch { return new Intl.DateTimeFormat('en', { ...o, timeZone: 'UTC' }); } };
+    const wdF = fmt({ weekday: 'short' });
+    const dF = fmt({ day: 'numeric', month: 'short' });
+    const dayChips = days.map((d) => `<button type="button" class="bk-chip bk-day${d.key === f.day ? ' on' : ''}" data-act="bk-day" data-day="${d.key}" aria-pressed="${d.key === f.day}"${d.slots.length ? '' : ' disabled'}>
+        <small>${esc(d.k === 0 ? t('today') : wdF.format(d.u))}</small><b>${esc(dF.format(d.u))}</b>${d.slots.length ? '' : `<small>${esc(t('bkDayOff'))}</small>`}</button>`).join('');
+    const times = day?.slots.length
+      ? `<div class="bk-times">${day.slots.map((x) => `<button type="button" class="bk-chip bk-time${x.iso === f.time ? ' on' : ''}" data-act="bk-time" data-at="${x.iso}" aria-pressed="${x.iso === f.time}"><bdi dir="ltr">${esc(clock(`${pad2(Math.floor(x.m / 60))}:${pad2(x.m % 60)}`))}</bdi></button>`).join('')}</div>`
+      : `<p class="hint-note">${esc(t('bkNoTimes'))}</p>`;
+    return `${title}
+      <h4>${esc(t('bkDate'))}</h4><div class="bk-days">${dayChips}</div>
+      <h4>${esc(t('bkTime'))}</h4>${times}
+      <div class="bk-people"><span>${esc(t('bkPeople'))}</span>
+        <div class="stepper"><button type="button" data-act="bk-people" data-d="-1" aria-label="${esc(`${t('bkPeople')} −1`)}"${f.people <= 1 ? ' disabled' : ''}>${icon('minus')}</button><span aria-live="polite">${f.people}</span><button type="button" data-act="bk-people" data-d="1" aria-label="${esc(`${t('bkPeople')} +1`)}"${f.people >= 20 ? ' disabled' : ''}>${icon('plus')}</button></div></div>
+      <label class="bk-field"><span>${esc(t('bkName'))}</span><input id="bk-name" autocomplete="name" maxlength="60" value="${esc(f.name)}"></label>
+      <label class="bk-field"><span>${esc(t('bkPhone'))}</span><input id="bk-phone" type="tel" inputmode="tel" autocomplete="tel" maxlength="20" dir="ltr" placeholder="${esc(t('bkPhonePh'))}" value="${esc(f.phone)}"></label>
+      <label class="bk-field"><span>${esc(t('bkNote'))}</span><textarea id="bk-note" rows="2" maxlength="300" placeholder="${esc(t('bkNotePh'))}">${esc(f.note)}</textarea></label>
+      <div class="sheet-actions">
+        ${f.error ? `<p class="notice bad" role="alert">${icon('alert')}<span>${esc(f.error)}</span></p>` : ''}
+        <button type="button" class="btn block send-btn bk-send" data-act="bk-send"${f.busy ? ' disabled' : ''}>${f.busy ? `<span class="spinner" aria-hidden="true"></span><span>${esc(t('sending'))}</span>` : `<span>${esc(t('bkSend'))}</span>`}</button>
+      </div>`;
+  }
+
+  // карточка брони: «Бронь №101 · сб, 22 нояб., 19:30 · 4 гостя» и статус
+  function bookingCardHtml() {
+    const b = booking;
+    const st = b.status || 'new';
+    const stText = st === 'confirmed' && b.table_label ? `${t('bkStatus').confirmed}, ${t('bkTable')(b.table_label)}` : (t('bkStatus')[st] || st);
+    const kind = st === 'cancelled' || st === 'no_show' ? 'off' : st === 'new' ? 'wait' : 'ok';
+    const canCancel = bkActive();
+    const f = bkForm;
+    const actions = canCancel
+      ? (f.ask
+        ? `<p class="bk-ask">${esc(t('bkCancelAsk')(b.no))}</p><div class="btn-pair">
+            <button type="button" class="btn ghost" data-act="bk-cancel-no"${f.busy ? ' disabled' : ''}>${esc(t('bkCancelNo'))}</button>
+            <button type="button" class="btn soft" data-act="bk-cancel-yes"${f.busy ? ' disabled' : ''}>${f.busy ? '<span class="spinner" aria-hidden="true"></span>' : ''}<span>${esc(t('bkCancelYes'))}</span></button></div>`
+        : `<button type="button" class="btn ghost" data-act="bk-cancel">${esc(t('bkCancel'))}</button>`)
+      : `<button type="button" class="btn" data-act="bk-new">${esc(t('bkNew'))}</button>`;
+    return `<div class="bk-card is-${kind}" aria-live="polite">
+        <span class="bk-icon">${icon(kind === 'ok' ? 'check' : kind === 'off' ? 'x' : 'clock')}</span>
+        <div><b>${esc(stText)}</b><span>${esc([t('bkNo')(b.no), bkWhen(b.at), t('bkGuests')(b.people)].join(' · '))}</span></div>
+      </div>
+      ${st === 'new' && canCancel ? `<p class="hint-note">${esc(t('bkWait'))}</p>` : ''}
+      ${f.error ? `<p class="notice bad" role="alert">${icon('alert')}<span>${esc(f.error)}</span></p>` : ''}
+      <div class="bk-actions">${actions}</div>`;
+  }
+
+  function openBooking() {
+    bkForm.error = '';
+    bkForm.ask = false;
+    openSheet({ type: 'booking' });
+    pollBooking();
+    scheduleBooking();
+  }
+  async function sendBooking() {
+    const f = bkForm;
+    if (f.busy) return;
+    const name = f.name.trim();
+    const phone = f.phone.trim().replace(/\s+/g, ' ');
+    f.error = !f.time ? t('bkNeedTime') : !name ? t('bkNeedName') : !/^\+?[0-9][0-9 ()-]{5,19}$/.test(phone) ? t('bkNeedPhone') : '';
+    if (!f.error && new Date(f.time).getTime() < Date.now() + 30 * 60000) { f.time = null; f.error = t('bkErr').bad_time; }
+    if (f.error) { renderSheet(); return; }
+    // один ключ на одну попытку: повторное нажатие и потерянный ответ не создадут вторую бронь
+    const sig = JSON.stringify([name, phone, f.time, f.people, f.note.trim()]);
+    if (!f.key || f.sig !== sig) { f.key = uuid(); f.sig = sig; }
+    f.busy = true;
+    renderSheet();
+    try {
+      const rows = await rpc('book_table', { p_name: name, p_phone: phone, p_at: f.time, p_people: f.people, p_note: f.note.trim() || null, p_lang: lang, p_client_key: f.key });
+      const r = Array.isArray(rows) ? rows[0] : rows;
+      if (!r?.id || !r.guest_token) throw new Error('bad_reply');
+      booking = { id: r.id, token: r.guest_token, no: r.no, at: r.at, people: r.people, status: r.status || 'new', table_label: null };
+      store.set('booking', booking);
+      store.set('bookingContact', { name, phone });
+      Object.assign(f, { time: null, note: '', key: null, sig: '', error: '', ask: false });
+      toast(t('bkSent'), 'good');
+      scheduleBooking();
+    } catch (e) {
+      const m = String(e?.message || '');
+      const code = e?.net ? '' : Object.keys(t('bkErr')).find((k) => m.includes(k));
+      f.error = code ? t('bkErr')[code] : t('bkNet');
+      if (code === 'bad_time' || code === 'closed_then') f.time = null;
+      if (code === 'bookings_off') M.restaurant.bookingsEnabled = false;
+    } finally {
+      f.busy = false;
+      renderHeader();
+      if (sheet?.type === 'booking') renderSheet();
+    }
+  }
+  async function cancelBooking() {
+    if (!booking || bkForm.busy) return;
+    bkForm.busy = true;
+    bkForm.error = '';
+    renderSheet();
+    try {
+      await rpc('cancel_booking', { p_id: booking.id, p_token: booking.token });
+      booking = { ...booking, status: 'cancelled' };
+      store.set('booking', booking);
+      toast(t('bkCancelled'), 'good');
+    } catch (e) {
+      if (e?.net) bkForm.error = t('bkNet'); else await pollBooking();   // уже не отменить (посадили, прошло) — покажем, как есть
+    } finally {
+      bkForm.busy = false;
+      bkForm.ask = false;
+      renderHeader();
+      if (sheet?.type === 'booking') renderSheet();
+    }
+  }
+  // статус спрашиваем, когда шторка брони открыта (раз в 20 с) и когда гость вернулся на страницу
+  async function pollBooking() {
+    if (!ONLINE || !booking) return;
+    const was = booking;
+    try {
+      const rows = await rpc('my_booking', { p_id: was.id, p_token: was.token });
+      const r = Array.isArray(rows) ? rows[0] : rows;
+      if (booking !== was) return;   // пока ждали ответа, гость отменил или начал новую бронь
+      if (!r) {
+        booking = null;               // день брони прошёл — сервер её больше не отдаёт
+      } else {
+        const next = { ...was, no: r.no, status: r.status, at: r.at, people: r.people, table_label: r.table_label || null };
+        if (JSON.stringify(next) === JSON.stringify(was)) return;
+        booking = next;
+      }
+      store.set('booking', booking);
+      renderHeader();
+      if (sheet?.type === 'booking' && !bkForm.busy) renderSheet();
+    } catch { /* нет связи — показываем последний известный статус */ }
+  }
+  function scheduleBooking() {
+    clearTimeout(bkTimer);
+    if (sheet?.type !== 'booking' || !booking) return;
+    bkTimer = setTimeout(async () => { if (!document.hidden) await pollBooking(); scheduleBooking(); }, 20000);
+  }
+
   // ---------- Шторка ----------
   function renderSheet() {
     if (!sheet || !M) return;
@@ -1682,7 +2190,7 @@
               <span class="opt-name">${esc(L(c.name))}</span>${pr ? `<span class="opt-price"><bdi dir="ltr">${pr > 0 ? '+' : '−'}${money(Math.abs(pr))}</bdi></span>` : ''}</label>`;
           }).join('')}</fieldset>`).join('')}</div>` : '';
       body.innerHTML = `
-        ${photo(d, 'big', true)}
+        ${photo(d, 'big', true, favBtn(d.id))}
         ${tagsHtml(d)}
         <h2 class="sheet-title" id="sheet-title">${esc(L(d.name))}</h2>
         ${L(d.desc) ? `<p class="sheet-desc">${esc(L(d.desc))}</p>` : ''}
@@ -1690,13 +2198,13 @@
         ${meatText(d) ? `<h4>${esc(t('meatLabel'))}</h4><p class="meat-line">${esc(meatText(d))}</p>` : ''}
         ${L(d.ingredients) ? `<h4>${esc(t('ingredients'))}</h4><p>${esc(L(d.ingredients))}</p>` : ''}
         ${allergens ? `<h4>${esc(t('allergens'))}</h4><p>${esc(allergens)}</p>` : ''}
-        ${pick ? `<p class="pick-price"><span class="price big">${money(d.price)}</span><span class="amount">${esc(meta)}</span></p>${optsHtml}
+        ${pick ? `<p class="pick-price">${priceHtml(d, 'big')}<span class="amount">${esc(meta)}</span></p>${optsHtml}
         <div class="sheet-foot pick-foot">
           <div class="stepper"><button type="button" data-act="pick-dec" aria-label="${esc(t('remove'))}">${icon('minus')}</button><span id="pick-qty" aria-live="polite">${sheet.pick.qty}</span><button type="button" data-act="pick-inc" aria-label="${esc(t('add'))}">${icon('plus')}</button></div>
           <button type="button" class="btn pick-add" id="pick-add" data-act="pick-add"${oi.ok ? '' : ' disabled'}><span>${esc(t('addFor')(money(oi.unit * sheet.pick.qty)))}</span></button>
         </div>` : `
         <div class="sheet-foot">
-          <div class="price-wrap"><span class="price big">${money(d.price)}</span><span class="amount">${esc(meta)}</span></div>
+          <div class="price-wrap">${priceHtml(d, 'big')}<span class="amount">${esc(meta)}</span></div>
           <div class="slot" data-slot="${esc(d.id)}">${control(d.id)}</div>
         </div>`}
         ${pairsHtml(pairsFor([d.id]), t('pairs'))}`;
@@ -1757,11 +2265,21 @@
     }
     if (sheet.type === 'receipt') { body.innerHTML = receiptHtml(); return; }
     if (sheet.type === 'track') { body.innerHTML = trackSheetHtml(sheet.id); return; }
+    if (sheet.type === 'booking') {
+      // ряд дней прокручивается вбок — после перерисовки остаётся на месте
+      const sl = body.querySelector('.bk-days')?.scrollLeft || 0;
+      body.innerHTML = bookingHtml();
+      const row = body.querySelector('.bk-days');
+      if (row) row.scrollLeft = sl;
+      return;
+    }
     body.innerHTML = orderSheetHtml();
+    roll('sheet', [...body.querySelectorAll('.order-total strong, .send-sum bdi')], charges(totals().sum).total);
   }
 
   function openSheet(next) {
     const wasOpen = !!sheet;
+    if (next.type !== sheet?.type) delete rolls.sheet;   // открыли заново — сумма сразу точная, без докрутки
     sheet = next;
     if (next.type === 'order') {
       attention = false;
@@ -1787,6 +2305,8 @@
     if (sheet.type === 'order') priceChanges = [];
     if (sheet.type === 'track') { justSent = null; renderedTrack = null; }
     sheet = null;
+    delete rolls.sheet;
+    clearTimeout(bkTimer);
     const el = $('#sheet');
     const bd = $('#backdrop');
     el.classList.remove('open');
@@ -1796,22 +2316,24 @@
     if (lastFocus && document.contains(lastFocus)) lastFocus.focus({ preventScroll: true });
   }
 
+  let hSwipe = false;   // сейчас смахивают строку списка вбок
   // смахнуть шторку вниз — закрыть (на телефоне): тянем за верх или когда список уже вверху
   {
     const el = $('#sheet');
-    let y0 = null; let dy = 0; let t0 = 0; let dragging = false;
+    let y0 = null; let x0 = 0; let dy = 0; let t0 = 0; let dragging = false;
     const phone = () => matchMedia('(max-width: 719.98px)').matches;
     el.addEventListener('touchstart', (e) => {
       if (!sheet || !phone() || e.touches.length !== 1) return;
       const onGrab = e.target.closest('.sheet-grab') || e.touches[0].clientY - el.getBoundingClientRect().top < 56;
       if (!onGrab && el.scrollTop > 0) return;
       if (e.target.closest('input, textarea, select, .hits-row, .stepper')) return;
-      y0 = e.touches[0].clientY; dy = 0; t0 = Date.now(); dragging = false;
+      y0 = e.touches[0].clientY; x0 = e.touches[0].clientX; dy = 0; t0 = Date.now(); dragging = false;
     }, { passive: true });
     el.addEventListener('touchmove', (e) => {
       if (y0 == null) return;
+      if (hSwipe) { y0 = null; return; }   // строку списка смахивают вбок — шторку не трогаем
       dy = e.touches[0].clientY - y0;
-      if (!dragging && dy > 8 && el.scrollTop <= 0) { dragging = true; el.classList.add('dragging'); }
+      if (!dragging && dy > 8 && Math.abs(e.touches[0].clientX - x0) < dy && el.scrollTop <= 0) { dragging = true; el.classList.add('dragging'); }
       if (!dragging) { if (dy < 0) y0 = null; return; }
       e.preventDefault();
       el.style.transform = `translateY(${Math.max(0, dy)}px)`;
@@ -1828,6 +2350,73 @@
     };
     el.addEventListener('touchend', end);
     el.addEventListener('touchcancel', end);
+  }
+
+  // смахнуть строку списка влево (в арабском — вправо): открыть «Удалить»; до конца — сразу удалить
+  {
+    const el = $('#sheet');
+    const ACTION = 96;          // ширина открытой кнопки
+    const rtl = () => t('dir') === 'rtl';
+    const setOff = (row, off) => { row.style.transform = off ? `translateX(${rtl() ? off : -off}px)` : ''; };
+    let s = null;               // текущее касание
+    let openRow = null;         // строка, у которой открыта кнопка
+    const shut = (except) => {
+      if (openRow && openRow !== except) { setOff(openRow, 0); openRow.closest('.cart-line')?.classList.remove('open'); openRow = null; }
+    };
+    el.addEventListener('touchstart', (e) => {
+      s = null;
+      const row = e.target.closest('.cart-line:not(.removing) > .cl-row');
+      if (!row) { if (!e.target.closest('.swipe-del')) shut(); return; }
+      shut(row);
+      if (e.touches.length !== 1 || e.target.closest('input, textarea')) return;
+      s = { row, x0: e.touches[0].clientX, y0: e.touches[0].clientY, dir: '', w: row.offsetWidth, base: row === openRow ? ACTION : 0, off: 0 };
+    }, { passive: true });
+    el.addEventListener('touchmove', (e) => {
+      if (!s) return;
+      const dx = e.touches[0].clientX - s.x0;
+      const dy = e.touches[0].clientY - s.y0;
+      if (!s.dir) {
+        if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
+        // что хотел человек: вбок — смахнуть строку, вниз/вверх — листать или закрыть шторку
+        s.dir = Math.abs(dx) > Math.abs(dy) && !el.classList.contains('dragging') ? 'h' : 'v';
+        if (s.dir === 'h') { hSwipe = true; s.row.classList.add('dragging'); }
+      }
+      if (s.dir !== 'h') return;
+      e.preventDefault();
+      s.off = Math.max(0, Math.min(s.w, (rtl() ? dx : -dx) + s.base));
+      setOff(s.row, s.off);
+    }, { passive: false });
+    const end = () => {
+      const st = s;
+      s = null;
+      hSwipe = false;
+      if (!st || st.dir !== 'h') return;
+      st.row.classList.remove('dragging');
+      const li = st.row.closest('.cart-line');
+      if (st.off > st.w * 0.5) { removeLine(li?.dataset.line, li); return; }
+      if (st.off > ACTION * 0.6) { setOff(st.row, ACTION); openRow = st.row; li?.classList.add('open'); return; }
+      setOff(st.row, 0);
+      li?.classList.remove('open');
+      if (openRow === st.row) openRow = null;
+    };
+    el.addEventListener('touchend', end);
+    el.addEventListener('touchcancel', end);
+  }
+  // строка уезжает и схлопывается, потом убираем её из списка
+  function removeLine(key, li) {
+    const n = order[key] || 0;
+    if (!n) return;
+    if (!li || reduced() || li.classList.contains('removing')) { if (!li?.classList.contains('removing')) change(key, -n); return; }
+    const row = li.querySelector('.cl-row');
+    li.style.height = `${li.offsetHeight}px`;
+    li.classList.add('removing');
+    if (row) row.style.transform = `translateX(${t('dir') === 'rtl' ? '' : '-'}100%)`;
+    void li.offsetHeight;
+    li.style.height = '0px';
+    let done = false;
+    const fin = () => { if (done) return; done = true; change(key, -(order[key] || 0)); };
+    li.addEventListener('transitionend', (e) => { if (e.target === li && e.propertyName === 'height') fin(); });
+    setTimeout(fin, 450);
   }
 
   let toastTimer = null;
@@ -1897,16 +2486,8 @@
     return loading;
   }
 
-  // Новое меню: сравниваем со списком гостя — что пропало, что подорожало.
-  function applyMenu(next) {
-    const first = !M;
-    const goneBefore = new Set(lines().filter((l) => !l.ok).map((l) => l.key));
-    const sameMenu = JSON.stringify(M) === JSON.stringify(next);
-    M = next;
-    state = 'ready';
-    index();
-    store.set('cache', M);
-
+  // Список гостя против текущего меню: что пропало (не было в goneBefore), где изменилась цена
+  function reconcile(goneBefore) {
     let changed = false;
     for (const { key, d, ok, unit } of lines()) {
       if (!ok && !goneBefore.has(key)) changed = true;
@@ -1917,6 +2498,20 @@
       if (d && ok) seen[key] = { price: unit, name: d.name };
     }
     store.set('seen', seen);
+    return changed;
+  }
+
+  // Новое меню: сравниваем со списком гостя — что пропало, что подорожало.
+  function applyMenu(next) {
+    const first = !M;
+    const goneBefore = new Set(lines().filter((l) => !l.ok).map((l) => l.key));
+    const sameMenu = JSON.stringify(M) === JSON.stringify(next);
+    M = next;
+    state = 'ready';
+    index();
+    store.set('cache', M);
+
+    const changed = reconcile(goneBefore);
     if (changed && !first) {
       attention = sheet?.type !== 'order';
       toast(t('listUpdated'));
@@ -1941,8 +2536,27 @@
     if (act) {
       const a = act.dataset.act;
       const k = act.dataset.key || act.dataset.id;
-      if (a === 'inc') change(k, 1);
-      else if (a === 'dec') change(k, -1);
+      if (a === 'inc') {
+        // «+» на карточке меню: фото летит в «Мой заказ» (не из шторки и не из строки списка)
+        const src = !sheet && !act.dataset.key && !reduced() ? act.closest('[data-open]')?.querySelector('.photo') : null;
+        flyHold = !!src;
+        const added = change(k, 1);
+        const held = flyHold;
+        flyHold = false;
+        if (added && held && !flyToBar(src)) bumpBar();
+      } else if (a === 'dec') change(k, -1);
+      else if (a === 'fav') toggleFav(act.dataset.id, act);
+      else if (a === 'swipe-del') removeLine(k, act.closest('.cart-line'));
+      else if (a === 'vote') vote(act);
+      else if (a === 'booking') openBooking();
+      else if (a === 'bk-day') { bkForm.day = act.dataset.day; bkForm.time = null; bkForm.error = ''; renderSheet(); }
+      else if (a === 'bk-time') { bkForm.time = act.dataset.at; bkForm.error = ''; renderSheet(); }
+      else if (a === 'bk-people') { bkForm.people = Math.min(20, Math.max(1, bkForm.people + Number(act.dataset.d))); renderSheet(); }
+      else if (a === 'bk-send') sendBooking();
+      else if (a === 'bk-cancel') { bkForm.ask = true; bkForm.error = ''; renderSheet(); }
+      else if (a === 'bk-cancel-no') { bkForm.ask = false; renderSheet(); }
+      else if (a === 'bk-cancel-yes') cancelBooking();
+      else if (a === 'bk-new') { booking = null; store.set('booking', null); bkForm.error = ''; renderHeader(); renderSheet(); }
       else if (a === 'del') change(k, -(order[k] || 0));
       else if (a === 'pick') openSheet({ type: 'dish', id: act.dataset.id });
       else if (a === 'pick-inc' || a === 'pick-dec') { if (sheet?.pick) { sheet.pick.qty = Math.min(99, Math.max(1, sheet.pick.qty + (a === 'pick-inc' ? 1 : -1))); updatePick(); } }
@@ -1958,7 +2572,7 @@
         saveFilters(); renderSheet(); renderMenu(); renderFilterBtn();
       } else if (a === 'f-reset') { filters = {}; saveFilters(); renderSheet(); renderMenu(); renderFilterBtn(); }
       else if (a === 'f-done') closeSheet();
-      else if (a === 'rate') { reviewDraft.rating = Number(act.dataset.n); renderSheet(); }
+      else if (a === 'rate') { reviewDraft.rating = Number(act.dataset.n); starsLit = true; renderSheet(); }
       else if (a === 'review-send') sendReview(act.dataset.id);
       else if (a === 'repeat') repeatOrder(act.dataset.id);
       else if (a === 'pay') callStaff('bill', act.dataset.method);
@@ -2060,6 +2674,9 @@
       note = e.target.value.slice(0, 300);
       store.set('note', note);
     }
+    if (e.target.id === 'bk-name') bkForm.name = e.target.value.slice(0, 60);
+    if (e.target.id === 'bk-phone') bkForm.phone = e.target.value.slice(0, 20);
+    if (e.target.id === 'bk-note') bkForm.note = e.target.value.slice(0, 300);
     if (e.target.classList.contains('dn-input')) {
       const k = e.target.dataset.key;
       const v = e.target.value.replace(/\s+/g, ' ').slice(0, 120);
@@ -2102,7 +2719,12 @@
   setInterval(() => {   // «Открыто / Закрыто» и завтрак по часам обновляются сами
     if (!M) return;
     renderHeader();
-    if (M.categories.map((c) => catOpen(c)).join() !== lastOpenSig) { renderMenu(); refreshSlots(); renderBar(); }
+    if (timeSig() !== lastOpenSig) {
+      // акция закончилась или началась — цены в списке гостя тоже другие
+      if (reconcile(new Set(lines().filter((l) => !l.ok).map((l) => l.key)))) { attention = sheet?.type !== 'order'; toast(t('listUpdated')); }
+      renderMenu(); refreshSlots(); renderBar();
+      if (sheet?.type === 'order' || sheet?.type === 'dish') renderSheet();
+    }
   }, 60 * 1000);
   renderFilterBtn();
   if (ONLINE) {
@@ -2111,7 +2733,8 @@
     checkTable();
     pollOrders().then(() => schedulePoll());
     setInterval(() => { if (!document.hidden) refreshMenu(); }, 60 * 1000);
-    document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshMenu(); });
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) { refreshMenu(); pollBooking(); } });
+    pollBooking();
     window.addEventListener('online', () => refreshMenu());
   }
 })();

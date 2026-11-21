@@ -777,6 +777,156 @@ body.scrolled::before { content: ''; position: fixed; top: 0; left: 0; right: 0;
 .note-field textarea { font-size: 16px; }
 @media (prefers-reduced-motion: reduce) { .dn-edit { animation: none; } }
 
+/* =====================================================================
+   Гость (2026-11-21): любимые, акции, «Блюдо дня», остатки, бронь стола,
+   оценки блюд, полёт в «Мой заказ», смахивание строки. Анимации — только по действию гостя.
+   ===================================================================== */
+/* сердечко «любимое» — в углу фото */
+.photo .fav-btn {
+  position: absolute; top: 6px; inset-inline-end: 6px; z-index: 2; width: 34px; height: 34px; padding: 0;
+  display: grid; place-items: center; border: 0; border-radius: 999px;
+  background: color-mix(in srgb, var(--surface) 90%, transparent); color: var(--muted); cursor: pointer;
+}
+.fav-btn .ic { width: 19px; height: 19px; stroke-width: 2; }
+.fav-btn.on { color: var(--accent); }
+.fav-btn.on .ic { fill: currentColor; }
+.mini .photo .fav-btn { width: 30px; height: 30px; top: 5px; inset-inline-end: 5px; }
+.mini .photo .fav-btn .ic { width: 17px; height: 17px; }
+.sheet .photo.big .fav-btn { top: auto; bottom: 12px; inset-inline-end: 12px; width: 44px; height: 44px; }
+.sheet .photo.big .fav-btn .ic { width: 24px; height: 24px; }
+.fav-btn.pop .ic { animation: fav-pop .42s cubic-bezier(.3, 1.6, .5, 1); }
+@keyframes fav-pop { 0% { transform: scale(.6); } 55% { transform: scale(1.28); } 100% { transform: none; } }
+
+/* акция: обычная цена зачёркнута, цена акции — акцентом */
+.price-promo { display: inline-flex; align-items: baseline; flex-wrap: wrap; gap: 0 8px; min-width: 0; }
+.price.promo { color: var(--accent); }
+.old-price { color: var(--muted); font-size: 13.5px; font-weight: 700; text-decoration-thickness: 1.5px; unicode-bidi: isolate; direction: ltr; }
+.price.big + .old-price { font-size: 16px; }
+.tag-promo { background: var(--accent); color: var(--accent-ink); }
+.tag-left { background: var(--warn-soft); color: var(--warn); }
+
+/* «Блюдо дня»: одна большая карточка */
+.day-dish { margin: 18px 0 8px; }
+.feature {
+  display: grid; grid-template-columns: 1fr; overflow: hidden; border-radius: var(--radius);
+  background: var(--surface); border: 1.5px solid color-mix(in srgb, var(--accent) 35%, var(--line)); cursor: pointer;
+}
+.feature .photo { width: 100%; height: auto; aspect-ratio: 16 / 9; border-radius: 0; }
+.feature .photo > .ic { width: 26%; height: 26%; max-width: 96px; max-height: 96px; }
+.feature-body { display: flex; flex-direction: column; padding: 14px 16px 16px; min-width: 0; }
+.feature h3 { font-size: 21px; overflow-wrap: anywhere; }
+.feature .desc { margin-bottom: 12px; }
+@media (min-width: 720px) {
+  .feature { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); }
+  .feature .photo { aspect-ratio: auto; min-height: 240px; height: 100%; }
+  .feature-body { padding: 20px 22px; }
+}
+.favs .cat-title, .day-dish .cat-title { margin-bottom: 10px; }
+
+/* сумма «докручивается»: цифры одной ширины, чтобы текст не дрожал */
+.order-bar .bar-sum, .order-total strong, .send-sum { font-variant-numeric: tabular-nums; }
+
+/* полёт блюда в «Мой заказ»: X — равномерно, Y — дугой; только transform и opacity */
+.fly { position: fixed; z-index: 25; width: 44px; height: 44px; pointer-events: none; animation: fly-x .62s cubic-bezier(.35, 0, .65, 1) forwards; }
+.photo.fly-dot {
+  width: 44px; height: 44px; border-radius: 50%; border: 2px solid var(--surface);
+  animation: fly-y .62s cubic-bezier(.45, -0.9, .85, .6) forwards;
+}
+.photo.fly-dot::after { display: none; }
+.photo.fly-dot > .ic { width: 55%; height: 55%; }
+@keyframes fly-x { to { transform: translateX(var(--dx)); } }
+@keyframes fly-y { to { transform: translateY(var(--dy)) scale(.42); opacity: .55; } }
+
+/* смахнуть строку списка: под ней терракотовая «Удалить» */
+.order-list li.cart-line { display: block; position: relative; padding: 0; overflow: hidden; }
+.cart-line > .cl-row {
+  position: relative; z-index: 1; display: grid; grid-template-columns: 56px minmax(0, 1fr) auto;
+  grid-template-areas: "ph name sum" "ph ctl ctl" "dn dn dn"; gap: 6px 12px; padding: 12px 0;
+  background: var(--surface); touch-action: pan-y; transition: transform .24s cubic-bezier(.2, .8, .2, 1);
+}
+.cart-line > .cl-row.dragging { transition: none; }
+.swipe-del {
+  position: absolute; inset: 0; z-index: 0; display: flex; align-items: center; justify-content: flex-end; gap: 6px;
+  padding-inline-end: 18px; border: 0; background: var(--accent); color: var(--accent-ink); font: 800 14.5px var(--font-body); cursor: pointer;
+}
+.swipe-del .ic { width: 18px; height: 18px; }
+.cart-line.removing { transition: height .26s ease, opacity .26s ease; opacity: 0; }
+
+/* «Позвать официанта»: после вызова кнопка превращается в галочку */
+.call-btn.just { background: var(--ok-soft); border-color: transparent; color: var(--ok); }
+.call-btn.morph { animation: call-morph .45s cubic-bezier(.3, 1.5, .5, 1); }
+.call-btn.morph .ic { stroke-dasharray: 24; animation: tr-draw .45s ease-out .1s both; }
+@keyframes call-morph { 0% { transform: scale(.94); } 55% { transform: scale(1.03); } 100% { transform: none; } }
+
+/* отзыв: звёзды загораются по очереди, «спасибо» появляется мягко */
+.stars.intro .star { animation: star-wave .5s ease both; animation-delay: calc(var(--i, 0) * 60ms); }
+@keyframes star-wave { 0% { transform: scale(.5); opacity: 0; } 60% { transform: scale(1.1); color: var(--warn); } 100% { transform: none; opacity: 1; } }
+.stars.lit .star.on { animation: star-on .42s cubic-bezier(.3, 1.6, .5, 1) both; animation-delay: calc(var(--i, 0) * 70ms); }
+@keyframes star-on { 0% { transform: scale(.6); color: var(--line); } 60% { transform: scale(1.2); } 100% { transform: none; } }
+.thanks-in { animation: thanks-in .5s cubic-bezier(.2, .8, .2, 1) both; }
+.notice.thanks-in .ic { stroke-dasharray: 24; animation: tr-draw .5s ease-out .2s both; }
+@keyframes thanks-in { from { opacity: 0; transform: translateY(8px) scale(.97); } }
+.notice.ok { background: var(--ok-soft); color: var(--ok); }
+
+/* оценка каждого блюда */
+.votes { margin-top: 12px; }
+.votes-t { margin: 0 0 4px !important; font-size: 13.5px; font-weight: 800; color: var(--muted); }
+.vote-list { list-style: none; margin: 0; padding: 0; }
+.vote-list li { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--line); }
+.vote-list li:last-child { border-bottom: 0; }
+.vote-list .grow { flex: 1; min-width: 0; font-weight: 700; font-size: 14.5px; overflow-wrap: anywhere; }
+.vote { flex: none; width: 42px; height: 40px; display: grid; place-items: center; border: 1.5px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--muted); cursor: pointer; transition: transform .12s ease, background .2s, color .2s, border-color .2s; }
+.vote:active { transform: scale(.9); }
+.vote.up.on { background: var(--ok-soft); border-color: transparent; color: var(--ok); }
+.vote.down.on { background: var(--accent-soft); border-color: transparent; color: var(--accent); }
+
+/* бронь стола */
+.bk-badge { background: var(--surface); color: var(--accent); border: 1px solid var(--line) !important; }
+.bk-badge.on { background: var(--accent-soft); border-color: transparent !important; }
+.bk-days { display: flex; gap: 8px; overflow-x: auto; margin: 8px -20px 0; padding: 2px 20px 6px; scrollbar-width: none; scroll-padding-inline: 20px; }
+.bk-days::-webkit-scrollbar { display: none; }
+.bk-chip {
+  flex: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; min-height: 44px; padding: 6px 12px;
+  border: 1.5px solid var(--line); border-radius: 14px; background: var(--surface); color: var(--text); font: 700 14.5px var(--font-body); cursor: pointer;
+  transition: transform .12s ease, background .2s, color .2s, border-color .2s;
+}
+.bk-chip small { font-size: 12px; font-weight: 700; color: var(--muted); }
+.bk-chip.on { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.bk-chip.on small { color: inherit; opacity: .85; }
+.bk-chip:disabled { opacity: .45; cursor: default; }
+.bk-chip:active:not(:disabled) { transform: scale(.96); }
+.bk-day { min-width: 74px; min-height: 60px; }
+.bk-times { display: grid; grid-template-columns: repeat(auto-fill, minmax(78px, 1fr)); gap: 8px; margin-top: 8px; }
+.bk-people { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 18px; font-weight: 800; }
+.bk-people .stepper button:disabled { opacity: .4; }
+.bk-field { display: flex; flex-direction: column; gap: 6px; margin-top: 14px; font-size: 13.5px; font-weight: 800; color: var(--muted); }
+.bk-field input, .bk-field textarea {
+  width: 100%; min-height: 48px; padding: 10px 14px; border: 1.5px solid var(--line); border-radius: 14px;
+  background: var(--bg); color: var(--text); font: 500 16px var(--font-body);
+}
+.bk-field textarea { resize: vertical; line-height: 1.4; }
+.bk-field input:focus, .bk-field textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.bk-field input[dir="ltr"] { text-align: start; }
+.bk-card { display: flex; align-items: center; gap: 14px; margin-top: 12px; padding: 16px 18px; border-radius: 22px; background: var(--warn-soft); }
+.bk-card > div { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.bk-card b { font: 700 21px var(--font-display); line-height: 1.15; color: var(--warn); }
+.bk-card div > span { color: color-mix(in srgb, var(--text) 70%, transparent); font-weight: 600; font-size: 14.5px; overflow-wrap: anywhere; }
+.bk-icon { flex: none; width: 50px; height: 50px; border-radius: 50%; display: grid; place-items: center; background: var(--surface); color: var(--warn); }
+.bk-icon .ic { width: 26px; height: 26px; stroke-width: 2.2; }
+.bk-card.is-ok { background: var(--ok-soft); }
+.bk-card.is-ok b, .bk-card.is-ok .bk-icon { color: var(--ok); }
+.bk-card.is-off { background: var(--surface-2); }
+.bk-card.is-off b, .bk-card.is-off .bk-icon { color: var(--muted); }
+.bk-actions { display: grid; gap: 10px; margin-top: 16px; }
+.bk-actions .btn { min-height: 52px; }
+.bk-ask { margin: 0 !important; font-weight: 800; }
+
+@media (prefers-reduced-motion: reduce) {
+  .fav-btn.pop .ic, .fly, .photo.fly-dot, .call-btn.morph, .call-btn.morph .ic, .stars.intro .star, .stars.lit .star.on,
+  .thanks-in, .notice.thanks-in .ic { animation: none !important; }
+  .cart-line > .cl-row, .cart-line.removing { transition: none !important; }
+}
+
 /* верх и «Мой заказ»: чистый цвет, без стекла, теней и оттенков (владелец, 2026-11-21) */
 .cats { background: var(--bg); -webkit-backdrop-filter: none; backdrop-filter: none; border-bottom: 0; }
 body.scrolled::before { background: var(--bg); -webkit-backdrop-filter: none; backdrop-filter: none; }

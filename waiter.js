@@ -4,7 +4,8 @@
   // =====================================================================
   //  Страница официанта: зал (столы, вызовы, мои столы, счёт, чаевые,
   //  раздельная оплата), заказы (новые → готово → подано), заказ за гостя,
-  //  меню (только просмотр), смена (итоги, язык, экран, Telegram).
+  //  меню (только просмотр), смена (начать/закончить, итоги, язык, экран, Telegram),
+  //  брони гостей (в «Зале», общий код — floor.js).
   //  Права проверяет база: официант принимает, пробивает и подаёт заказы,
   //  закрывает вызовы и счета; меню, цены, столы и состав заказа не меняет.
   // =====================================================================
@@ -24,6 +25,7 @@
   let cat = '';
   let stop = null;
   let timer = null;
+  let shift = null;      // StaffShift: «Начать смену» / «Закончить смену»
 
   let orders = [];
   let ordersState = 'loading';   // loading | ready | error | stale
@@ -32,6 +34,8 @@
   const mineOnly = () => { try { return localStorage.getItem('floor:mine') === '1'; } catch { return false; } };
 
   const norm = (s) => String(s || '').toLowerCase().replace(/ё/g, 'е');
+  // в наличии: не выключено в стоп-листе и остаток не ноль (пусто — не считаем)
+  const inStock = (d) => d.available && d.stock !== 0;
   const amount = (d) => (d.weight ? `${d.weight} ${S.unitLabel[d.unit] || ''}` : '');
   const hhmm = (iso) => new Date(iso).toLocaleTimeString(S.locale(), { hour: '2-digit', minute: '2-digit' });
   const ago = (iso) => { const m = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 60000)); return (window.STAFF_T.ago[S.lang] || window.STAFF_T.ago.en)(m); };
@@ -53,24 +57,13 @@
     renderBanner();
   }
   ['pointerdown', 'keydown'].forEach((ev) => document.addEventListener(ev, unlockAudio, { capture: true }));
-  function ding() {
-    if (!soundOn || !audio || audio.state !== 'running') return;
-    const t0 = audio.currentTime;
-    [0, 0.22, 0.44].forEach((dt, i) => {
-      const o = audio.createOscillator();
-      const g = audio.createGain();
-      o.type = 'sine';
-      o.frequency.value = i === 2 ? 1175 : 880;
-      g.gain.setValueAtTime(0.0001, t0 + dt);
-      g.gain.exponentialRampToValueAtTime(0.45, t0 + dt + 0.02);
-      g.gain.exponentialRampToValueAtTime(0.0001, t0 + dt + 0.2);
-      o.connect(g).connect(audio.destination);
-      o.start(t0 + dt);
-      o.stop(t0 + dt + 0.22);
-    });
+  // у каждого события свой звук: order — новый заказ, call — зовут, bill — «принесите счёт», booking — бронь
+  function ding(kind = 'order') {
+    if (!soundOn) return;
+    window.Floor.chime(audio, kind);
   }
-  function buzz(title, tag) {
-    ding();
+  function buzz(title, tag, kind = 'order') {
+    ding(kind);
     try { navigator.vibrate?.([200, 100, 200]); } catch { /* нет вибрации */ }
     try {
       if ('Notification' in window && Notification.permission === 'granted' && document.hidden) new Notification(title, { tag, icon: 'icon.svg' });
@@ -90,7 +83,18 @@
     bannerMsg = fresh.length > 1 ? t('b_call_many', fresh.length) : `${t('b_call_one', c.table_label, c.kind === 'bill')}${c.reason ? ` — ${t('reasons')[c.reason] || c.reason}` : ''}`;
     bannerTo = 'floor';
     renderBanner();
-    buzz(bannerMsg, 'call-' + c.id);
+    buzz(bannerMsg, 'call-' + c.id, fresh.some((x) => x.kind === 'bill') ? 'bill' : 'call');
+    updateCount();
+    if (tab === 'floor' && !document.querySelector('.modal')) renderFloor();
+  }
+  function announceBookings(fresh) {
+    const b = fresh[fresh.length - 1];
+    const when = new Date(b.at);
+    const time = `${when.toDateString() === new Date().toDateString() ? '' : `${when.toLocaleDateString(S.locale(), { weekday: 'short', day: 'numeric' })} `}${hhmm(b.at)}`;
+    bannerMsg = fresh.length > 1 ? t('bk_b_many', fresh.length) : t('bk_b_one', b.name, time, b.people);
+    bannerTo = 'bookings';
+    renderBanner();
+    buzz(bannerMsg, 'booking-' + b.id, 'booking');
     updateCount();
     if (tab === 'floor' && !document.querySelector('.modal')) renderFloor();
   }
@@ -103,17 +107,20 @@
   }
   setInterval(() => {
     if (!api) return;
-    if (floor?.openCalls().some((c) => c.kind === 'bill' || floor.isMineOrFree(c.table_id))) ding();
+    const open = floor?.openCalls().filter((c) => c.kind === 'bill' || floor.isMineOrFree(c.table_id)) || [];
+    if (open.length) ding(open.some((c) => c.kind === 'bill') ? 'bill' : 'call');
   }, 30000);
 
   function updateCount() {
     const n = orders.filter((o) => window.Floor.ACTIVE.includes(o.status) && visibleOrder(o)).length;
     const el = $('#tab-count');
     if (el) { el.hidden = !n; el.textContent = n; }
-    const c = floor ? floor.openCalls().length : 0;
+    const calls = floor ? floor.openCalls().length : 0;
+    const books = floor ? floor.newBookings().length : 0;
+    const c = calls + books;   // на вкладке «Зал»: вызовы и новые брони
     const ce = $('#calls-count');
     if (ce) { ce.hidden = !c; ce.textContent = c; }
-    document.title = n ? `${t('title_new', n)} — ${t('w_title')}` : c ? `${t('title_call', c)} — ${t('w_title')}` : t('w_title');
+    document.title = n ? `${t('title_new', n)} — ${t('w_title')}` : calls ? `${t('title_call', calls)} — ${t('w_title')}` : books ? `${t('title_book', books)} — ${t('w_title')}` : t('w_title');
     if (!n && !c && bannerMsg) { bannerMsg = ''; renderBanner(); }
   }
 
@@ -211,8 +218,8 @@
     const words = norm(q).split(/\s+/).filter(Boolean);
     const hit = (d) => !words.length || words.every((w) => norm(`${Object.values(d.name || {}).join(' ')} ${Object.values(d.desc || {}).join(' ')}`).includes(w));
     const base = list.filter(hit).filter((d) => !cat || d.category_id === cat);
-    const yes = base.filter((d) => d.available).length;
-    const shown = base.filter((d) => (filter === 'yes' ? d.available : filter === 'no' ? !d.available : true));
+    const yes = base.filter(inStock).length;
+    const shown = base.filter((d) => (filter === 'yes' ? inStock(d) : filter === 'no' ? !inStock(d) : true));
     const keepFocus = document.activeElement?.id === 'w-search';
     const meat = t('meat');
     main.innerHTML = `
@@ -232,11 +239,11 @@
         if (!items.length) return '';
         return `<section class="panel"><div class="panel-head"><h3>${esc(tr(c.name))}<small>${items.length}</small>${c.avail_from ? `<span class="state-badge muted">${icon('clock', 'sm')}${esc(c.avail_from)}–${esc(c.avail_to)}</span>` : ''}</h3></div>
           <ul class="rows">${items.map((d) => `
-            <li class="${d.available ? '' : 'is-off'}" data-dish="${esc(d.id)}" role="button" tabindex="0" style="cursor:pointer">
+            <li class="${inStock(d) ? '' : 'is-off'}" data-dish="${esc(d.id)}" role="button" tabindex="0" style="cursor:pointer">
               ${photo(d)}
               <div class="grow"><b>${esc(tr(d.name))}</b><small>${esc([(d.meat || []).map((m) => meat[m]).join(', '), amount(d)].filter(Boolean).join(' · '))}</small></div>
               <span class="price">${money(d.price)}</span>
-              <span class="state-badge ${d.available ? 'ok' : 'no'}">${esc(d.available ? t('in_stock') : t('out_stock'))}</span>
+              <span class="state-badge ${inStock(d) ? 'ok' : 'no'}">${esc(!inStock(d) ? t('out_stock') : d.stock != null ? t('sl_left_n', d.stock) : t('in_stock'))}</span>
             </li>`).join('')}</ul></section>`;
       }).join('') : `<div class="a-empty">${esc(list.length ? t('nothing_found') : t('menu_empty'))}</div>`}`;
     if (keepFocus) { const inp = $('#w-search'); inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length); }
@@ -252,7 +259,7 @@
     S.modal(`
       <div class="photo" style="width:100%;height:auto;aspect-ratio:4/3;border-radius:16px;margin-bottom:14px">${d.photo_url ? `<img src="${esc(d.photo_url)}" alt="">` : icon('dish')}</div>
       <h2 id="modal-title">${esc(tr(d.name))}</h2>
-      <p style="margin:6px 0 0"><span class="state-badge ${d.available ? 'ok' : 'no'}">${esc(d.available ? t('in_stock') : t('out_stock'))}</span>
+      <p style="margin:6px 0 0"><span class="state-badge ${inStock(d) ? 'ok' : 'no'}">${esc(!inStock(d) ? t('out_stock') : d.stock != null ? t('sl_left_n', d.stock) : t('in_stock'))}</span>
         ${(d.tags || []).map((x) => `<span class="state-badge muted">${esc(tags[x] || x)}</span>`).join(' ')}</p>
       <p style="font-size:22px;font-weight:800;margin:12px 0 0">${money(d.price)} <small style="font-size:14px;color:var(--muted);font-weight:600">${esc([amount(d), d.kcal ? `${d.kcal} ${t('kcal')}` : ''].filter(Boolean).join(' · '))}</small></p>
       <p class="section-label">${esc(t('d_meat'))}</p><p style="margin:0;color:var(--muted)">${esc(meat || t('not_given'))}</p>
@@ -290,6 +297,7 @@
     const methods = {};
     for (const b of myBills) for (const p of (b.payments?.length ? b.payments : [{ method: b.method, amount: Number(b.total) + Number(b.tip || 0) }])) methods[p.method] = r2((methods[p.method] || 0) + Number(p.amount));
     main.innerHTML = `
+      <div id="shift-slot">${shift ? shift.html() : ''}</div>
       <h2 class="o-section-title">${esc(t('shift_t'))}</h2>
       <div class="a-stats">
         <div class="a-stat"><b>${myAccepted.length}</b><span>${esc(t('s_accepted'))} · ${esc(t('s_entered'))} ${myEntered.length}</span></div>
@@ -329,6 +337,7 @@
   // ---------- события ----------
   document.addEventListener('input', (e) => { if (e.target.id === 'w-search') { q = e.target.value; renderMenu(); } });
   document.addEventListener('click', (e) => {
+    if (shift?.handleClick(e)) return;
     if (floor?.handleClick(e)) return;
     if (e.target.closest('[data-retry]')) { ordersState = 'loading'; renderOrders(); loadOrders().then(render); return; }
     if (e.target.closest('[data-sound]')) {
@@ -342,7 +351,14 @@
     if (e.target.closest('[data-notify]')) { Notification.requestPermission().then(() => renderOrders()); return; }
     const bn = e.target.closest('[data-banner]');
     if (bn) {
-      if (bn.dataset.banner === 'sound') { unlockAudio(); ding(); } else { bannerMsg = ''; renderBanner(); location.hash = `#${bannerTo}`; setTab(bannerTo); }
+      if (bn.dataset.banner === 'sound') { unlockAudio(); ding(); } else {
+        bannerMsg = '';
+        renderBanner();
+        // брони живут в «Зале» — открываем зал сразу на списке броней
+        const to = bannerTo === 'bookings' ? 'floor' : bannerTo;
+        if (bannerTo === 'bookings') floor?.setView('book');
+        if (location.hash === `#${to}`) setTab(to); else location.hash = `#${to}`;
+      }
       return;
     }
     const f = e.target.closest('[data-f]');
@@ -366,18 +382,19 @@
       floor = window.Floor.create({
         api, isOwner: ['owner', 'manager'].includes(me?.role), me,
         getOrders: () => orders, getDishes: () => dishes, getCats: () => cats,
-        reloadOrders: loadOrders, onCalls: announceCalls,
+        reloadOrders: loadOrders, onCalls: announceCalls, onBookings: announceBookings,
         rerender: () => { updateCount(); if (document.querySelector('.modal')) return; render(); },
       });
+      shift = window.StaffShift.create(api, me, () => { if (tab === 'shift' && !document.querySelector('.modal')) { const box = $('#shift-slot'); if (box) box.innerHTML = shift.html(); } });
       setTab(location.hash.slice(1) || 'orders');
-      await Promise.all([loadMenu().catch((ex) => S.toast(S.errText(ex), true)), floor.load().catch(() => {})]);
+      await Promise.all([loadMenu().catch((ex) => S.toast(S.errText(ex), true)), floor.load().catch(() => {}), shift.load()]);
       await loadOrders();
       updateCount();
       render();
       renderBanner();
       stop?.();
-      stop = api.subscribe(['orders', 'dishes', 'categories', 'settings', 'calls', 'bills', 'table_waiters'], async (table) => {
-        if (['calls', 'bills', 'table_waiters'].includes(table)) { try { await floor.load(); updateCount(); if (tab !== 'menu' && !document.querySelector('.modal')) render(); } catch { /* позже */ } return; }
+      stop = api.subscribe(['orders', 'dishes', 'categories', 'settings', 'calls', 'bills', 'table_waiters', 'reservations'], async (table) => {
+        if (['calls', 'bills', 'table_waiters', 'reservations'].includes(table)) { try { await floor.load(); updateCount(); if (tab !== 'menu' && !document.querySelector('.modal')) render(); } catch { /* позже */ } return; }
         if (table === 'orders') { await loadOrders(); if (!document.querySelector('.modal') && tab !== 'menu') render(); return; }
         if (document.querySelector('.modal')) return;
         try { await loadMenu(); if (tab === 'menu') renderMenu(); } catch { /* позже */ }

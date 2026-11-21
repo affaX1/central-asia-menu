@@ -100,10 +100,39 @@
     if (doc.readyState === 'complete') setTimeout(go, 50); else f.onload = go;
   }
 
+  // ---------- звуки: у каждого события свой короткий сигнал ----------
+  // [задержка, частота] — ноты; тип волны, длина ноты, громкость
+  const CHIMES = {
+    order: { type: 'sine', notes: [[0, 880], [0.22, 880], [0.44, 1175]], len: 0.2, vol: 0.45 },          // новый заказ (как было у официанта)
+    kitchen: { type: 'triangle', notes: [[0, 660], [0.25, 660]], len: 0.22, vol: 0.5 },                   // новый заказ на кухне (как было)
+    edit: { type: 'triangle', notes: [[0, 660], [0.2, 494]], len: 0.22, vol: 0.45 },                      // заказ изменили
+    call: { type: 'triangle', notes: [[0, 988], [0.32, 784]], len: 0.34, vol: 0.5 },                      // «динь-дон»: зовут официанта
+    bill: { type: 'sine', notes: [[0, 1568], [0.1, 1568], [0.2, 2093]], len: 0.09, vol: 0.38 },           // частый звон: «принесите счёт»
+    booking: { type: 'sine', notes: [[0, 523], [0.16, 659], [0.32, 784], [0.5, 1047]], len: 0.3, vol: 0.35 }, // мягкий перелив: новая бронь
+  };
+  function chime(audio, kind = 'order') {
+    if (!audio || audio.state !== 'running') return;
+    const c = CHIMES[kind] || CHIMES.order;
+    const t0 = audio.currentTime;
+    c.notes.forEach(([dt, f]) => {
+      const o = audio.createOscillator();
+      const g = audio.createGain();
+      o.type = c.type;
+      o.frequency.value = f;
+      g.gain.setValueAtTime(0.0001, t0 + dt);
+      g.gain.exponentialRampToValueAtTime(c.vol, t0 + dt + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + dt + c.len);
+      o.connect(g).connect(audio.destination);
+      o.start(t0 + dt);
+      o.stop(t0 + dt + c.len + 0.02);
+    });
+  }
+
   // бумажка на кухню: крупно стол, блюда, комментарий — без цен
-  function printTicket(o) {
-    printSlip(`${t('p_kitchen')} ${o.no}`, `
-      <div class="c muted">${esc(t('p_kitchen'))}</div>
+  // head — шапка бумажки (по умолчанию «КУХНЯ»; бар печатает «БАР»)
+  function printTicket(o, head = t('p_kitchen')) {
+    printSlip(`${head} ${o.no}`, `
+      <div class="c muted">${esc(head)}</div>
       <div class="c big">${esc(t('table'))} ${esc(o.table_label)}</div>
       <div class="c">${esc(t('order_no', o.no))} · ${esc(hhmm(o.created_at))}</div>
       <hr><table class="k">${(o.items || []).map((i) => `<tr><td class="n">${esc(i.qty)} ×</td><td>${esc(tr(i.name) || i.id)}${optNames(i).length ? `<div class="opt">${esc(optNames(i).join(', '))}</div>` : ''}${i.note ? `<div class="inote">&gt;&gt; ${esc(trNote(i.note))}</div>` : ''}</td></tr>`).join('')}</table>
@@ -193,12 +222,27 @@
     let mineOnly = (() => { try { return localStorage.getItem('floor:mine') === '1'; } catch { return false; } })();
     const busy = new Set();
     let payState = null;   // окно счёта: какие заказы, чаевые, части оплаты
+    // брони: сегодня и следующие 7 дней
+    let bookings = [];
+    let seenBookings = null;
+    let view = 'map';      // map — схема столов, book — брони
+    // анимации схемы: прошлое состояние столов и какие анимации идут сейчас
+    const prevTables = new Map();   // id стола → { state, ids }
+    const anims = new Map();        // id стола → { kind: 'free' | 'pulse', from, at }
 
     async function load() {
       const from = dayStart().toISOString();
-      const [tb, c, b] = await Promise.all([host.api.floorTables(), host.api.calls(from), host.api.bills(from)]);
+      const to = new Date(dayStart().getTime() + 8 * 864e5).toISOString();
+      const [tb, c, b, bk] = await Promise.all([host.api.floorTables(), host.api.calls(from), host.api.bills(from),
+        host.api.bookings ? host.api.bookings(from, to).catch(() => null) : null]);
       tables = tb;
       bills = b;
+      if (bk) {
+        const freshB = seenBookings ? bk.filter((x) => x.status === 'new' && !seenBookings.has(x.id)) : [];
+        seenBookings = new Set([...(seenBookings || []), ...bk.map((x) => x.id)]);
+        bookings = bk;
+        if (freshB.length) announceBookings(freshB);
+      }
       const open = c.filter((x) => !x.done_at);
       const fresh = seenCalls ? open.filter((x) => !seenCalls.has(x.id)) : [];
       seenCalls = new Set([...(seenCalls || []), ...c.map((x) => x.id)]);
@@ -216,6 +260,125 @@
       const tb = tables.find((x) => x.id === tableId);
       return !tb || !tb.waiter_id || tb.waiter_id === host.me?.id;
     };
+
+    // ---------- брони ----------
+    // новые (ещё никто не подтвердил) — для счётчика и сигнала
+    const newBookings = () => bookings.filter((b) => b.status === 'new' && new Date(b.at).getTime() > Date.now() - 3 * 3600e3);
+    // подтверждённая бронь стола в ближайшие 2 часа (опоздавших ждём ещё 30 минут)
+    const soonBooking = (tableId) => bookings.filter((b) => b.status === 'confirmed' && b.table_id === tableId)
+      .find((b) => { const x = new Date(b.at).getTime() - Date.now(); return x > -30 * 60e3 && x <= 2 * 3600e3; });
+    // у страницы нет своего сигнала (панель владельца) — короткое сообщение и звук здесь же
+    let ownAudio = null;
+    if (!host.onBookings) {
+      ['pointerdown', 'keydown'].forEach((ev) => document.addEventListener(ev, () => {
+        try {
+          if (!ownAudio) ownAudio = new (window.AudioContext || window.webkitAudioContext)();
+          if (ownAudio.state === 'suspended') ownAudio.resume();
+        } catch { /* без звука */ }
+      }, { capture: true }));
+    }
+    function announceBookings(fresh) {
+      if (host.onBookings) { host.onBookings(fresh); return; }
+      const b = fresh[fresh.length - 1];
+      S.toast(fresh.length > 1 ? t('bk_b_many', fresh.length) : t('bk_b_one', b.name, bkWhen(b.at), b.people));
+      let soundOk = true;
+      try { soundOk = localStorage.getItem('owner:sound') !== '0'; } catch { /* звук по умолчанию */ }
+      if (soundOk) chime(ownAudio, 'booking');
+    }
+    const dayKey = (d) => `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+    function dayTitle(iso) {
+      const d = new Date(iso);
+      const today = dayStart();
+      const diff = Math.round((new Date(d.getFullYear(), d.getMonth(), d.getDate()) - today) / 864e5);
+      const date = d.toLocaleDateString(S.locale(), { weekday: 'long', day: 'numeric', month: 'long' });
+      return diff === 0 ? `${t('bk_today')} · ${date}` : diff === 1 ? `${t('bk_tomorrow')} · ${date}` : date;
+    }
+    // «19:30» сегодня, «пт 19:30» в другой день
+    function bkWhen(iso) {
+      const d = new Date(iso);
+      return dayKey(d) === dayKey(new Date()) ? hhmm(iso) : `${d.toLocaleDateString(S.locale(), { weekday: 'short', day: 'numeric' })} ${hhmm(iso)}`;
+    }
+    const BK_OPEN = ['new', 'confirmed'];
+    function bookingRow(b) {
+      const st = t('bk_st')[b.status] || b.status;
+      const open = BK_OPEN.includes(b.status);
+      const on = busy.has(b.id) ? ' disabled' : '';
+      const tel = String(b.phone || '').replace(/[^\d+]/g, '');
+      return `<li class="bk-row is-${esc(b.status)}">
+        <div class="bk-time"><b>${esc(hhmm(b.at))}</b><span>${icon('users', 'sm')}${esc(b.people)}</span></div>
+        <div class="bk-main">
+          <div class="bk-top"><b class="bk-name">${esc(b.name)}</b><span class="bk-st bk-st-${esc(b.status)}">${esc(st)}</span></div>
+          <div class="bk-meta">
+            <a class="bk-tel" href="tel:${esc(tel)}">${icon('phone', 'sm')}${esc(b.phone)}</a>
+            ${b.table_label ? `<span>${icon('table', 'sm')}${esc(t('table'))} ${esc(b.table_label)}</span>` : ''}
+            <span class="bk-no">№${esc(b.no)}</span>
+          </div>
+          ${b.note ? `<p class="bk-note">${esc(b.note)}</p>` : ''}
+          ${b.decided_by_name && b.status !== 'new' ? `<small class="bk-by">${esc(t('bk_by', b.decided_by_name))}</small>` : ''}
+          ${open ? `<div class="bk-actions">
+            ${b.status === 'new' ? `<button type="button" class="btn small" data-bk-ok="${esc(b.id)}"${on}>${icon('check', 'sm')}${esc(t('bk_confirm'))}</button>` : `
+              <button type="button" class="btn small" data-bk-seat="${esc(b.id)}"${on}>${icon('check', 'sm')}${esc(t('bk_seat'))}</button>
+              <button type="button" class="btn small ghost" data-bk-ok="${esc(b.id)}"${on}>${icon('table', 'sm')}${esc(b.table_label ? t('bk_change_table') : t('bk_pick_table'))}</button>
+              <button type="button" class="btn small ghost" data-bk-noshow="${esc(b.id)}"${on}>${esc(t('bk_noshow'))}</button>`}
+            <button type="button" class="btn small danger" data-bk-cancel="${esc(b.id)}"${on}>${esc(t('bk_cancel'))}</button>
+          </div>` : ''}
+        </div>
+      </li>`;
+    }
+    function bookingsHtml() {
+      if (!bookings.length) return `<div class="a-empty">${esc(t('bk_empty'))}</div>`;
+      const groups = new Map();
+      for (const b of [...bookings].sort((a, c) => new Date(a.at) - new Date(c.at))) {
+        const k = dayKey(new Date(b.at));
+        if (!groups.has(k)) groups.set(k, []);
+        groups.get(k).push(b);
+      }
+      return [...groups.values()].map((list) => {
+        const live = list.filter((b) => BK_OPEN.includes(b.status));
+        const people = live.reduce((s, b) => s + Number(b.people || 0), 0);
+        return `<section class="bk-day">
+          <h3 class="bk-day-t"><span>${esc(dayTitle(list[0].at))}</span><small>${esc(t('bk_day_sum', live.length, people))}</small></h3>
+          <ul class="bk-list">${list.map(bookingRow).join('')}</ul>
+        </section>`;
+      }).join('');
+    }
+    // подтвердить (и выбрать стол) — своё окно со списком столов
+    function confirmDialog(id) {
+      const b = bookings.find((x) => x.id === id);
+      if (!b) return;
+      const at = new Date(b.at).getTime();
+      // стол уже обещан другой брони рядом по времени (±2 ч)
+      const clash = (tableId) => bookings.find((x) => x.id !== b.id && x.status === 'confirmed' && x.table_id === tableId && Math.abs(new Date(x.at).getTime() - at) < 2 * 3600e3);
+      const active = tables.filter((x) => x.active);
+      S.modal(`
+        <h2 id="modal-title">${esc(b.status === 'new' ? t('bk_confirm_t', b.name, bkWhen(b.at)) : t('bk_table_t', b.name, bkWhen(b.at)))}</h2>
+        <p class="help" style="margin-top:0">${esc(t('bk_people', b.people))}${b.note ? ` · ${esc(b.note)}` : ''}</p>
+        <label class="field"><span>${esc(t('bk_choose_table'))}</span><select id="bk-table">
+          ${b.table_id ? '' : `<option value="">${esc(t('bk_no_table'))}</option>`}
+          ${active.map((x) => { const c = clash(x.id); return `<option value="${esc(x.id)}"${x.id === b.table_id ? ' selected' : ''}>${esc(t('table'))} ${esc(x.label)}${c ? ` — ${esc(t('bk_busy', hhmm(c.at)))}` : ''}</option>`; }).join('')}
+        </select></label>
+        <div class="modal-foot"><button type="button" class="btn" data-bk-go="${esc(b.id)}">${icon('check', 'sm')}${esc(b.status === 'new' ? t('bk_confirm') : t('bk_save'))}</button>
+          <button type="button" class="btn ghost" data-modal-close>${esc(t('cancel'))}</button></div>`);
+    }
+    async function setBooking(id, status, tableId = null) {
+      const b = bookings.find((x) => x.id === id);
+      if (!b || busy.has(id)) return;
+      if (status === 'cancelled' && !await S.ask(t('bk_ask_cancel', b.name, bkWhen(b.at)), { ok: t('bk_ok_cancel'), cancel: t('bk_keep') })) return;
+      if (status === 'no_show' && !await S.ask(t('bk_ask_noshow', b.name, bkWhen(b.at)), { ok: t('bk_ok_noshow') })) return;
+      busy.add(id);
+      host.rerender();
+      try {
+        const nb = await host.api.setBooking(id, status, tableId);
+        bookings = bookings.map((x) => (x.id === id ? { ...x, ...(nb || { status }) } : x));
+        S.toast(t(status === 'confirmed' && b.status === 'confirmed' ? 'bk_t_table' : `bk_t_${status}`, b.name));
+      } catch (ex) {
+        const m = String(ex?.message || '');
+        S.toast(/bad_table/.test(m) ? t('e_table') : /not_found/.test(m) ? t('bk_e_gone') : S.errText(ex), true);
+        await load().catch(() => {});
+      }
+      busy.delete(id);
+      host.rerender();
+    }
 
     // заказы стола, которые ещё не оплачены
     const unpaid = (tableId) => host.getOrders().filter((o) => o.table_id === tableId && !o.paid_at && o.status !== 'cancelled')
@@ -250,15 +413,53 @@
         </div>`).join('')}</section>`;
     }
 
+    // анимации схемы — только когда стол правда изменился между обновлениями,
+    // а не при каждой перерисовке: оплатили и стол освободился — мягко «выцветает»,
+    // пришёл новый заказ — стол несколько секунд пульсирует
+    const ANIM_MS = { free: 1400, pulse: 3000 };
+    function trackChanges(states) {
+      const now = Date.now();
+      for (const x of states) {
+        const ids = new Set(x.os.map((o) => o.id));
+        const prev = prevTables.get(x.tb.id);
+        if (prev) {
+          if (prev.state !== 'free' && x.state === 'free') anims.set(x.tb.id, { kind: 'free', from: prev.state, at: now });
+          // новый — значит, его не было в прошлый раз и он создан только что (пересаженные со старым временем не пульсируют)
+          else if (x.os.some((o) => !prev.ids.has(o.id) && now - new Date(o.created_at).getTime() < 5 * 60e3)) anims.set(x.tb.id, { kind: 'pulse', at: now });
+        }
+        prevTables.set(x.tb.id, { state: x.state, ids });
+      }
+      for (const [id, a] of anims) if (now - a.at >= ANIM_MS[a.kind]) anims.delete(id);
+    }
+    // класс и задержка: если стол перерисовали посреди анимации, она продолжается с того же места
+    function animAttr(id) {
+      const a = anims.get(id);
+      if (!a) return { cls: '', style: '' };
+      const ago = Date.now() - a.at;
+      if (ago >= ANIM_MS[a.kind]) return { cls: '', style: '' };
+      return { cls: a.kind === 'free' ? ` fl-anim-free from-${a.from}` : ' fl-anim-pulse', style: ` style="animation-delay:-${ago}ms"` };
+    }
+
     function render(main) {
       const active = tables.filter((x) => x.active);
       const shownTables = mineOnly ? active.filter((x) => x.waiter_id === host.me?.id) : active;
       const states = active.map((tb) => ({ tb, ...tableState(tb) }));
+      trackChanges(states);
       const busyN = states.filter((x) => x.state !== 'free').length;
       const unpaidSum = r2(states.reduce((x, y) => x + y.total, 0));
       const paidSum = r2(okBills().reduce((x, b) => x + Number(b.total), 0));
+      const nb = newBookings().length;
+      const views = `<div class="chips fl-views" role="group">
+          <button type="button" class="chip${view === 'map' ? ' active' : ''}" data-fl-view="map">${icon('table', 'sm')}${esc(t('bk_tables'))}</button>
+          <button type="button" class="chip${view === 'book' ? ' active' : ''}" data-fl-view="book">${icon('calendar', 'sm')}${esc(t('bk_tab'))}${nb ? `<span class="tab-count">${nb}</span>` : ''}</button>
+        </div>`;
+      if (view === 'book') {
+        main.innerHTML = `${callsHtml()}${views}${bookingsHtml()}`;
+        return;
+      }
       main.innerHTML = `
         ${callsHtml()}
+        ${views}
         <div class="toolbar">
           <div class="chips" style="margin:0">
             <button type="button" class="chip${mineOnly ? '' : ' active'}" data-fl-mine="0">${esc(t('f_all_tables'))}</button>
@@ -274,13 +475,18 @@
           <div class="a-stat"><b>${money(paidSum)}</b><span>${esc(t('fl_paid', okBills().length))}</span></div>
         </div>
         ${mineOnly && !shownTables.length ? `<p class="notice info">${icon('table')}<span>${esc(t('no_my_tables'))}</span></p>` : ''}
-        ${active.length ? `<div class="fl-grid">${states.filter((x) => shownTables.includes(x.tb)).map(({ tb, state, text, total, first, waiter, os }) => `
-          <button type="button" class="fl-table is-${state}${tb.waiter_id && tb.waiter_id === host.me?.id ? ' is-mine' : ''}" data-fl-table="${esc(tb.id)}">
+        ${active.length ? `<div class="fl-grid">${states.filter((x) => shownTables.includes(x.tb)).map(({ tb, state, text, total, first, waiter, os }) => {
+          const an = animAttr(tb.id);
+          const bk = soonBooking(tb.id);
+          return `
+          <button type="button" class="fl-table is-${state}${tb.waiter_id && tb.waiter_id === host.me?.id ? ' is-mine' : ''}${an.cls}"${an.style} data-fl-table="${esc(tb.id)}">
             <span class="fl-top"><b>${esc(tb.label)}</b>${waiter ? `<span class="fl-bell" title="${esc(t('b_call_one', tb.label, false))}">${icon('bell', 'sm')}</span>` : ''}</span>
             <span class="fl-state">${esc(text)}</span>
+            ${bk ? `<span class="fl-book" title="${esc(`${bk.name} · ${t('bk_people', bk.people)}`)}">${icon('clock', 'sm')}${esc(t('bk_tag', hhmm(bk.at)))}</span>` : ''}
             <span class="fl-meta">${os.length ? `${money(total)} · ${esc(dur(first))}` : '&nbsp;'}</span>
             ${tb.waiter_name ? `<span class="fl-waiter">${icon('users', 'sm')}${esc(tb.waiter_id === host.me?.id ? t('f_my_tables') : tb.waiter_name)}</span>` : ''}
-          </button>`).join('')}</div>`
+          </button>`;
+        }).join('')}</div>`
           : `<div class="a-empty">${esc(host.isOwner ? 'Столов ещё нет. Создайте их в разделе «Столы и QR».' : t('fl_no_tables'))}</div>`}
         <p class="help">${esc(t('fl_hint'))}</p>`;
     }
@@ -397,7 +603,7 @@
         <h2 id="modal-title">${esc(t('table'))} ${esc(tb.label)}</h2>
         <div class="fl-head">
           <label class="switch"><input type="checkbox" data-fl-claim="${esc(id)}"${mine ? ' checked' : ''}><span class="track"></span>${esc(t('my_table'))}</label>
-          ${tb.waiter_name && !mine ? `<span class="help" style="margin:0">${esc(t('served_by', tb.waiter_name))}</span>` : ''}
+          ${tb.waiter_name && !mine ? `<span class="help" style="margin:0">${esc(t('waiter_of', tb.waiter_name))}</span>` : ''}
           <span class="grow"></span>
           ${os.length ? `<button type="button" class="btn small ghost" data-fl-move="${esc(id)}">${icon('table', 'sm')}${esc(t('mv_btn'))}</button>` : ''}
           <button type="button" class="btn small" data-fl-compose="${esc(id)}">${icon('plus', 'sm')}${esc(t('new_order'))}</button>
@@ -652,10 +858,11 @@
           <ul class="cp-list">${list.map((d) => {
             const inCart = [...cart.values()].filter((l) => l.id === d.id).reduce((x, l) => x + l.qty, 0);
             const isOpen = openDish === d.id;
-            return `<li class="${d.available ? '' : 'is-off'}">
-              <div class="cp-row"><div class="grow"><b>${esc(tr(d.name))}</b><small>${money(d.price)}${d.available ? '' : ` · ${esc(t('out_stock'))}`}</small></div>
+            const can = d.available && d.stock !== 0;   // остаток 0 — тоже «нет в наличии»
+            return `<li class="${can ? '' : 'is-off'}">
+              <div class="cp-row"><div class="grow"><b>${esc(tr(d.name))}</b><small>${money(d.price)}${can ? (d.stock != null ? ` · ${esc(t('sl_left_n', d.stock))}` : '') : ` · ${esc(t('out_stock'))}`}</small></div>
                 ${inCart ? `<span class="cp-n">${inCart}</span>` : ''}
-                ${d.available ? `<button type="button" class="btn small soft" data-cp-add="${esc(d.id)}" aria-label="${esc(t('comp_add'))}">${icon('plus', 'sm')}</button>` : ''}</div>
+                ${can ? `<button type="button" class="btn small soft" data-cp-add="${esc(d.id)}" aria-label="${esc(t('comp_add'))}">${icon('plus', 'sm')}</button>` : ''}</div>
               ${isOpen ? `<div class="cp-opts">${(d.options || []).map((g) => `<fieldset class="ed-group"><legend>${esc(tr(g.name))}${g.required ? ` (${esc(t('required'))})` : ''}</legend>
                 ${(g.choices || []).map((c, ci) => `<label class="check"><input type="${g.multi ? 'checkbox' : 'radio'}" name="cpg-${esc(g.id)}" value="${esc(g.id)}:${esc(c.id)}"${!g.multi && g.required && ci === 0 ? ' checked' : ''}>${esc(tr(c.name))}${Number(c.price) ? ` (${Number(c.price) > 0 ? '+' : '−'}${esc(money(Math.abs(c.price)))})` : ''}</label>`).join('')}</fieldset>`).join('')}
                 <button type="button" class="btn small" data-cp-confirm="${esc(d.id)}">${icon('plus', 'sm')}${esc(t('comp_add'))}</button></div>` : ''}
@@ -721,7 +928,7 @@
             const msg = String(ex?.message || '');
             const err = m.querySelector('#cp-err');
             err.hidden = false;
-            err.textContent = /unavailable/.test(msg) ? t('e_unavailable') : /options/.test(msg) ? t('e_options') : /bad_table/.test(msg) ? t('e_table') : S.errText(ex);
+            err.textContent = /unavailable|sold_out/.test(msg) ? t('e_unavailable') : /options/.test(msg) ? t('e_options') : /bad_table/.test(msg) ? t('e_table') : S.errText(ex);
             send.disabled = false;
           }
         }
@@ -796,6 +1003,18 @@
 
     // клики внутри «Зала» и окна стола; true — обработано
     function handleClick(e) {
+      const vw = e.target.closest('[data-fl-view]');
+      if (vw) { view = vw.dataset.flView === 'book' ? 'book' : 'map'; host.rerender(); return true; }
+      const bo = e.target.closest('[data-bk-ok]');
+      if (bo) { confirmDialog(bo.dataset.bkOk); return true; }
+      const bg = e.target.closest('[data-bk-go]');
+      if (bg) { const sel = document.getElementById('bk-table')?.value || null; S.closeModal(); setBooking(bg.dataset.bkGo, 'confirmed', sel); return true; }
+      const bs = e.target.closest('[data-bk-seat]');
+      if (bs) { setBooking(bs.dataset.bkSeat, 'seated'); return true; }
+      const bn = e.target.closest('[data-bk-noshow]');
+      if (bn) { setBooking(bn.dataset.bkNoshow, 'no_show'); return true; }
+      const bc = e.target.closest('[data-bk-cancel]');
+      if (bc) { setBooking(bc.dataset.bkCancel, 'cancelled'); return true; }
       const tbl = e.target.closest('[data-fl-table]');
       if (tbl) { openTable(tbl.dataset.flTable); return true; }
       const d = e.target.closest('[data-fl-done]');
@@ -875,8 +1094,10 @@
     return {
       load, render, handleClick, openTable, editOrder, compose, serve,
       openCalls, isMineOrFree, myTables, get bills() { return okBills(); }, get tables() { return tables; },
+      newBookings, get bookings() { return bookings; }, get view() { return view; },
+      setView(v) { view = v === 'book' ? 'book' : 'map'; },
     };
   }
 
-  window.Floor = { create, printSlip, printTicket, printReceipt, optNames, lineTitle, noteHtml, trNote, ACTIVE, stOf };
+  window.Floor = { create, printSlip, printTicket, printReceipt, optNames, lineTitle, noteHtml, trNote, ACTIVE, stOf, chime };
 })();

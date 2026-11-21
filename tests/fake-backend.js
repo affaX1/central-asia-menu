@@ -117,8 +117,9 @@
   function dishPrice(d, dish) {
     if (dish.promo_price == null) return Number(dish.price);
     if (dish.promo_from && dish.promo_to) {
-      const m = window.MenuSchedule.localNow(d.settings.timezone, new Date()).min;
-      const f = window.MenuSchedule.mins(dish.promo_from); const t2 = window.MenuSchedule.mins(dish.promo_to);
+      const hm = (x) => { const [h, mm] = String(x).split(':').map(Number); return h * 60 + mm; };
+      const now = new Date(); const m = window.MenuSchedule ? window.MenuSchedule.localNow(d.settings.timezone, now).min : now.getHours() * 60 + now.getMinutes();
+      const f = hm(dish.promo_from); const t2 = hm(dish.promo_to);
       if (!(t2 > f ? m >= f && m < t2 : m >= f || m < t2)) return Number(dish.price);
     }
     return Number(dish.promo_price);
@@ -535,6 +536,62 @@
         if (!(b.p_rating >= 1 && b.p_rating <= 5)) return fail('bad_rating');
         d.reviews = (d.reviews || []).filter((r) => r.order_id !== o.id).concat({ id: crypto.randomUUID(), order_id: o.id, order_no: o.no, table_id: o.table_id, table_label: o.table_label, rating: b.p_rating, comment: b.p_comment, lang: b.p_lang, created_at: new Date().toISOString() });
         save(d); return reply(200, null);
+      }
+      // ---------- гость: оценки блюд и бронь стола (как vote_dishes / book_table / my_booking / cancel_booking) ----------
+      if (name === 'vote_dishes') {
+        const o = d.orders.find((x) => x.id === b.p_order && x.guest_token === b.p_token);
+        if (!o) return fail('not_found');
+        if (['new', 'cancelled'].includes(o.status)) return fail('too_early');
+        if (Date.now() - new Date(o.created_at).getTime() > 2 * 86400000) return fail('too_late');
+        const votes = b.p_votes;
+        if (!votes || typeof votes !== 'object' || Array.isArray(votes)) return fail('bad_request');
+        // сервер падает на первой ошибке и откатывает всё — проверяем до записи
+        for (const [k, v] of Object.entries(votes)) {
+          if (!o.items.some((i) => i.id === k) || ![-1, 0, 1].includes(Number(v))) return fail('bad_request');
+        }
+        d.votes = d.votes || [];
+        let n = 0;
+        for (const [k, v] of Object.entries(votes)) {
+          d.votes = d.votes.filter((x) => !(x.order_id === o.id && x.dish_id === k));
+          if (Number(v) !== 0) { d.votes.push({ order_id: o.id, dish_id: k, vote: Number(v), created_at: new Date().toISOString() }); n += 1; }
+        }
+        save(d); return reply(200, n);
+      }
+      if (name === 'book_table') {
+        d.bookings = d.bookings || [];
+        if (!b.p_client_key) return fail('bad_request');
+        const outB = (r) => [{ id: r.id, no: r.no, guest_token: r.guest_token, status: r.status, at: r.at, people: r.people }];
+        const old = d.bookings.find((x) => x.client_key === b.p_client_key);
+        if (old) return reply(200, outB(old));
+        if (d.settings.bookings_enabled === false) return fail('bookings_off');
+        const at = new Date(b.p_at || '');
+        if (Number.isNaN(at.getTime()) || at.getTime() < Date.now() + 30 * 60000 || at.getTime() > Date.now() + 60 * 86400000) return fail('bad_time');
+        if (!window.MenuSchedule.status(d.settings.schedule, d.settings.timezone, at).open) return fail('closed_then');
+        const nm = String(b.p_name || '').trim();
+        const ph = String(b.p_phone || '').trim().replace(/\s+/g, ' ');
+        if (nm.length < 1 || nm.length > 60 || !/^\+?[0-9][0-9 ()-]{5,19}$/.test(ph) || !(Number.isInteger(b.p_people) && b.p_people >= 1 && b.p_people <= 50)) return fail('bad_request');
+        // защита от спама: с одного номера не больше 3 будущих броней, со всех — 30 в час
+        const digits = (x) => String(x).replace(/\D/g, '');
+        if (d.bookings.filter((x) => digits(x.phone) === digits(ph) && ['new', 'confirmed'].includes(x.status) && new Date(x.at).getTime() > Date.now()).length >= 3
+          || d.bookings.filter((x) => Date.now() - new Date(x.created_at).getTime() < 3600000).length >= 30) return fail('too_many');
+        const now = new Date().toISOString();
+        const r = {
+          id: crypto.randomUUID(), no: Math.max(100, ...d.bookings.map((x) => Number(x.no) || 0)) + 1, name: nm, phone: ph, at: at.toISOString(), people: b.p_people,
+          note: String(b.p_note || '').trim().slice(0, 300) || null, lang: String(b.p_lang || '').trim().slice(0, 5) || null, status: 'new', table_id: null, table_label: null,
+          client_key: b.p_client_key, guest_token: crypto.randomUUID(), decided_by_name: null, created_at: now, updated_at: now,
+        };
+        d.bookings.push(r); save(d);
+        return reply(200, outB(r));
+      }
+      if (name === 'my_booking') {
+        const r = (d.bookings || []).find((x) => x.id === b.p_id && x.guest_token === b.p_token && new Date(x.at).getTime() > Date.now() - 86400000);
+        return reply(200, r ? [{ id: r.id, no: r.no, status: r.status, at: r.at, people: r.people, table_label: r.table_label || null }] : []);
+      }
+      if (name === 'cancel_booking') {
+        const r = (d.bookings || []).find((x) => x.id === b.p_id && x.guest_token === b.p_token && ['new', 'confirmed'].includes(x.status) && new Date(x.at).getTime() > Date.now());
+        if (!r) return fail('not_found');
+        r.status = 'cancelled'; r.decided_by_name = null; r.updated_at = new Date().toISOString();
+        save(d); return reply(200, 'cancelled');
       }
       if (name === 'place_order') {
         if (!b.p_client_key) return fail('bad_request');

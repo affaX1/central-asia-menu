@@ -8,6 +8,7 @@ const vm = require('vm');
 const root = path.join(__dirname, '..');
 const UI_FILES = ['index.html', 'admin.html', 'waiter.html', 'owner.html', 'print.html', 'icons.svg', 'icon.svg',
   'app.js', 'data.js', 'schedule.js', 'staff-core.js', 'staff-api.js', 'waiter.js', 'owner.js',
+  'kitchen.html', 'kitchen.js', 'floor.js', 'owner-reports.js', 'staff-i18n.js', 'staff-tools.js', 'stop-list.js', 'staff-shift.js',
   'styles.css', 'staff.css', 'supabase/seed.sql'];
 
 test('в интерфейсе нет эмодзи', () => {

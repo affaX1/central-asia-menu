@@ -31,12 +31,14 @@
     return [f, t > f ? t : addDays(f, 1)];
   }
 
-  // столбики одного цвета: подпись и значение при наведении, таблица — ниже
-  function bars(rows, fmt, { compact = false } = {}) {
+  // столбики одного цвета: подпись и значение при наведении/касании, таблица — ниже.
+  // r.v — число (для денег — в сенах), r.tip — готовая подпись; anim — столбики «вырастают» (только при первом показе отчёта)
+  function bars(rows, fmt, { compact = false, anim = false } = {}) {
     const max = Math.max(0, ...rows.map((r) => r.v));
     if (!max) return '<p class="a-empty" style="padding:14px 0">Нет данных за этот период.</p>';
-    return `<div class="rp-bars${compact ? ' compact' : ''}" role="img" aria-label="${esc(rows.map((r) => `${r.k}: ${fmt(r.v)}`).join('; '))}">
-      ${rows.map((r) => `<div class="rp-bar" tabindex="0" data-tip="${esc(`${r.k}: ${fmt(r.v)}`)}"><span class="rp-col" style="height:${Math.max(r.v ? 3 : 0, Math.round((r.v / max) * 100))}%"></span><span class="rp-x">${esc(r.short ?? r.k)}</span></div>`).join('')}
+    const tipOf = (r) => r.tip || `${r.k}: ${fmt(r.v)}`;
+    return `<div class="rp-bars${compact ? ' compact' : ''}${anim ? ' rp-grow' : ''}" role="img" aria-label="${esc(rows.map(tipOf).join('; '))}">
+      ${rows.map((r, i) => `<div class="rp-bar" tabindex="0" data-tip="${esc(tipOf(r))}"><span class="rp-col" style="height:${Math.max(r.v ? 3 : 0, Math.round((r.v / max) * 100))}%;--i:${Math.min(i, 30)}"></span><span class="rp-x">${esc(r.short ?? r.k)}</span></div>`).join('')}
     </div>`;
   }
   function hbars(rows, fmt, sub) {
@@ -59,22 +61,61 @@
   const num = (x) => String(r2(Number(x) || 0)).replace('.', ',');
 
   // ---------------- ОТЧЁТЫ ----------------
-  const R = { period: '7', from: '', to: '', orders: [], bills: [], reviews: [], loaded: '', loading: false, error: '' };
+  const R = { period: '7', from: '', to: '', orders: [], bills: [], reviews: [], loaded: '', loading: false, error: '',
+    prevBills: null, votes: null, shifts: null, costs: null, animKey: '' };
+  const sen = (x) => Math.round((Number(x) || 0) * 100);   // деньги считаем в сенах (целых), чтобы не копились ошибки округления
+  const fromSen = (n) => n / 100;
+  const pct = (a, b) => (b ? Math.round((a / b) * 100) : 0);
 
-  async function loadReports(api) {
+  // прошлый такой же период для сравнения. Текущий берём только до «сейчас», прошлый — той же длины,
+  // иначе «сегодня до обеда» сравнивалось бы с целым вчерашним днём.
+  function prevRange(p, f, t) {
+    const now = new Date();
+    const end = t > now ? now : t;
+    const span = Math.max(0, end - f);
+    const n = Math.max(1, Math.round((t - f) / 864e5));
+    let pf;
+    let pt;
+    let label;
+    if (p === 'month') { pf = new Date(f.getFullYear(), f.getMonth() - 1, 1); pt = new Date(Math.min(pf.getTime() + span, f.getTime())); label = 'к тем же дням прошлого месяца'; }
+    else if (p === 'prev') { pf = new Date(f.getFullYear(), f.getMonth() - 1, 1); pt = f; label = 'к позапрошлому месяцу'; }
+    else {
+      pf = addDays(f, -n); pt = new Date(Math.min(pf.getTime() + span, f.getTime()));
+      label = p === 'today' ? 'ко вчера на это же время' : p === 'yesterday' ? 'к позавчера' : p === '7' ? 'к прошлой неделе'
+        : p === '30' ? 'к прошлым 30 дням' : n === 1 ? 'к предыдущему дню' : `к предыдущим ${n} дн.`;
+    }
+    return { pf, pt, end, label };
+  }
+
+  async function loadReports(ctx) {
+    const api = ctx.api;
     const [f, t] = periodRange(R.period, R.from, R.to);
     const key = `${f.toISOString()}|${t.toISOString()}`;
     if (R.loaded === key || R.loading) return;
     R.loading = true;
     R.error = '';
+    const { pf, pt } = prevRange(R.period, f, t);
+    const fi = f.toISOString();
+    const ti = t.toISOString();
+    // дополнительные части отчёта не должны ломать основной: если не загрузились — пишем это в своей панели
+    const soft = (fn) => (fn ? fn().catch(() => null) : Promise.resolve(null));
     try {
-      const [o, b, rv] = await Promise.all([api.orders(f.toISOString(), t.toISOString()), api.bills(f.toISOString(), t.toISOString()),
-        api.reviews ? api.reviews(f.toISOString(), t.toISOString()).catch(() => []) : []]);
+      const [o, b, rv, pb, votes, shifts, costs] = await Promise.all([api.orders(fi, ti), api.bills(fi, ti),
+        api.reviews ? api.reviews(fi, ti).catch(() => []) : [],
+        pt > pf ? soft(() => api.bills(pf.toISOString(), pt.toISOString())) : Promise.resolve([]),
+        soft(api.dishVotes && (() => api.dishVotes(fi, ti))),
+        soft(api.shifts && (() => api.shifts(fi, ti))),
+        // себестоимость видит только владелец (менеджеру база всё равно вернёт пусто)
+        ctx.role === 'owner' ? soft(api.dishCosts && (() => api.dishCosts())) : Promise.resolve(null)]);
       R.orders = o;
       // отменённые оплаты не считаются в деньгах — показываем их отдельным списком
       R.bills = b.filter((x) => !x.voided_at);
       R.voided = b.filter((x) => x.voided_at);
       R.reviews = rv;
+      R.prevBills = pb ? pb.filter((x) => !x.voided_at && new Date(x.paid_at) < pt) : null;
+      R.votes = votes;
+      R.shifts = shifts;
+      R.costs = costs;
       R.loaded = key;
     } catch (ex) { R.error = S.errText(ex); }
     R.loading = false;
@@ -125,7 +166,7 @@
     const key = `${f.toISOString()}|${t.toISOString()}`;
     if (R.loaded !== key) {
       main.innerHTML = `${toolbar()}<p class="a-empty">${R.error ? esc(R.error) : 'Считаем…'}</p>`;
-      if (!R.error) loadReports(ctx.api).then(() => { if (location.hash === '#reports') reports(main, ctx); });
+      if (!R.error) loadReports(ctx).then(() => { if (location.hash === '#reports') reports(main, ctx); });
       return;
     }
     const valid = R.orders.filter((o) => o.status !== 'cancelled');
@@ -137,17 +178,46 @@
     const service = r2(valid.reduce((s, o) => s + Number(o.service || 0), 0));
     const tax = r2(valid.reduce((s, o) => s + Number(o.tax || 0), 0));
 
-    // по дням
+    // выручка (оплаченные счета, без отменённых оплат) по дням — в сенах; в таблице рядом продажи по заказам
     const days = [];
     for (let d = new Date(f); d < t; d = addDays(d, 1)) days.push(new Date(d));
+    const dayRev = new Map();
+    for (const b of R.bills) { const k = ymd(new Date(b.paid_at)); const r = dayRev.get(k) || { v: 0, n: 0 }; r.v += sen(b.total); r.n += 1; dayRev.set(k, r); }
+    const daySales = new Map();
+    for (const o of valid) { const k = ymd(new Date(o.created_at)); daySales.set(k, (daySales.get(k) || 0) + sen(o.total)); }
     const byDay = days.map((d) => {
       const k = ymd(d);
-      const v = r2(valid.filter((o) => ymd(new Date(o.created_at)) === k).reduce((s, o) => s + Number(o.total), 0));
-      return { k: d.toLocaleDateString('ru-RU', { weekday: 'short', day: 'numeric', month: 'short' }), short: days.length > 16 ? String(d.getDate()) : dm(d), v, date: k };
+      const r = dayRev.get(k) || { v: 0, n: 0 };
+      const name = d.toLocaleDateString('ru-RU', { weekday: 'short', day: 'numeric', month: 'short' });
+      return { k: name, short: days.length > 16 ? String(d.getDate()) : dm(d), v: r.v, n: r.n, sales: daySales.get(k) || 0, date: k,
+        tip: `${name}: ${money(fromSen(r.v))}${r.n ? ` · счетов ${r.n}` : ''}` };
     });
-    // по часам
-    const byHour = Array.from({ length: 24 }, (_, h) => ({ k: `${pad(h)}:00–${pad(h)}:59`, short: String(h), v: valid.filter((o) => new Date(o.created_at).getHours() === h).length }))
-      .filter((r, i, a) => { const first = a.findIndex((x) => x.v); const last = a.length - 1 - [...a].reverse().findIndex((x) => x.v); return first >= 0 && i >= first && i <= last; });
+    // выручка по часам дня (когда платят) и сколько заказов сделали в этот час
+    const hourRev = Array.from({ length: 24 }, () => ({ v: 0, n: 0, orders: 0 }));
+    for (const b of R.bills) { const h = hourRev[new Date(b.paid_at).getHours()]; h.v += sen(b.total); h.n += 1; }
+    for (const o of valid) hourRev[new Date(o.created_at).getHours()].orders += 1;
+    const firstH = hourRev.findIndex((x) => x.v || x.orders);
+    const lastH = 23 - [...hourRev].reverse().findIndex((x) => x.v || x.orders);
+    const byHour = firstH < 0 ? [] : hourRev.slice(firstH, lastH + 1).map((x, i) => {
+      const h = firstH + i;
+      return { k: `${pad(h)}:00–${pad(h)}:59`, short: String(h), v: x.v,
+        tip: `${pad(h)}:00–${pad(h)}:59: ${money(fromSen(x.v))}${x.n ? ` · счетов ${x.n}` : ''}${x.orders ? ` · заказов ${x.orders}` : ''}` };
+    });
+    // сравнение с прошлым таким же периодом
+    const cmp = prevRange(R.period, f, t);
+    const curRev = R.bills.filter((b) => new Date(b.paid_at) < cmp.end).reduce((s, b) => s + sen(b.total), 0);
+    const prevRev = R.prevBills ? R.prevBills.reduce((s, b) => s + sen(b.total), 0) : null;
+    let cmpHtml = '';
+    if (prevRev === null) cmpHtml = '<span class="rp-cmp">прошлый период не загрузился</span>';
+    else if (prevRev > 0) {
+      const d = Math.round(((curRev - prevRev) / prevRev) * 100);
+      cmpHtml = `<span class="rp-cmp ${d > 0 ? 'up' : d < 0 ? 'down' : ''}" title="${esc(`${money(fromSen(curRev))} против ${money(fromSen(prevRev))}`)}">${d > 0 ? '+' : d < 0 ? '−' : ''}${Math.abs(d)}% ${esc(cmp.label)}</span>`;
+    } else if (curRev > 0) cmpHtml = `<span class="rp-cmp">в прошлом таком же периоде выручки не было</span>`;
+    const cmpNote = prevRev !== null && (prevRev > 0 || curRev > 0)
+      ? `<p class="help" style="margin:10px 0 0">Сравнение: ${money(fromSen(curRev))} за этот период и ${money(fromSen(prevRev))} за прошлый (${esc(dm(cmp.pf))} — ${esc(dm(new Date(cmp.pt - 1)))}). Текущий период считаем до этой минуты, прошлый — той же длины.</p>` : '';
+    // столбики «вырастают» только при первом показе этого отчёта, а не при каждой перерисовке
+    const anim = R.animKey !== key;
+    R.animKey = key;
     // топ блюд
     const dishMap = new Map();
     for (const o of valid) for (const i of o.items || []) {
@@ -188,9 +258,10 @@
         <div class="a-stat${unpaid ? ' hot' : ''}"><b>${money(unpaid)}</b><span>не оплачено</span></div>
       </div>
       ${service || tax || cancelled.length || tips || discounts ? `<p class="help">${discounts ? `Скидки: −${money(discounts)} (счетов ${discBills.length}). ` : ''}${tips ? `Чаевые: ${money(tips)}. ` : ''}${service ? `Сервисный сбор: ${money(service)}. ` : ''}${tax ? `Налог: ${money(tax)}. ` : ''}${cancelled.length ? `Отменено заказов: ${cancelled.length} на ${money(cancelled.reduce((s, o) => s + Number(o.total), 0))}.` : ''}</p>` : ''}
-      <section class="panel"><div class="panel-head"><h3>Продажи по дням</h3></div><div class="panel-body">
-        ${bars(byDay, money, { compact: byDay.length > 16 })}
-        <details class="rp-table"><summary>Таблицей</summary><table><tbody>${byDay.map((r) => `<tr><td>${esc(r.k)}</td><td>${money(r.v)}</td></tr>`).join('')}</tbody></table></details>
+      <section class="panel"><div class="panel-head"><h3>Выручка по дням</h3>${cmpHtml}</div><div class="panel-body">
+        ${bars(byDay, (v) => money(fromSen(v)), { compact: byDay.length > 16, anim })}
+        ${cmpNote}
+        <details class="rp-table"><summary>Таблицей</summary><table><thead><tr><th>День</th><th>Выручка</th><th>Счетов</th><th>Продажи (заказы)</th></tr></thead><tbody>${byDay.map((r) => `<tr><td>${esc(r.k)}</td><td>${money(fromSen(r.v))}</td><td>${r.n}</td><td>${money(fromSen(r.sales))}</td></tr>`).join('')}</tbody></table></details>
       </div></section>
       <div class="rp-two">
         <section class="panel"><div class="panel-head"><h3>Популярные блюда<small>${top.length}</small></h3></div><div class="panel-body">
@@ -207,9 +278,15 @@
         </div></section>
       </div>
       ${speed}
-      <section class="panel"><div class="panel-head"><h3>Заказы по часам</h3></div><div class="panel-body">
-        ${bars(byHour, (v) => `${v} заказ.`)}
+      <section class="panel"><div class="panel-head"><h3>Выручка по часам дня</h3></div><div class="panel-body">
+        ${bars(byHour, (v) => money(fromSen(v)), { anim })}
+        <p class="help" style="margin:10px 0 0">По времени оплаты счёта, за весь выбранный период. Наведите или нажмите на столбик — покажем сумму, счета и заказы этого часа.</p>
       </div></section>
+      ${profitHtml(ctx)}
+      <div class="rp-two">
+        ${votesHtml(ctx)}
+        ${shiftsHtml(f, t)}
+      </div>
       <div class="rp-two">
         <section class="panel"><div class="panel-head"><h3>Столы</h3></div><div class="panel-body">${hbars(byTable.slice(0, 15), money, (r) => `заказов: ${r.n}`)}</div></section>
         <section class="panel"><div class="panel-head"><h3>Сотрудники</h3></div><div class="panel-body">
@@ -238,6 +315,114 @@
       <ul class="rv-list">${list.slice(0, 30).map((r) => `<li><div><span class="rv-stars" aria-label="${r.rating} из 5">${stars(r.rating)}</span>
         <small>${esc(new Date(r.created_at).toLocaleString('ru-RU', { dateStyle: 'short', timeStyle: 'short' }))} · стол ${esc(r.table_label || '?')} · заказ №${esc(r.order_no || '?')}${r.lang ? ` · ${esc(String(r.lang).toUpperCase())}` : ''}</small></div>
         ${r.comment ? `<p>${esc(r.comment)}</p>` : ''}</li>`).join('')}</ul>
+    </div></section>`;
+  }
+
+  // ---------- Прибыль по блюдам (только владелец) ----------
+  // Выручка — цена позиции × количество в оплаченных, не отменённых заказах (как «Популярные блюда», но только оплаченные).
+  // Себестоимость — та, что указана сейчас: старые продажи считаются по сегодняшней себестоимости.
+  function profitHtml(ctx) {
+    if (ctx.role !== 'owner') return '';
+    const head = '<section class="panel"><div class="panel-head"><h3>Прибыль по блюдам</h3></div><div class="panel-body">';
+    if (R.costs === null) return `${head}<p class="a-empty" style="padding:8px 0">Себестоимость не загрузилась. Нажмите «Обновить».</p></div></section>`;
+    const cost = new Map(R.costs.map((c) => [c.dish_id, sen(c.cost)]));
+    const m = new Map();
+    for (const o of R.orders) {
+      if (o.status === 'cancelled' || !o.paid_at) continue;
+      for (const i of o.items || []) {
+        const r = m.get(i.id) || { id: i.id, k: tr(i.name) || i.id, qty: 0, rev: 0 };
+        const q = Number(i.qty) || 0;
+        r.qty += q;
+        r.rev += sen(i.price) * q;
+        m.set(i.id, r);
+      }
+    }
+    const sold = [...m.values()].filter((r) => r.qty > 0);
+    if (!sold.length) return `${head}<p class="a-empty" style="padding:8px 0">За этот период оплаченных заказов нет.</p></div></section>`;
+    const rows = sold.filter((r) => cost.has(r.id)).map((r) => {
+      const c = cost.get(r.id) * r.qty;
+      return { ...r, cost: c, profit: r.rev - c };
+    }).sort((a, b) => b.profit - a.profit);
+    const missing = sold.filter((r) => !cost.has(r.id)).sort((a, b) => b.rev - a.rev);
+    const tot = rows.reduce((s, r) => ({ rev: s.rev + r.rev, cost: s.cost + r.cost, profit: s.profit + r.profit }), { rev: 0, cost: 0, profit: 0 });
+    const margin = (r) => (r.rev ? `${Math.round((r.profit / r.rev) * 100)}%` : '—');
+    return `${head}
+      ${rows.length ? `<div class="a-stats" style="margin-top:0">
+        <div class="a-stat"><b>${money(fromSen(tot.rev))}</b><span>выручка этих блюд</span></div>
+        <div class="a-stat"><b>${money(fromSen(tot.cost))}</b><span>себестоимость</span></div>
+        <div class="a-stat${tot.profit < 0 ? ' hot' : ''}"><b>${money(fromSen(tot.profit))}</b><span>прибыль · маржа ${margin(tot)}</span></div>
+      </div>
+      <ul class="pf-list">${rows.map((r) => `<li${r.profit < 0 ? ' class="is-loss"' : ''}>
+        <span class="pf-name"><b>${esc(r.k)}</b><small>${r.qty} шт. · выручка ${money(fromSen(r.rev))} · себестоимость ${money(fromSen(r.cost))}</small></span>
+        <span class="pf-sum"><b>${money(fromSen(r.profit))}</b><small>маржа ${margin(r)}</small></span></li>`).join('')}</ul>` : ''}
+      ${missing.length ? `<p class="notice">${icon('alert')}<span>Себестоимость не указана: ${esc(missing.map((r) => r.k).join(', '))}. Эти блюда не входят в прибыль — впишите себестоимость в разделе «Меню» (карточка блюда).</span></p>` : ''}
+      <p class="help">Себестоимость берётся текущая — та, что указана в карточке блюда сейчас, а не на день продажи. Выручка — цены блюд в оплаченных заказах, без скидок на счёт, сбора и налога; доплаты за варианты входят в выручку, но не в себестоимость.</p>
+    </div></section>`;
+  }
+
+  // ---------- Оценки блюд гостями (владелец и менеджер) ----------
+  function votesHtml(ctx) {
+    const head = '<section class="panel"><div class="panel-head"><h3>Оценки блюд</h3></div><div class="panel-body">';
+    if (R.votes === null) return `${head}<p class="a-empty" style="padding:8px 0">Оценки не загрузились. Нажмите «Обновить».</p></div></section>`;
+    if (!R.votes.length) return `${head}<p class="a-empty" style="padding:8px 0">За этот период гости не оценивали блюда. Оценить блюдо гость может на экране своего заказа.</p></div></section>`;
+    // название: из меню, иначе — из заказов периода
+    const names = new Map();
+    for (const o of R.orders) for (const i of o.items || []) if (!names.has(i.id)) names.set(i.id, tr(i.name));
+    const dishes = typeof ctx.dishes === 'function' ? ctx.dishes() : ctx.dishes || [];
+    for (const d of dishes) names.set(d.id, tr(d.name));
+    const m = new Map();
+    for (const v of R.votes) {
+      const r = m.get(v.dish_id) || { id: v.dish_id, up: 0, down: 0 };
+      if (Number(v.vote) > 0) r.up += 1; else if (Number(v.vote) < 0) r.down += 1;
+      m.set(v.dish_id, r);
+    }
+    const MIN = 3;   // меньше трёх оценок — слишком случайно, такие блюда идут в конце
+    const rows = [...m.values()].map((r) => ({ ...r, n: r.up + r.down, p: pct(r.up, r.up + r.down), k: names.get(r.id) || r.id }))
+      .filter((r) => r.n).sort((a, b) => (b.n >= MIN) - (a.n >= MIN) || a.p - b.p || b.down - a.down || a.k.localeCompare(b.k, 'ru'));
+    const up = rows.reduce((s, r) => s + r.up, 0);
+    const down = rows.reduce((s, r) => s + r.down, 0);
+    return `${head}
+      <p class="vt-total"><span class="vt-up">${icon('thumb-up', 'sm')}${up}</span><span class="vt-down">${icon('thumb-down', 'sm')}${down}</span><span>нравится ${pct(up, up + down)}%</span></p>
+      <ul class="vt-list">${rows.map((r) => `<li${r.n >= MIN && r.p < 60 ? ' class="is-bad"' : ''}>
+        <span class="vt-name"><b>${esc(r.k)}</b><small>${r.n < MIN ? 'мало оценок' : `оценок: ${r.n}`}</small></span>
+        <span class="vt-track" role="img" aria-label="${esc(`нравится ${r.p}%`)}"><span style="width:${r.p}%"></span></span>
+        <span class="vt-nums"><span class="vt-up" aria-label="нравится">${icon('thumb-up', 'sm')}${r.up}</span><span class="vt-down" aria-label="не нравится">${icon('thumb-down', 'sm')}${r.down}</span><b>${r.p}%</b></span></li>`).join('')}</ul>
+      <p class="help">Сверху — блюда, которые нравятся меньше всего (из тех, где хотя бы ${MIN} оценки).</p>
+    </div></section>`;
+  }
+
+  // ---------- Смены: часы по сотрудникам ----------
+  const ROLE = { owner: 'владелец', manager: 'менеджер', waiter: 'официант', cook: 'повар' };
+  const durText = (min) => { const m = Math.max(0, Math.round(min)); return m < 60 ? `${m} мин` : `${Math.floor(m / 60)} ч ${pad(m % 60)} мин`; };
+  function shiftsHtml(f, t) {
+    const head = '<section class="panel"><div class="panel-head"><h3>Смены</h3></div><div class="panel-body">';
+    if (R.shifts === null) return `${head}<p class="a-empty" style="padding:8px 0">Смены не загрузились. Нажмите «Обновить».</p></div></section>`;
+    if (!R.shifts.length) return `${head}<p class="a-empty" style="padding:8px 0">За этот период смен не было. Сотрудник начинает и заканчивает смену кнопкой на своём экране.</p></div></section>`;
+    const now = Date.now();
+    const fT = f.getTime();
+    const tT = Math.min(t.getTime(), now);
+    // часы — только внутри выбранного периода; открытая смена считается до этой минуты
+    const people = new Map();
+    for (const s of R.shifts) {
+      const a = new Date(s.started_at).getTime();
+      const b = s.ended_at ? new Date(s.ended_at).getTime() : now;
+      const min = Math.max(0, Math.min(b, tT) - Math.max(a, fT)) / 60000;
+      const p = people.get(s.user_id) || { k: s.name || ROLE[s.role] || 'Сотрудник', role: s.role, v: 0, n: 0, open: false };
+      p.v += min; p.n += 1; p.open = p.open || !s.ended_at;
+      people.set(s.user_id, p);
+    }
+    const list = [...people.values()].sort((a, b) => b.v - a.v);
+    const total = list.reduce((s, p) => s + p.v, 0);
+    const when = (iso) => new Date(iso).toLocaleString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+    const shifts = [...R.shifts].sort((a, b) => new Date(b.started_at) - new Date(a.started_at));
+    return `${head}
+      <p class="rv-avg" style="margin-top:0"><b>${esc(durText(total))}</b> всего · смен ${R.shifts.length}</p>
+      ${hbars(list, durText, (p) => [ROLE[p.role], `смен: ${p.n}`, p.open ? 'сейчас на смене' : ''].filter(Boolean).join(' · '))}
+      <details class="rp-table"><summary>Все смены</summary><ul class="sh-list">${shifts.map((s) => {
+        const b = s.ended_at ? new Date(s.ended_at).getTime() : now;
+        return `<li><span><b>${esc(s.name || ROLE[s.role] || '')}</b> · ${esc(when(s.started_at))} — ${s.ended_at ? esc(when(s.ended_at)) : '<span class="state-badge ok">на смене</span>'}</span><b>${esc(durText((b - new Date(s.started_at).getTime()) / 60000))}</b></li>`;
+      }).join('')}</ul></details>
+      <p class="help">Часы считаются только внутри выбранного периода: смена через полночь делится между днями. Открытая смена считается до этой минуты.</p>
     </div></section>`;
   }
 
