@@ -45,7 +45,7 @@ alter table public.staff add column if not exists email text not null default ''
 alter table public.staff add column if not exists role text not null default 'waiter';
 alter table public.staff add column if not exists active boolean not null default true;
 alter table public.staff drop constraint if exists staff_role_check;
-alter table public.staff add constraint staff_role_check check (role in ('waiter', 'owner', 'cook', 'manager'));
+alter table public.staff add constraint staff_role_check check (role in ('waiter', 'owner', 'cook', 'manager', 'courier'));
 
 create table if not exists public.staff_invites (
   email      text primary key check (email = lower(email) and email ~ '^[^@\s]+@[^@\s]+\.[^@\s]+$'),
@@ -56,7 +56,7 @@ create table if not exists public.staff_invites (
 );
 
 alter table public.staff_invites drop constraint if exists staff_invites_role_check;
-alter table public.staff_invites add constraint staff_invites_role_check check (role in ('waiter', 'owner', 'cook', 'manager'));
+alter table public.staff_invites add constraint staff_invites_role_check check (role in ('waiter', 'owner', 'cook', 'manager', 'courier'));
 
 -- Сотрудник = есть в staff, доступ включён и email подтверждён.
 create or replace function public.is_staff()
@@ -368,7 +368,7 @@ declare
 begin
   if not public.is_owner() then raise exception 'forbidden'; end if;
   if v_email !~ '^[^@\s]+@[^@\s]+\.[^@\s]+$' then raise exception 'bad_email'; end if;
-  if p_role not in ('waiter', 'owner', 'cook', 'manager') then raise exception 'bad_role'; end if;
+  if p_role not in ('waiter', 'owner', 'cook', 'manager', 'courier') then raise exception 'bad_role'; end if;
   select id into v_user from auth.users where lower(email) = v_email;
   if found then
     -- аккаунт уже есть — сразу даём доступ
@@ -397,7 +397,7 @@ returns void language plpgsql security definer set search_path = public as $$
 declare v_old public.staff%rowtype;
 begin
   if not public.is_owner() then raise exception 'forbidden'; end if;
-  if p_role not in ('waiter', 'owner', 'cook', 'manager') then raise exception 'bad_role'; end if;
+  if p_role not in ('waiter', 'owner', 'cook', 'manager', 'courier') then raise exception 'bad_role'; end if;
   select * into v_old from public.staff where user_id = p_user;
   if not found then raise exception 'not_found'; end if;
   if p_user = auth.uid() and (not p_active or p_role <> 'owner') then raise exception 'self'; end if;
@@ -525,13 +525,17 @@ alter table public.orders add column if not exists served_by_name text;
 alter table public.orders add column if not exists source text not null default 'guest';
 alter table public.orders add column if not exists created_by_name text;
 alter table public.orders drop constraint if exists orders_status_check;
-alter table public.orders add constraint orders_status_check check (status in ('new', 'accepted', 'cooking', 'ready', 'served', 'cancelled'));
+alter table public.orders add constraint orders_status_check check (status in ('new', 'accepted', 'cooking', 'ready', 'on_the_way', 'served', 'cancelled'));
+-- заказ на стол (по QR) или доставка домой; у доставки «served» = доставлено
+alter table public.orders add column if not exists kind text not null default 'table';
+alter table public.orders drop constraint if exists orders_kind_check;
+alter table public.orders add constraint orders_kind_check check (kind in ('table', 'delivery'));
 alter table public.orders drop constraint if exists orders_source_check;
 alter table public.orders add constraint orders_source_check check (source in ('guest', 'staff'));
 create index if not exists orders_created_idx on public.orders (created_at desc);
 create index if not exists orders_table_created_idx on public.orders (table_id, created_at desc);
 drop index if exists public.orders_active_idx;
-create index if not exists orders_active_idx on public.orders (status) where status in ('new', 'accepted', 'cooking', 'ready', 'served');
+create index if not exists orders_active_idx on public.orders (status) where status in ('new', 'accepted', 'cooking', 'ready', 'on_the_way', 'served');
 
 create or replace function public.orders_on_update()
 returns trigger language plpgsql security definer set search_path = public as $$
@@ -622,7 +626,8 @@ create policy tables_owner_all on public.tables for all to authenticated
   using (public.is_owner()) with check (public.is_owner());
 drop policy if exists orders_owner_read on public.orders;
 drop policy if exists orders_staff_read on public.orders;
-create policy orders_staff_read on public.orders for select to authenticated using (public.is_staff());
+create policy orders_staff_read on public.orders for select to authenticated
+  using (public.is_staff() and (public.staff_role() <> 'courier' or kind = 'delivery'));   -- курьер видит только доставку
 drop policy if exists orders_owner_status on public.orders;
 create policy orders_owner_status on public.orders for update to authenticated
   using (public.is_manager()) with check (public.is_manager());
@@ -1548,7 +1553,7 @@ begin
         || case when new.source = 'staff' then ' (от официанта ' || coalesce(new.created_by_name, '') || ')' else '' end || E'\n' || coalesce(v_lines, '')
         || coalesce(E'\nКомментарий: ' || new.note, '') || E'\nИтого: ' || public.tg_money(new.total));
     end if;
-    if new.status = 'new' then
+    if new.status = 'new' and new.kind = 'table' then   -- доставку зал получает отдельным сообщением (tg_on_delivery)
       perform private.tg_send_to(private.tg_floor_chats(new.table_id), 'Новый заказ №' || new.no || ' · стол ' || new.table_label || E'\n' || coalesce(v_lines, '')
         || coalesce(E'\nКомментарий: ' || new.note, ''));
     end if;
@@ -2417,3 +2422,223 @@ do $$ declare t text; begin
     end loop;
   end if;
 end $$;
+
+-- =====================================================================
+-- Доставка домой своим курьером (2026-11-22)
+-- Гость ставит точку на карте; цена доставки — по километрам от ресторана
+-- (по прямой), платит гость сверху; расчёт с курьером при получении.
+-- =====================================================================
+alter table public.settings add column if not exists delivery_enabled boolean not null default false;
+alter table public.settings add column if not exists delivery_lat numeric(9, 6) check (delivery_lat is null or delivery_lat between -90 and 90);
+alter table public.settings add column if not exists delivery_lng numeric(9, 6) check (delivery_lng is null or delivery_lng between -180 and 180);
+-- зоны: [{ "km": 3, "fee": 5 }, { "km": 7, "fee": 10 }] — до 3 км RM 5, до 7 км RM 10, дальше не возим
+alter table public.settings add column if not exists delivery_zones jsonb not null default '[]';
+alter table public.settings add column if not exists delivery_min numeric(10, 2) not null default 0 check (delivery_min >= 0 and delivery_min < 100000);
+create or replace function public.valid_zones(z jsonb)
+returns boolean language sql immutable as $$
+  select jsonb_typeof(z) = 'array' and jsonb_array_length(z) <= 8 and not exists (
+    select 1 from jsonb_array_elements(z) e
+    where jsonb_typeof(e) <> 'object' or jsonb_typeof(e -> 'km') <> 'number' or jsonb_typeof(e -> 'fee') <> 'number'
+       or (e ->> 'km')::numeric not between 0.3 and 60 or (e ->> 'fee')::numeric not between 0 and 1000);
+$$;
+alter table public.settings drop constraint if exists settings_zones_check;
+alter table public.settings add constraint settings_zones_check check (public.valid_zones(delivery_zones));
+
+alter table public.orders add column if not exists customer_name text check (customer_name is null or char_length(customer_name) <= 60);
+alter table public.orders add column if not exists customer_phone text check (customer_phone is null or char_length(customer_phone) <= 20);
+alter table public.orders add column if not exists address text check (address is null or char_length(address) <= 300);
+alter table public.orders add column if not exists lat numeric(9, 6);
+alter table public.orders add column if not exists lng numeric(9, 6);
+alter table public.orders add column if not exists distance_km numeric(6, 2);
+alter table public.orders add column if not exists delivery_fee numeric(10, 2) not null default 0 check (delivery_fee >= 0);
+alter table public.orders add column if not exists pay_method text check (pay_method is null or pay_method in ('cash', 'card'));
+alter table public.orders add column if not exists courier_id uuid references auth.users (id) on delete set null;
+alter table public.orders add column if not exists courier_name text;
+alter table public.orders add column if not exists picked_at timestamptz;
+create index if not exists orders_delivery_idx on public.orders (created_at desc) where kind = 'delivery';
+alter table public.bills add column if not exists delivery_fee numeric(10, 2) not null default 0 check (delivery_fee >= 0);
+
+-- расстояние по прямой между двумя точками, км (формула гаверсинуса)
+create or replace function public.km_between(a_lat numeric, a_lng numeric, b_lat numeric, b_lng numeric)
+returns numeric language sql immutable as $$
+  select round((6371 * 2 * asin(sqrt(
+    power(sin(radians((b_lat - a_lat)::float8) / 2), 2)
+    + cos(radians(a_lat::float8)) * cos(radians(b_lat::float8)) * power(sin(radians((b_lng - a_lng)::float8) / 2), 2))))::numeric, 2);
+$$;
+
+-- гость: сколько стоит доставка в эту точку (до заказа)
+create or replace function public.delivery_quote(p_lat numeric, p_lng numeric)
+returns jsonb language plpgsql stable security definer set search_path = public as $$
+declare v public.settings%rowtype; d numeric; z jsonb;
+begin
+  select * into v from public.settings where id = 1;
+  if not v.delivery_enabled or v.delivery_lat is null or jsonb_array_length(v.delivery_zones) = 0 then
+    return jsonb_build_object('ok', false, 'reason', 'off');
+  end if;
+  if p_lat is null or p_lng is null or p_lat not between -90 and 90 or p_lng not between -180 and 180 then
+    return jsonb_build_object('ok', false, 'reason', 'bad_point');
+  end if;
+  d := public.km_between(v.delivery_lat, v.delivery_lng, p_lat, p_lng);
+  select e into z from jsonb_array_elements(v.delivery_zones) e where (e ->> 'km')::numeric >= d order by (e ->> 'km')::numeric limit 1;
+  if z is null then return jsonb_build_object('ok', false, 'reason', 'too_far', 'km', d); end if;
+  return jsonb_build_object('ok', true, 'km', d, 'fee', (z ->> 'fee')::numeric, 'zone_km', (z ->> 'km')::numeric, 'min', v.delivery_min);
+end $$;
+
+-- гость: заказать доставку (как place_order, но без стола)
+drop function if exists public.place_delivery(jsonb, text, text, text, text, numeric, numeric, text, text, uuid);
+create or replace function public.place_delivery(
+  p_items jsonb, p_name text, p_phone text, p_address text, p_note text, p_lat numeric, p_lng numeric, p_pay text, p_lang text, p_client_key uuid)
+returns table (id uuid, no bigint, guest_token uuid, total numeric, status text, items jsonb, created_at timestamptz,
+               subtotal numeric, tax numeric, delivery_fee numeric, distance_km numeric)
+language plpgsql security definer set search_path = public as $$
+declare
+  v_set public.settings%rowtype; v_old public.orders%rowtype; v_q jsonb; v_item jsonb; v_line jsonb;
+  v_items jsonb := '[]'::jsonb; v_sub numeric(10, 2) := 0; v_tax numeric(10, 2); v_count int := 0; v_keys text[] := '{}';
+  v_phone text := regexp_replace(btrim(coalesce(p_phone, '')), '\s+', ' ', 'g');
+  v_name text := btrim(coalesce(p_name, '')); v_addr text := btrim(regexp_replace(coalesce(p_address, ''), '\s+', ' ', 'g'));
+begin
+  if p_client_key is null then raise exception 'bad_request'; end if;
+  select * into v_old from public.orders o where o.client_key = p_client_key;
+  if found then
+    return query select v_old.id, v_old.no, v_old.guest_token, v_old.total, v_old.status, v_old.items, v_old.created_at,
+                        v_old.subtotal, v_old.tax, v_old.delivery_fee, v_old.distance_km;
+    return;
+  end if;
+  select * into v_set from public.settings s where s.id = 1;
+  if not v_set.orders_enabled then raise exception 'orders_off'; end if;
+  if not v_set.orders_when_closed and not public.restaurant_open() then raise exception 'closed'; end if;
+  v_q := public.delivery_quote(p_lat, p_lng);
+  if not (v_q ->> 'ok')::boolean then
+    raise exception '%', case v_q ->> 'reason' when 'off' then 'delivery_off' when 'too_far' then 'too_far' else 'bad_point' end;
+  end if;
+  if char_length(v_name) not between 1 and 60 or v_phone !~ '^\+?[0-9][0-9 ()-]{5,19}$'
+     or char_length(v_addr) not between 5 and 300 or coalesce(p_pay, '') not in ('cash', 'card') then
+    raise exception 'bad_request';
+  end if;
+  if p_items is null or jsonb_typeof(p_items) <> 'array' or jsonb_array_length(p_items) = 0 then raise exception 'empty'; end if;
+  if jsonb_array_length(p_items) > 50 then raise exception 'bad_items'; end if;
+  for v_item in select value from jsonb_array_elements(p_items) loop
+    if jsonb_typeof(v_item) <> 'object' then raise exception 'bad_items'; end if;
+    v_line := public.order_line(v_item, true);
+    if (v_line ->> 'key') = any (v_keys) then raise exception 'bad_items'; end if;
+    v_keys := v_keys || (v_line ->> 'key');
+    v_count := v_count + (v_line ->> 'qty')::int;
+    v_sub := v_sub + (v_line ->> 'price')::numeric * (v_line ->> 'qty')::int;
+    v_items := v_items || jsonb_build_array(v_line - 'key');
+  end loop;
+  if v_count > 100 then raise exception 'bad_items'; end if;
+  if v_sub < v_set.delivery_min then raise exception 'below_min'; end if;
+  -- защита от спама: с одного номера не больше 3 незавершённых доставок, со всего ресторана — 60 заказов в минуту
+  if (select count(*) from public.orders o where o.kind = 'delivery' and o.status not in ('served', 'cancelled')
+        and o.created_at > now() - interval '12 hours'
+        and regexp_replace(o.customer_phone, '\D', '', 'g') = regexp_replace(v_phone, '\D', '', 'g')) >= 3
+     or (select count(*) from public.orders o where o.created_at > now() - interval '1 minute') >= 60 then
+    raise exception 'too_many';
+  end if;
+  -- у доставки нет сервисного сбора (он за обслуживание в зале); налог — как в зале
+  v_tax := round(v_sub * coalesce(v_set.tax_pct, 0) / 100, 2);
+  return query
+    insert into public.orders as o (kind, table_id, table_label, items, subtotal, service, tax, delivery_fee, total, note, lang, client_key,
+                                    customer_name, customer_phone, address, lat, lng, distance_km, pay_method)
+    values ('delivery', null, 'Доставка', v_items, v_sub, 0, v_tax, (v_q ->> 'fee')::numeric, v_sub + v_tax + (v_q ->> 'fee')::numeric,
+            left(nullif(btrim(coalesce(p_note, '')), ''), 300), left(nullif(btrim(coalesce(p_lang, '')), ''), 5), p_client_key,
+            v_name, v_phone, v_addr, p_lat, p_lng, (v_q ->> 'km')::numeric, p_pay)
+    returning o.id, o.no, o.guest_token, o.total, o.status, o.items, o.created_at, o.subtotal, o.tax, o.delivery_fee, o.distance_km;
+end $$;
+
+-- гость смотрит свой заказ: и стол, и доставка
+drop function if exists public.get_order(uuid, uuid);
+create or replace function public.get_order(p_id uuid, p_token uuid)
+returns table (id uuid, no bigint, status text, total numeric, table_label text, items jsonb, note text, created_at timestamptz, updated_at timestamptz, accepted_at timestamptz,
+               subtotal numeric, service numeric, tax numeric, paid_at timestamptz, edited_at timestamptz,
+               kind text, delivery_fee numeric, distance_km numeric, address text, pay_method text, courier_name text, picked_at timestamptz, served_at timestamptz)
+language sql stable security definer set search_path = public as $$
+  select o.id, o.no, o.status, o.total, o.table_label, o.items, o.note, o.created_at, o.updated_at, o.accepted_at,
+         coalesce(o.subtotal, o.total), o.service, o.tax, o.paid_at, o.edited_at,
+         o.kind, o.delivery_fee, o.distance_km, o.address, o.pay_method, o.courier_name, o.picked_at, o.served_at
+  from public.orders o
+  where o.id = p_id and o.guest_token = p_token and o.created_at > now() - interval '3 days';
+$$;
+
+-- ---------- Курьер ----------
+create or replace function public.is_courier()
+returns boolean language sql stable security definer set search_path = public as $$
+  select coalesce(public.staff_role() in ('courier', 'owner', 'manager'), false);
+$$;
+-- забрал заказ — «В пути»
+create or replace function public.courier_take(p_id uuid)
+returns setof public.orders language plpgsql security definer set search_path = public as $$
+declare v_o public.orders%rowtype;
+begin
+  if not public.is_courier() then raise exception 'forbidden'; end if;
+  select * into v_o from public.orders where id = p_id for update;
+  if not found or v_o.kind <> 'delivery' then raise exception 'not_found'; end if;
+  if v_o.status = 'on_the_way' and v_o.courier_id is distinct from auth.uid() then raise exception 'taken'; end if;
+  if v_o.status not in ('new', 'accepted', 'cooking', 'ready', 'on_the_way') then raise exception 'bad_status'; end if;
+  return query update public.orders set status = 'on_the_way', courier_id = auth.uid(), courier_name = public.staff_name(),
+         picked_at = coalesce(picked_at, now()), accepted_at = coalesce(accepted_at, now())
+   where id = p_id returning *;
+end $$;
+-- доставил и получил деньги — заказ закрыт, счёт оплачен (попадает в отчёты и Z-отчёт)
+create or replace function public.courier_done(p_id uuid, p_method text)
+returns setof public.orders language plpgsql security definer set search_path = public as $$
+declare v_o public.orders%rowtype; v_set public.settings%rowtype; v_bill public.bills%rowtype; v_round numeric(10, 2) := 0;
+begin
+  if not public.is_courier() then raise exception 'forbidden'; end if;
+  if p_method not in ('cash', 'card') then raise exception 'bad_request'; end if;
+  perform pg_advisory_xact_lock_shared(hashtext('restoran_z_report'));
+  select * into v_o from public.orders where id = p_id for update;
+  if not found or v_o.kind <> 'delivery' then raise exception 'not_found'; end if;
+  if v_o.paid_at is not null then return query select * from public.orders where id = p_id; return; end if;
+  if v_o.status = 'cancelled' then raise exception 'cancelled'; end if;
+  if v_o.status = 'on_the_way' and v_o.courier_id is distinct from auth.uid() and not public.is_manager() then raise exception 'taken'; end if;
+  select * into v_set from public.settings where id = 1;
+  if p_method = 'cash' and v_set.cash_rounding then v_round := round(v_o.total * 20) / 20 - v_o.total; end if;
+  insert into public.bills (table_id, table_label, order_ids, order_nos, subtotal, service, tax, delivery_fee, total, tip, payments, method,
+                            paid_by, paid_by_name, rounding, paid_at)
+  values (null, 'Доставка', array[v_o.id], array[v_o.no], coalesce(v_o.subtotal, v_o.total), 0, v_o.tax, v_o.delivery_fee, v_o.total, 0,
+          jsonb_build_array(jsonb_build_object('method', p_method, 'amount', v_o.total + v_round)), p_method,
+          auth.uid(), public.staff_name(), v_round, clock_timestamp())
+  returning * into v_bill;
+  return query update public.orders set status = 'served', paid_at = v_bill.paid_at, bill_id = v_bill.id,
+         served_by = auth.uid(), served_by_name = public.staff_name(),
+         courier_id = coalesce(courier_id, auth.uid()), courier_name = coalesce(courier_name, public.staff_name()), picked_at = coalesce(picked_at, now())
+   where id = p_id returning *;
+end $$;
+
+-- Telegram о доставке: владельцу (как обычный заказ) + всем в зале и курьерам; адрес и телефон — в сообщении
+create or replace function private.tg_courier_chats()
+returns text[] language sql stable security definer set search_path = public, private as $$
+  select coalesce(array_agg(g.chat_id), '{}') from public.staff s join private.staff_tg g on g.user_id = s.user_id
+  where s.active and s.role = 'courier' and g.chat_id is not null;
+$$;
+revoke all on function private.tg_courier_chats() from public;
+create or replace function public.tg_on_delivery()
+returns trigger language plpgsql security definer set search_path = public, private as $$
+declare v_txt text;
+begin
+  if new.kind <> 'delivery' then return null; end if;
+  begin
+    v_txt := 'Доставка №' || new.no || ' · ' || coalesce(new.distance_km::text, '?') || ' км' || E'\n'
+      || coalesce(public.tg_lines(new.items), '') || E'\n' || new.customer_name || ' · ' || new.customer_phone || E'\n' || new.address
+      || coalesce(E'\n>> ' || new.note, '') || E'\nК оплате: ' || public.tg_money(new.total)
+      || ' (' || case new.pay_method when 'card' then 'картой' else 'наличными' end || ' курьеру)';
+    perform private.tg_send_to(private.tg_all_waiter_chats() || private.tg_courier_chats(), v_txt);
+  exception when others then null;
+  end;
+  return null;
+end $$;
+drop trigger if exists tg_delivery on public.orders;
+create trigger tg_delivery after insert on public.orders for each row execute function public.tg_on_delivery();
+
+revoke all on function public.delivery_quote(numeric, numeric) from public;
+revoke all on function public.place_delivery(jsonb, text, text, text, text, numeric, numeric, text, text, uuid) from public;
+revoke all on function public.get_order(uuid, uuid) from public;
+revoke all on function public.courier_take(uuid) from public, anon;
+revoke all on function public.courier_done(uuid, text) from public, anon;
+grant execute on function public.delivery_quote(numeric, numeric) to anon, authenticated;
+grant execute on function public.place_delivery(jsonb, text, text, text, text, numeric, numeric, text, text, uuid) to anon, authenticated;
+grant execute on function public.get_order(uuid, uuid) to anon, authenticated;
+grant execute on function public.is_courier() to authenticated;
+grant execute on function public.courier_take(uuid) to authenticated;
+grant execute on function public.courier_done(uuid, text) to authenticated;

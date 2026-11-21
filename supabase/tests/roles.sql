@@ -858,4 +858,58 @@ select t_ok(public.t_rows($$update public.settings set day_goal = 1000$$) = 1, '
 select t_ok(public.t_rows($$update public.categories set station = 'bar' where id = 'drinks'$$) <= 1, 'категорию можно отдать бару');
 select t_fails($$update public.categories set station = 'grill'$$, 'check', 'неизвестный цех не сохранить');
 reset role; reset request.jwt.claim.sub;
+-- ============ 36. Доставка и курьер ============
+set role authenticated; set request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
+select t_ok(public.t_rows($$update public.settings set delivery_enabled = true, delivery_lat = 3.139, delivery_lng = 101.6869,
+  delivery_zones = '[{"km":3,"fee":5},{"km":7,"fee":10}]', delivery_min = 0$$) = 1, 'владелец включил доставку: точка ресторана и зоны');
+select t_fails($$update public.settings set delivery_zones = '[{"km":"три","fee":5}]'$$, 'check', 'кривые зоны не сохранить');
+select t_ok(public.invite_staff('Courier@Example.com', 'courier', 'Курьер Тимур') = 'invited', 'владелец приглашает курьера');
+reset role; reset request.jwt.claim.sub;
+insert into auth.users (id, email, email_confirmed_at) values ('77777777-7777-7777-7777-777777777777', 'courier@example.com', now());
+set role anon;
+select t_ok((select (q ->> 'ok')::boolean and (q ->> 'fee')::numeric = 5 and (q ->> 'km')::numeric between 1.5 and 2.5
+  from (select public.delivery_quote(3.157, 101.6869) q) x), 'гость в 2 км: доставка RM 5');
+select t_ok((select (q ->> 'fee')::numeric = 10 from (select public.delivery_quote(3.184, 101.6869) q) x), 'гость в 5 км: доставка RM 10');
+select t_ok((select q ->> 'reason' = 'too_far' from (select public.delivery_quote(3.25, 101.6869) q) x), 'дальше 7 км — не возим');
+create temp table d36 as select * from public.place_delivery('[{"id":"green-tea","qty":2,"price":10}]', 'Алишер', '+60 12-345 6789',
+  'Jalan Test 1, Kuala Lumpur', 'Позвонить у двери', 3.157, 101.6869, 'cash', 'ru', gen_random_uuid());
+select t_ok((select delivery_fee = 5 and total = subtotal + tax + 5 and status = 'new' from d36), 'гость заказал доставку: доставка сверху к сумме');
+select t_fails($$select * from public.place_delivery('[{"id":"green-tea","qty":1,"price":10}]', 'А', '+60123456789', 'Jalan Far 1', null, 3.25, 101.6869, 'cash', 'ru', gen_random_uuid())$$, 'too_far', 'слишком далеко — заказ не принят');
+select t_fails($$select * from public.place_delivery('[{"id":"green-tea","qty":1,"price":10}]', 'А', 'abc', 'Jalan Test 1', null, 3.157, 101.6869, 'cash', 'ru', gen_random_uuid())$$, 'bad_request', 'неверный телефон');
+select t_fails($$select * from public.place_delivery('[{"id":"green-tea","qty":1,"price":10}]', 'А', '+60123456789', 'Jalan Test 1', null, 3.157, 101.6869, 'bitcoin', 'ru', gen_random_uuid())$$, 'bad_request', 'неизвестный способ оплаты');
+reset role;
+grant select on d36 to anon, authenticated;
+update public.settings set delivery_min = 1000;
+set role anon;
+select t_fails($$select * from public.place_delivery('[{"id":"green-tea","qty":1,"price":10}]', 'А', '+60123456780', 'Jalan Test 1', null, 3.157, 101.6869, 'cash', 'ru', gen_random_uuid())$$, 'below_min', 'меньше минимальной суммы — нельзя');
+reset role;
+update public.settings set delivery_min = 0;
+set role authenticated; set request.jwt.claim.sub = '77777777-7777-7777-7777-777777777777';
+select t_ok((select count(*) from public.orders where kind = 'table') = 0 and (select count(*) from public.orders where id = (select id from d36)) = 1, 'курьер видит доставку, но не заказы зала');
+reset role; reset request.jwt.claim.sub;
+set role authenticated; set request.jwt.claim.sub = '22222222-2222-2222-2222-222222222222';
+select t_fails($$select public.courier_take((select id from d36))$$, 'forbidden', 'официант не забирает доставку');
+reset role; reset request.jwt.claim.sub;
+set role authenticated; set request.jwt.claim.sub = '77777777-7777-7777-7777-777777777777';
+select t_ok((select status = 'on_the_way' and courier_name = 'Курьер Тимур' from public.courier_take((select id from d36))), 'курьер забрал заказ — «В пути»');
+reset role; reset request.jwt.claim.sub;
+set role anon;
+select t_ok((select status = 'on_the_way' and kind = 'delivery' and courier_name = 'Курьер Тимур' and delivery_fee = 5
+  from public.get_order((select id from d36), (select guest_token from d36))), 'гость видит: курьер в пути');
+reset role;
+set role authenticated; set request.jwt.claim.sub = '77777777-7777-7777-7777-777777777777';
+select t_ok((select status = 'served' and paid_at is not null from public.courier_done((select id from d36), 'cash')), 'курьер доставил и получил деньги');
+select t_ok((select count(*) from public.courier_done((select id from d36), 'cash')) = 1, 'повторное «доставил» не ломается');
+reset role; reset request.jwt.claim.sub;
+select t_ok((select count(*) from public.bills where order_ids @> array[(select id from d36)]) = 1, 'повторное «доставил» не создаёт второй счёт');
+select t_ok((select delivery_fee = 5 and total = (select total from d36) and method = 'cash' and paid_by_name = 'Курьер Тимур'
+  from public.bills where order_ids @> array[(select id from d36)]), 'счёт доставки: сумма с доставкой, наличные, курьер');
+set role anon;
+select t_ok((public.guest_receipt((select id from d36), (select guest_token from d36)) ->> 'total')::numeric = (select total from d36), 'гость открывает чек доставки');
+reset role;
+update public.settings set delivery_enabled = false;
+set role anon;
+select t_ok((select public.delivery_quote(3.157, 101.6869) ->> 'reason') = 'off', 'доставка выключена — гость видит «нет доставки»');
+select t_fails($$select * from public.place_delivery('[{"id":"green-tea","qty":1,"price":10}]', 'А', '+60123456781', 'Jalan Test 1', null, 3.157, 101.6869, 'cash', 'ru', gen_random_uuid())$$, 'delivery_off', 'выключенная доставка не принимает заказы');
+reset role;
 \echo ALL DATABASE TESTS PASSED
