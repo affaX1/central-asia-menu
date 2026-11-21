@@ -78,7 +78,7 @@
           <p class="help">${esc(ios() ? t('install_ios') : t('install_android'))}</p>`}
       </div></section>
       <section class="panel"><div class="panel-head"><h3>${esc(t('tg_t'))}</h3></div><div class="panel-body">
-        <p class="help" style="margin-top:0">${esc(t(kind === 'cook' ? 'tg_d_k' : 'tg_d_w'))}</p>
+        <p class="help" style="margin-top:0">${esc(t(kind === 'cook' ? 'tg_d_k' : kind === 'courier' ? 'tg_d_c' : 'tg_d_w'))}</p>
         ${!tg ? `<p class="a-empty">${esc(t('loading'))}</p>`
           : tg.linked ? `<p class="notice ok">${icon('check')}<span>${esc(t('tg_linked'))}</span></p><button type="button" class="btn ghost" data-st-tg-off>${esc(t('tg_off'))}</button>`
             : !tg.bot_ready ? `<p class="notice">${icon('alert')}<span>${esc(t('tg_no_bot'))}</span></p>`
@@ -90,7 +90,7 @@
       </div></section>`;
   }
 
-  // box — контейнер, kind — 'waiter' | 'cook'
+  // box — контейнер, kind — 'waiter' | 'cook' | 'courier'
   async function settings(api, box, kind) {
     paint(api, box, kind);
     if (!tgState || tgState === 'error') { await tgLoad(api); paint(api, box, kind); }

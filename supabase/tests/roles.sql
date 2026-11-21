@@ -893,19 +893,23 @@ reset role; reset request.jwt.claim.sub;
 set role authenticated; set request.jwt.claim.sub = '77777777-7777-7777-7777-777777777777';
 select t_ok((select status = 'on_the_way' and courier_name = 'Курьер Тимур' from public.courier_take((select id from d36))), 'курьер забрал заказ — «В пути»');
 reset role; reset request.jwt.claim.sub;
+set role authenticated; set request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
+select t_ok((select delivery_fee = 5 and service = 0 and total = subtotal + tax + 5 from public.edit_order((select id from d36), '[{"id":"green-tea","qty":3}]')), 'правка доставки: сбор за доставку остаётся, сервисного сбора нет');
+reset role; reset request.jwt.claim.sub;
+
 set role anon;
 select t_ok((select status = 'on_the_way' and kind = 'delivery' and courier_name = 'Курьер Тимур' and delivery_fee = 5
   from public.get_order((select id from d36), (select guest_token from d36))), 'гость видит: курьер в пути');
 reset role;
 set role authenticated; set request.jwt.claim.sub = '77777777-7777-7777-7777-777777777777';
-select t_ok((select status = 'served' and paid_at is not null from public.courier_done((select id from d36), 'cash')), 'курьер доставил и получил деньги');
-select t_ok((select count(*) from public.courier_done((select id from d36), 'cash')) = 1, 'повторное «доставил» не ломается');
+select t_ok((select status = 'served' and paid_at is not null and pay_method = 'card' from public.courier_done((select id from d36), 'card')), 'курьер доставил и получил деньги (гость передумал — картой)');
+select t_ok((select count(*) from public.courier_done((select id from d36), 'card')) = 1, 'повторное «доставил» не ломается');
 reset role; reset request.jwt.claim.sub;
 select t_ok((select count(*) from public.bills where order_ids @> array[(select id from d36)]) = 1, 'повторное «доставил» не создаёт второй счёт');
-select t_ok((select delivery_fee = 5 and total = (select total from d36) and method = 'cash' and paid_by_name = 'Курьер Тимур'
+select t_ok((select delivery_fee = 5 and total = (select total from public.orders where id = (select id from d36)) and method = 'card' and paid_by_name = 'Курьер Тимур'
   from public.bills where order_ids @> array[(select id from d36)]), 'счёт доставки: сумма с доставкой, наличные, курьер');
 set role anon;
-select t_ok((public.guest_receipt((select id from d36), (select guest_token from d36)) ->> 'total')::numeric = (select total from d36), 'гость открывает чек доставки');
+select t_ok((public.guest_receipt((select id from d36), (select guest_token from d36)) ->> 'total')::numeric > (select total from d36), 'гость открывает чек доставки (с правкой)');
 reset role;
 update public.settings set delivery_enabled = false;
 set role anon;

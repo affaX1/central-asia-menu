@@ -7,6 +7,8 @@
   //  официант нажимает «Подано», и заказ уходит с экрана.
   //  Переключатель «Кухня · Бар · Всё» (по цеху категории блюда), стоп-лист
   //  (вкладка «Стоп-лист», модуль stop-list.js) и смена в шапке.
+  //  Доставка: «Доставка №N» вместо стола и кнопка «Готово — отдать курьеру»;
+  //  с экрана уходит, когда курьер забрал (в пути), доставил или заказ отменили.
   // =====================================================================
 
   const S = window.Staff;
@@ -43,6 +45,8 @@
   // на кухне — только свежие неподанные заказы: забытый вчерашний не висит в очереди
   const cookable = (o) => ACTIVE.includes(o.status) && !o.paid_at && Date.now() - new Date(o.created_at).getTime() < 12 * 60 * 60 * 1000;
   let edits = new Map();   // id → edited_at, чтобы звенеть, когда владелец поменял заказ
+  const isDeliv = (o) => window.Floor.isDeliv(o);
+  const busy = new Set();  // доставка: «готово» уже отправляется
 
   const hhmm = (iso) => new Date(iso).toLocaleTimeString(S.locale(), { hour: '2-digit', minute: '2-digit' });
   const mins = (iso) => Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 60000));
@@ -101,7 +105,8 @@
       }
       if (fresh.length) {
         const bar = mode() === 'bar';
-        bannerMsg = fresh.length > 1 ? t(bar ? 'k_b_bar_many' : 'k_b_many', fresh.length) : t(bar ? 'k_b_bar_one' : 'k_b_one', fresh[0].no, fresh[0].table_label);
+        bannerMsg = fresh.length > 1 ? t(bar ? 'k_b_bar_many' : 'k_b_many', fresh.length)
+          : isDeliv(fresh[0]) ? t('k_b_deliv', fresh[0].no) : t(bar ? 'k_b_bar_one' : 'k_b_one', fresh[0].no, fresh[0].table_label);
         renderBanner();
         ding();
         try { navigator.vibrate?.([200, 100, 200]); } catch { /* нет вибрации */ }
@@ -123,13 +128,16 @@
     const wait = mins(o.created_at);
     const late = wait >= 25 ? ' is-late' : wait >= 15 ? ' is-slow' : '';
     return `<article class="k-card${late}">
-      <div class="k-head"><b>${esc(t('table'))} ${esc(o.table_label)}</b><span>№${esc(o.no)}</span></div>
+      <div class="k-head">${isDeliv(o) ? `<b class="k-deliv">${icon('bike')}${esc(t('delivery'))}</b>` : `<b>${esc(t('table'))} ${esc(o.table_label)}</b>`}<span>№${esc(o.no)}</span></div>
       <div class="k-time">${esc(t('k_in', hhmm(o.created_at), wait))}</div>
       ${o.edited_at ? `<div class="k-edited">${icon('refresh', 'sm')}${esc(t('k_edited', hhmm(o.edited_at)))}</div>` : ''}
       <ul class="k-items">${items.map((i) => `<li><b>${esc(i.qty)}×</b><span>${esc(tr(i.name) || i.id)}${optNames(i).length ? `<em>${esc(optNames(i).join(', '))}</em>` : ''}${window.Floor.noteHtml(i)}</span></li>`).join('')}</ul>
       ${items.length < (o.items || []).length ? `<div class="k-other">${esc(t('k_other_st', (o.items || []).length - items.length, mode() === 'bar' ? t('st_kitchen') : t('st_bar')))}</div>` : ''}
       ${o.note ? `<div class="k-note">${icon('alert', 'sm')}${esc(window.Floor.trNote(o.note))}</div>` : ''}
+      ${isDeliv(o) ? (o.status === 'ready' ? `<div class="k-dstate is-ready">${icon('check', 'sm')}${esc(t('k_deliv_wait'))}</div>`
+        : o.status === 'new' ? `<div class="k-dstate">${esc(t('k_deliv_new'))}</div>` : '') : ''}
       <div class="k-actions">
+        ${isDeliv(o) && ['accepted', 'cooking'].includes(o.status) ? `<button type="button" class="btn" data-k-ready="${esc(o.id)}"${busy.has(o.id) ? ' disabled' : ''}>${icon('check', 'sm')}${esc(t('k_deliv_ready'))}</button>` : ''}
         <button type="button" class="btn ghost small" data-print="${esc(o.id)}">${icon('printer', 'sm')}${esc(t('k_print'))}</button>
       </div>
     </article>`;
@@ -175,6 +183,16 @@
       ${queue.length ? `<div class="k-grid">${queue.map(card).join('')}</div>` : `<p class="a-empty">${esc(t('k_e_queue'))}</p>`}`;
   }
 
+  // доставка готова — курьер видит «Готова, ждёт курьера»
+  async function deliveryReady(id) {
+    if (busy.has(id)) return;
+    busy.add(id);
+    render();
+    try { await api.kitchenSet(id, 'ready'); await load(); } catch (ex) { S.toast(S.errText(ex), true); }
+    busy.delete(id);
+    render();
+  }
+
   const tabOf = () => (location.hash === '#settings' ? 'settings' : location.hash === '#stop' ? 'stop' : 'kitchen');
   window.addEventListener('hashchange', () => { if (api) { tab = tabOf(); render(); } });
   document.addEventListener('click', (e) => {
@@ -187,6 +205,8 @@
       render();
       return;
     }
+    const kr = e.target.closest('[data-k-ready]');
+    if (kr) { deliveryReady(kr.dataset.kReady); return; }
     const p = e.target.closest('[data-print]');
     if (p) {
       const o = orders.find((x) => x.id === p.dataset.print);

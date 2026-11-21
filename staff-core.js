@@ -157,12 +157,16 @@
     </form>`);
   }
 
+  // своя страница каждой роли: повар — кухня, курьер — доставка, остальные — зал
+  const homeOf = (role) => (role === 'cook' ? ['kitchen.html', t('open_kitchen')]
+    : role === 'courier' ? ['courier.html', t('open_courier')] : ['waiter.html', t('open_waiter')]);
   function noAccessScreen(kind) {
-    const text = t(`na_${kind}`);
-    const home = me?.role === 'cook' ? ['kitchen.html', t('open_kitchen')] : ['waiter.html', t('open_waiter')];
+    // текст под роль, если он есть (курьер на странице зала — «ваша страница — „Курьер“»)
+    const text = (window.STAFF_T || {})[`na_${kind}_${me?.role}`] ? t(`na_${kind}_${me.role}`) : t(`na_${kind}`);
+    const home = homeOf(me?.role);
     screen(`<div class="a-card">${icon('lock', 'lg')}
       <h2>${esc(text[0])}</h2><p>${esc(me?.email || '')}</p><p>${esc(text[1])}</p>
-      ${['owner', 'floor', 'kitchen'].includes(kind) ? `<a class="btn block" href="${home[0]}">${esc(home[1])}</a>`
+      ${['owner', 'floor', 'kitchen', 'courier'].includes(kind) ? `<a class="btn block" href="${home[0]}">${esc(home[1])}</a>`
         : `<button class="btn block" type="button" data-auth="recheck">${esc(t('recheck'))}</button>`}
     </div>`);
   }
@@ -182,6 +186,8 @@
       if (opts.need === 'owner' && !['owner', 'manager'].includes(w.role)) { noAccessScreen('owner'); return; }
       if ((opts.need === 'waiter' || opts.need === 'floor') && !['waiter', 'owner', 'manager'].includes(w.role)) { noAccessScreen('floor'); return; }
       if (opts.need === 'kitchen' && !['cook', 'owner'].includes(w.role)) { noAccessScreen('kitchen'); return; }
+      // доставка: курьер, владелец и менеджер (как is_courier() в базе)
+      if (opts.need === 'courier' && !['courier', 'owner', 'manager'].includes(w.role)) { noAccessScreen('courier'); return; }
       settings = await api.settings();
       renderUser();
       $('#a-nav')?.removeAttribute('hidden');
@@ -273,22 +279,27 @@
   // ---------- своё окно подтверждения вместо серого окна браузера ----------
   // ask('Удалить…?', { ok: 'Удалить' }) → Promise<true|false>
   // ask('Название', { input: 'старое' }) → Promise<строка|null>
-  function ask(text, { ok = t('yes'), cancel = t('cancel'), title = '', input = null, max = 200 } = {}) {
+  // ask('Чем оплатил?', { choices: [['cash', 'Наличными'], ['card', 'Картой']], choice: 'cash' }) → Promise<'cash'|'card'|null>
+  function ask(text, { ok = t('yes'), cancel = t('cancel'), title = '', input = null, max = 200, choices = null, choice = null } = {}) {
+    // выбранный вариант: указанный, а если его нет в списке — первый
+    const sel = choices ? (choices.some(([x]) => x === choice) ? choice : choices[0][0]) : null;
     return new Promise((resolve) => {
       const back = document.createElement('div');
       back.className = 'ask-back';
       back.innerHTML = `<div class="ask-box" role="alertdialog" aria-modal="true" aria-labelledby="ask-text">
         ${title ? `<h3>${esc(title)}</h3>` : ''}<p id="ask-text">${esc(text)}</p>
         ${input !== null ? `<input class="ask-input" type="text" maxlength="${max}" value="${esc(input)}" autocomplete="off">` : ''}
+        ${choices ? `<div class="ask-choices" role="radiogroup">${choices.map(([v, l]) => `<label class="ask-choice"><input type="radio" name="ask-choice" value="${esc(v)}"${v === sel ? ' checked' : ''}><span>${esc(l)}</span></label>`).join('')}</div>` : ''}
         <div class="ask-actions"><button type="button" class="btn ghost" data-ask="0">${esc(cancel)}</button>
         <button type="button" class="btn" data-ask="1">${esc(ok)}</button></div></div>`;
       const last = document.activeElement;
       const done = (v) => {
         const val = back.querySelector('.ask-input')?.value;
+        const picked = back.querySelector('input[name="ask-choice"]:checked')?.value ?? null;
         document.removeEventListener('keydown', onKey, true);
         back.remove();
         if (last && document.contains(last)) last.focus({ preventScroll: true });
-        resolve(input !== null ? (v ? val : null) : v);
+        resolve(input !== null ? (v ? val : null) : choices ? (v ? picked : null) : v);
       };
       const onKey = (ev) => {
         if (ev.key === 'Escape') { ev.stopImmediatePropagation(); ev.preventDefault(); done(false); }
@@ -301,7 +312,8 @@
       });
       document.body.appendChild(back);
       const inp = back.querySelector('.ask-input');
-      if (inp) { inp.focus({ preventScroll: true }); inp.select(); } else back.querySelector('[data-ask="0"]').focus({ preventScroll: true });
+      const radio = back.querySelector('input[name="ask-choice"]:checked');
+      if (inp) { inp.focus({ preventScroll: true }); inp.select(); } else if (radio) radio.focus({ preventScroll: true }); else back.querySelector('[data-ask="0"]').focus({ preventScroll: true });
     });
   }
 

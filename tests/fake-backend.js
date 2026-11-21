@@ -3,7 +3,7 @@
 //  Боевые страницы этот файл не подключают. Подключается вручную в тестах
 //  после config.js и data.js. Хранит «базу» в localStorage этого браузера.
 //  Настоящие права проверяются в supabase/tests/roles.sql.
-//  Роль: localStorage 'fake:role' = owner | waiter | uninvited | unconfirmed | disabled | (пусто — не вошёл)
+//  Роль: localStorage 'fake:role' = owner | waiter | cook | manager | courier | uninvited | unconfirmed | disabled | (пусто — не вошёл)
 // =====================================================================
 (() => {
   'use strict';
@@ -18,6 +18,8 @@
         timezone: r.timezone, schedule: r.schedule, address: {}, map_url: null, phone: '', footer: r.footer,
         default_language: M.defaultLanguage, tables_count: 10, orders_enabled: true, orders_when_closed: true, halal: false, halal_note: {},
         service_pct: 0, tax_pct: 0, tax_name: 'SST', tax_on_service: true,
+        // доставка (как в базе): выключена, пока ресторан не поставит точку и зоны
+        delivery_enabled: false, delivery_lat: null, delivery_lng: null, delivery_zones: [], delivery_min: 0,
       },
       tables: [1, 2, 3].map((n) => ({ id: 'tbl-' + n, label: String(n), token: ('a' + n).padEnd(20, '0'), active: true, sort: n })),
       orders: [],
@@ -33,6 +35,7 @@
         { user_id: 'u-waiter', email: 'waiter@example.com', name: 'Азиз', role: 'waiter', active: true, created_at: '2026-01-02' },
         { user_id: 'u-cook', email: 'cook@example.com', name: 'Повар Бахтиёр', role: 'cook', active: true, created_at: '2026-01-03' },
         { user_id: 'u-manager', email: 'manager@example.com', name: 'Дилшод', role: 'manager', active: true, created_at: '2026-01-04' },
+        { user_id: 'u-courier', email: 'courier@example.com', name: 'Курьер Тимур', role: 'courier', active: true, created_at: '2026-01-05' },
       ],
       invites: [],
       calls: [],
@@ -50,9 +53,11 @@
   const floor = () => { if (!['owner', 'waiter', 'manager'].includes(role())) throw new Error('forbidden'); };
   const mgr = () => { if (!['owner', 'manager'].includes(role())) throw new Error('forbidden'); };
   const kitchen = () => { if (!['owner', 'cook'].includes(role())) throw new Error('forbidden'); };
-  const staffOk = () => { if (!['owner', 'waiter', 'cook', 'manager'].includes(role())) throw new Error('permission denied'); };
+  const staffOk = () => { if (!['owner', 'waiter', 'cook', 'manager', 'courier'].includes(role())) throw new Error('permission denied'); };
+  // как is_courier() в базе: курьер, владелец, менеджер
+  const courierOk = () => { if (!['courier', 'owner', 'manager'].includes(role())) throw new Error('forbidden'); };
   const offline = () => { if (localStorage.getItem('fake:offline') === '1') throw new TypeError('Failed to fetch'); };
-  const myName = () => ({ owner: 'Владелец', waiter: 'Азиз', cook: 'Повар Бахтиёр', manager: 'Дилшод' })[role()] || '';
+  const myName = () => ({ owner: 'Владелец', waiter: 'Азиз', cook: 'Повар Бахтиёр', manager: 'Дилшод', courier: 'Курьер Тимур' })[role()] || '';
   const r2 = (x) => Math.round(x * 100) / 100;
   // как z_open_from / z_totals в базе
   const zFrom = (d) => {
@@ -137,13 +142,13 @@
     for (const id of ids) { const x = d.dishes.find((y) => y.id === id); if (x && x.stock != null) x.stock -= (b[id] || 0) - (a[id] || 0); }
   }
   const newToken = () => Array.from(crypto.getRandomValues(new Uint8Array(10)), (b) => b.toString(16).padStart(2, '0')).join('');
-  const uid = () => ({ owner: 'u-owner', waiter: 'u-waiter', cook: 'u-cook', manager: 'u-manager' })[role()] || 'u-waiter';
+  const uid = () => ({ owner: 'u-owner', waiter: 'u-waiter', cook: 'u-cook', manager: 'u-manager', courier: 'u-courier' })[role()] || 'u-waiter';
 
   window.MENU_BACKEND = { url: 'https://fake.supabase.co', key: 'sb_publishable_FAKE' };
 
   window.STAFF_TEST_API = {
     async session() { await delay(); return role() ? { user: { id: uid() } } : null; },
-    async signIn(email) { await delay(); if (email.includes('wrong')) throw new Error('Invalid login credentials'); localStorage.setItem('fake:role', email.startsWith('owner') ? 'owner' : email.startsWith('cook') ? 'cook' : 'waiter'); },
+    async signIn(email) { await delay(); if (email.includes('wrong')) throw new Error('Invalid login credentials'); localStorage.setItem('fake:role', email.startsWith('owner') ? 'owner' : email.startsWith('cook') ? 'cook' : email.startsWith('courier') ? 'courier' : email.startsWith('manager') ? 'manager' : 'waiter'); },
     async signUp() { await delay(); return { needsEmailConfirm: true }; },
     async resetPassword() { await delay(); },
     async signOut() { localStorage.removeItem('fake:role'); },
@@ -151,7 +156,7 @@
       await delay();
       const r = role();
       if (!r) return null;
-      const base = { user_id: uid(), email: `${['owner', 'cook', 'manager'].includes(r) ? r : 'waiter'}@example.com`, name: myName() || 'Азиз' };
+      const base = { user_id: uid(), email: `${['owner', 'cook', 'manager', 'courier'].includes(r) ? r : 'waiter'}@example.com`, name: myName() || 'Азиз' };
       if (r === 'unconfirmed') return { ...base, role: 'waiter', active: true, email_confirmed: false };
       if (r === 'uninvited') return { ...base, role: null, active: false, email_confirmed: true };
       if (r === 'disabled') return { ...base, role: 'waiter', active: false, email_confirmed: true };
@@ -180,13 +185,15 @@
       const f = new Date(from).getTime();
       const t = to ? new Date(to).getTime() : Infinity;
       return db().orders.filter((o) => {
+        // как orders_staff_read: курьер видит только доставку
+        if (role() === 'courier' && o.kind !== 'delivery') return false;
         const c = new Date(o.created_at).getTime();
-        return to ? c >= f && c < t : c >= f || ['new', 'accepted', 'cooking'].includes(o.status);
+        return to ? c >= f && c < t : c >= f || ['new', 'accepted', 'cooking', 'ready', 'on_the_way'].includes(o.status);
       });
     },
     async acceptOrder(id) {
       await delay();
-      if (!['owner', 'waiter'].includes(role())) throw new Error('forbidden');
+      if (!['owner', 'waiter', 'manager'].includes(role())) throw new Error('forbidden');   // как is_floor()
       if (localStorage.getItem('fake:offline') === '1') throw new TypeError('Failed to fetch');
       const d = db(); const o = d.orders.find((x) => x.id === id);
       if (!o) throw new Error('not_found');
@@ -201,7 +208,7 @@
       await delay(); mgr();
       if (localStorage.getItem('fake:offline') === '1') throw new TypeError('Failed to fetch');
       const d = db(); const o = d.orders.find((x) => x.id === id);
-      if (!['new', 'accepted', 'cooking', 'ready', 'served', 'cancelled'].includes(status)) throw new Error('violates check constraint');
+      if (!['new', 'accepted', 'cooking', 'ready', 'on_the_way', 'served', 'cancelled'].includes(status)) throw new Error('violates check constraint');
       const was = o.status;
       applyStock(d, was === 'cancelled' ? [] : o.items, status === 'cancelled' ? [] : o.items);
       o.status = status; o.updated_at = new Date().toISOString();
@@ -247,6 +254,53 @@
       if (!o) throw new Error('not_found');
       if (['new', 'accepted', 'cooking', 'ready'].includes(o.status)) { o.status = 'served'; o.served_at = new Date().toISOString(); o.updated_at = o.served_at; o.served_by = uid(); o.served_by_name = myName(); save(d); }
       return o;
+    },
+    // ---------- доставка: как courier_take / courier_done в базе ----------
+    async courierTake(id) {
+      await delay(); courierOk(); offline();
+      const d = db(); const o = d.orders.find((x) => x.id === id);
+      if (!o || o.kind !== 'delivery') throw new Error('not_found');
+      if (o.status === 'on_the_way' && o.courier_id !== uid()) throw new Error('taken');
+      if (!['new', 'accepted', 'cooking', 'ready', 'on_the_way'].includes(o.status)) throw new Error('bad_status');
+      const now = new Date().toISOString();
+      Object.assign(o, { status: 'on_the_way', courier_id: uid(), courier_name: myName(), picked_at: o.picked_at || now, accepted_at: o.accepted_at || now, updated_at: now });
+      save(d); return o;
+    },
+    async courierDone(id, method) {
+      await delay(); courierOk(); offline();
+      if (!['cash', 'card'].includes(method)) throw new Error('bad_request');
+      const d = db(); const o = d.orders.find((x) => x.id === id);
+      if (!o || o.kind !== 'delivery') throw new Error('not_found');
+      if (o.paid_at) return o;   // повторное «доставил» — без второго счёта
+      if (o.status === 'cancelled') throw new Error('cancelled');
+      if (o.status === 'on_the_way' && o.courier_id !== uid() && !['owner', 'manager'].includes(role())) throw new Error('taken');
+      // наличные — до 5 сен, как в кассе; считаем в сенах
+      const sen = (x) => Math.round(Number(x || 0) * 100);
+      const roundS = method === 'cash' && d.settings.cash_rounding !== false ? Math.round(sen(o.total) / 5) * 5 - sen(o.total) : 0;
+      d.billSeq = (d.billSeq || 0) + 1;
+      const now = new Date().toISOString();
+      const bill = { id: crypto.randomUUID(), no: d.billSeq, table_id: null, table_label: 'Доставка', order_ids: [o.id], order_nos: [o.no],
+        subtotal: Number(o.subtotal ?? o.total), service: 0, tax: Number(o.tax || 0), delivery_fee: Number(o.delivery_fee || 0), total: Number(o.total), tip: 0,
+        discount: 0, discount_pct: null, discount_reason: null, discount_by_name: null, rounding: roundS / 100,
+        payments: [{ method, amount: (sen(o.total) + roundS) / 100 }], method, paid_at: now, paid_by: uid(), paid_by_name: myName() };
+      d.bills = (d.bills || []).concat(bill);
+      Object.assign(o, { status: 'served', paid_at: now, bill_id: bill.id, served_at: o.served_at || now, served_by: uid(), served_by_name: myName(),
+        courier_id: o.courier_id || uid(), courier_name: o.courier_name || myName(), picked_at: o.picked_at || now, updated_at: now });
+      (d.audit = d.audit || []).push({ id: Date.now(), at: now, who: myName(), entity: 'bill', entity_id: bill.id, label: `счёт №${bill.no} · доставка №${o.no}`, action: 'insert', changes: { total: bill.total, method } });
+      save(d); return o;
+    },
+    // только для проверки: заказ доставки, как будто гость оформил его в меню (place_delivery)
+    _fakeDelivery({ name = 'Алишер', phone = '+60 12-345 6789', address = 'Jalan Test 1, Kuala Lumpur', km = 2.1, fee = 5, pay = 'cash', note = null } = {}) {
+      const d = db();
+      const items = d.dishes.slice(0, 2).map((x) => ({ id: x.id, name: x.name, price: Number(x.price), qty: 1 }));
+      const sub = r2(items.reduce((s, i) => s + i.price * i.qty, 0));
+      const tax = r2(sub * Number(d.settings.tax_pct || 0) / 100);
+      d.seq = Math.max(1000, d.seq || 0) + 1;
+      const now = new Date().toISOString();
+      const o = { id: crypto.randomUUID(), no: d.seq, kind: 'delivery', table_id: null, table_label: 'Доставка', items, subtotal: sub, service: 0, tax, delivery_fee: fee, total: r2(sub + tax + fee),
+        note, status: 'new', customer_name: name, customer_phone: phone, address, lat: 3.157, lng: 101.6869, distance_km: km, pay_method: pay,
+        courier_id: null, courier_name: null, picked_at: null, guest_token: crypto.randomUUID(), client_key: crypto.randomUUID(), created_at: now, updated_at: now };
+      d.orders.push(o); save(d); return o;
     },
     async myTelegram() { await delay(); staffOk(); const d = db(); return { linked: !!(d.staffTg || {})[uid()], bot_username: d.telegram?.token ? 'central_asia_test_bot' : null, bot_ready: !!d.telegram?.token }; },
     async myTelegramStart() { await delay(); staffOk(); const d = db(); if (!d.telegram?.token) throw new Error('no_bot'); d.tgCode = { user: uid(), code: 'ca' + Math.random().toString(16).slice(2, 12), n: 0 }; save(d); return { code: d.tgCode.code, bot_username: 'central_asia_test_bot' }; },
@@ -494,7 +548,70 @@
       if (name === 'get_order') {
         const o = d.orders.find((x) => x.id === b.p_id && x.guest_token === b.p_token);
         return reply(200, o ? [{ id: o.id, no: o.no, status: o.status, total: o.total, table_label: o.table_label, items: o.items, note: o.note, created_at: o.created_at, updated_at: o.updated_at, accepted_at: o.accepted_at || null,
-          subtotal: o.subtotal ?? o.total, service: o.service || 0, tax: o.tax || 0, paid_at: o.paid_at || null, edited_at: o.edited_at || null }] : []);
+          subtotal: o.subtotal ?? o.total, service: o.service || 0, tax: o.tax || 0, paid_at: o.paid_at || null, edited_at: o.edited_at || null,
+          kind: o.kind || 'table', delivery_fee: Number(o.delivery_fee || 0), distance_km: o.distance_km ?? null, address: o.address || null, pay_method: o.pay_method || null,
+          courier_name: o.courier_name || null, picked_at: o.picked_at || null, served_at: o.served_at || null }] : []);
+      }
+      // ---------- гость: доставка (как delivery_quote / place_delivery в базе) ----------
+      // расстояние по прямой (гаверсинус, км, 2 знака) и зона «до N км — цена»
+      const dvQuote = (lat, lng) => {
+        const st = d.settings;
+        const zones = (Array.isArray(st.delivery_zones) ? st.delivery_zones : []).filter((z) => z && typeof z.km === 'number' && typeof z.fee === 'number').sort((x, y) => x.km - y.km);
+        if (!st.delivery_enabled || st.delivery_lat == null || st.delivery_lng == null || !zones.length) return { ok: false, reason: 'off' };
+        const la = Number(lat); const ln = Number(lng);
+        if (lat == null || lng == null || !Number.isFinite(la) || !Number.isFinite(ln) || la < -90 || la > 90 || ln < -180 || ln > 180) return { ok: false, reason: 'bad_point' };
+        const rad = (x) => (x * Math.PI) / 180;
+        const a = Math.sin(rad(la - st.delivery_lat) / 2) ** 2 + Math.cos(rad(st.delivery_lat)) * Math.cos(rad(la)) * Math.sin(rad(ln - st.delivery_lng) / 2) ** 2;
+        const km = r2(6371 * 2 * Math.asin(Math.sqrt(a)));
+        const z = zones.find((x) => x.km >= km);
+        if (!z) return { ok: false, reason: 'too_far', km };
+        return { ok: true, km, fee: z.fee, zone_km: z.km, min: Number(st.delivery_min) || 0 };
+      };
+      if (name === 'delivery_quote') return reply(200, dvQuote(b.p_lat, b.p_lng));
+      if (name === 'place_delivery') {
+        if (!b.p_client_key) return fail('bad_request');
+        const out = (o) => [{ id: o.id, no: o.no, guest_token: o.guest_token, total: o.total, status: o.status, items: o.items, created_at: o.created_at, subtotal: o.subtotal, tax: o.tax, delivery_fee: o.delivery_fee, distance_km: o.distance_km }];
+        const old = d.orders.find((x) => x.client_key === b.p_client_key);
+        if (old) return reply(200, out(old));
+        if (!d.settings.orders_enabled) return fail('orders_off');
+        if (!d.settings.orders_when_closed && !window.MenuSchedule.status(d.settings.schedule, d.settings.timezone).open) return fail('closed');
+        const q = dvQuote(b.p_lat, b.p_lng);
+        if (!q.ok) return fail(q.reason === 'off' ? 'delivery_off' : q.reason === 'too_far' ? 'too_far' : 'bad_point');
+        const nm = String(b.p_name || '').trim();
+        const ph = String(b.p_phone || '').trim().replace(/\s+/g, ' ');
+        const addr = String(b.p_address || '').replace(/\s+/g, ' ').trim();
+        if (nm.length < 1 || nm.length > 60 || !/^\+?[0-9][0-9 ()-]{5,19}$/.test(ph) || addr.length < 5 || addr.length > 300 || !['cash', 'card'].includes(b.p_pay)) return fail('bad_request');
+        if (!Array.isArray(b.p_items) || !b.p_items.length) return fail('empty');
+        if (b.p_items.length > 50) return fail('bad_items');
+        let sub = 0; let count = 0;
+        const items = [];
+        const keys = new Set();
+        for (const it of b.p_items) {
+          let r;
+          try { r = lineOf(d, it, true); } catch (ex) { return fail(ex.message); }
+          if (keys.has(r.key)) return fail('bad_items');
+          keys.add(r.key);
+          sub += r.line.price * r.line.qty; count += r.line.qty;
+          items.push(r.line);
+        }
+        if (count > 100) return fail('bad_items');
+        sub = r2(sub);
+        if (sub < Number(d.settings.delivery_min || 0)) return fail('below_min');
+        const digits = (x) => String(x || '').replace(/\D/g, '');
+        if (d.orders.filter((o) => o.kind === 'delivery' && !['served', 'cancelled'].includes(o.status) && Date.now() - new Date(o.created_at) < 12 * 3600000 && digits(o.customer_phone) === digits(ph)).length >= 3
+          || d.orders.filter((o) => Date.now() - new Date(o.created_at) < 60000).length >= 60) return fail('too_many');
+        // у доставки нет сервисного сбора; налог — как в зале (round(sub * tax_pct / 100, 2))
+        const tax = r2(sub * (Number(d.settings.tax_pct) || 0) / 100);
+        d.seq = Math.max(1000, d.seq || 0) + 1;
+        const now = new Date().toISOString();
+        const o = { id: crypto.randomUUID(), no: d.seq, kind: 'delivery', table_id: null, table_label: 'Доставка', items, subtotal: sub, service: 0, tax, delivery_fee: q.fee, total: r2(sub + tax + q.fee),
+          note: String(b.p_note || '').trim().slice(0, 300) || null, lang: String(b.p_lang || '').trim().slice(0, 5) || null, status: 'new', client_key: b.p_client_key, guest_token: crypto.randomUUID(),
+          customer_name: nm, customer_phone: ph, address: addr, lat: Number(b.p_lat), lng: Number(b.p_lng), distance_km: q.km, pay_method: b.p_pay,
+          courier_id: null, courier_name: null, picked_at: null, created_at: now, updated_at: now };
+        try { applyStock(d, [], o.items); } catch (ex) { return fail(ex.message); }
+        d.orders.push(o); save(d);
+        if (localStorage.getItem('fake:drop-reply') === '1') { localStorage.removeItem('fake:drop-reply'); throw new TypeError('Failed to fetch'); } // заказ сохранён, но ответ «потерялся»
+        return reply(200, out(o));
       }
       if (name === 'call_staff') {
         const tb = d.tables.find((x) => x.token === b.p_table && x.active);

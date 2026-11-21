@@ -10,12 +10,12 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Playfair+Display:wght@600;700&display=swap">
-  <link rel="stylesheet" href="styles.css?v=44">
-  <link rel="stylesheet" href="staff.css?v=44">
+  <link rel="stylesheet" href="styles.css?v=45">
+  <link rel="stylesheet" href="staff.css?v=45">
   <style>
     .doors { max-width: 720px; margin: 24px auto; display: grid; gap: 14px; grid-template-columns: 1fr; }
     @media (min-width: 640px) { .doors { grid-template-columns: 1fr 1fr; } }
-    @media (min-width: 900px) { .doors { max-width: 1000px; grid-template-columns: 1fr 1fr 1fr; } }
+    @media (min-width: 1100px) { .doors { max-width: 1180px; grid-template-columns: repeat(4, minmax(0, 1fr)); } }
     .door { display: flex; flex-direction: column; gap: 8px; padding: 22px; border-radius: var(--radius); border: 1px solid var(--line); background: var(--surface); box-shadow: var(--shadow); text-decoration: none; color: var(--text); }
     .door:hover { border-color: var(--accent); }
     .door .ic { width: 32px; height: 32px; color: var(--accent); }
@@ -43,6 +43,12 @@
         <svg class="ic" aria-hidden="true"><use href="icons.svg#i-flame"/></svg>
         <h2>Кухня</h2>
         <p>Для повара: все заказы, которые ещё не поданы, по порядку, с пожеланиями гостей. Заказ уходит, когда официант нажмёт «Подано».</p>
+        <span>Открыть</span>
+      </a>
+      <a class="door" href="courier.html">
+        <svg class="ic" aria-hidden="true"><use href="icons.svg#i-bike"/></svg>
+        <h2>Курьер</h2>
+        <p>Доставка домой: новые доставки с адресом и телефоном, маршрут в Google Maps или Waze, «Забрал» и «Доставил» с оплатой, наличные за день.</p>
         <span>Открыть</span>
       </a>
       <a class="door" href="owner.html">

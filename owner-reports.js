@@ -121,6 +121,41 @@
     R.loading = false;
   }
 
+  // ---------- Доставка своим курьером ----------
+  // Доставленные (served) заказы с kind = 'delivery' за период: сколько, выручка (с платой за доставку),
+  // сколько взяли за доставку, среднее расстояние; кто сколько отвёз. Деньги — в сенах.
+  // В «Столы», «Скорость подачи» и «Подали заказов» доставка не попадает — она здесь.
+  const isDeliv = (o) => o.kind === 'delivery';
+  function deliveryHtml() {
+    const all = R.orders.filter(isDeliv);
+    if (!all.length) return '';
+    const done = all.filter((o) => o.status === 'served');
+    const cancelled = all.filter((o) => o.status === 'cancelled').length;
+    const open = all.length - done.length - cancelled;
+    const rev = done.reduce((s2, o) => s2 + sen(o.total), 0);
+    const fees = done.reduce((s2, o) => s2 + sen(o.delivery_fee), 0);
+    const kms = done.map((o) => Number(o.distance_km)).filter((x) => Number.isFinite(x));
+    const avgKm = kms.length ? Math.round((kms.reduce((a, b) => a + b, 0) / kms.length) * 10) / 10 : null;
+    const byCourier = new Map();
+    for (const o of done) {
+      const k = o.courier_name || '—';
+      const r = byCourier.get(k) || { k, v: 0, n: 0 };
+      r.v += 1;
+      r.n += sen(o.total);
+      byCourier.set(k, r);
+    }
+    return `<section class="panel"><div class="panel-head"><h3>Доставка<small>${done.length}</small></h3></div><div class="panel-body">
+      <div class="a-stats" style="margin-bottom:10px">
+        <div class="a-stat"><b>${done.length}</b><span>доставлено${open ? ` · ещё в работе ${open}` : ''}${cancelled ? ` · отменено ${cancelled}` : ''}</span></div>
+        <div class="a-stat"><b>${money(fromSen(rev))}</b><span>выручка доставки</span></div>
+        <div class="a-stat"><b>${money(fromSen(fees))}</b><span>из них плата за доставку</span></div>
+        <div class="a-stat"><b>${avgKm === null ? '—' : `${String(avgKm).replace('.', ',')} км`}</b><span>среднее расстояние</span></div>
+      </div>
+      ${byCourier.size ? `<p class="section-label" style="margin-top:0">Курьеры: доставок</p>${hbars([...byCourier.values()].sort((a, b) => b.v - a.v), (v) => `${v}`, (r) => money(fromSen(r.n)))}` : ''}
+      <p class="help" style="margin:10px 0 0">Выручка — сумма доставленных заказов вместе с платой за доставку (она же входит в «Оплачено»). Расстояние — по прямой от ресторана.</p>
+    </div></section>`;
+  }
+
   // ---------- Скорость подачи: от заказа до «Подано» ----------
   // Не считаем заказы, отмеченные «подано» только при оплате (у них нет настоящего времени подачи),
   // и явные забытые (больше 4 часов).
@@ -241,13 +276,14 @@
       for (const x of list) { const k = keyf(x); if (!k) continue; const r = m.get(k) || { k, v: 0, n: 0 }; r.v = r2(r.v + valf(x)); r.n += 1; m.set(k, r); }
       return [...m.values()].sort((a, b) => b.v - a.v);
     };
-    const byTable = group(valid, (o) => `Стол ${o.table_label}`, (o) => Number(o.total));
+    // столы — без доставки (у неё свой раздел «Доставка»)
+    const byTable = group(valid.filter((o) => !isDeliv(o)), (o) => `Стол ${o.table_label}`, (o) => Number(o.total));
     const discBy = group(discBills, (b) => b.discount_reason || '—', (b) => Number(b.discount));
-    const byWaiter = group(valid.filter((o) => o.status === 'served'), (o) => o.served_by_name || o.created_by_name || o.accepted_by_name, () => 1);
+    const byWaiter = group(valid.filter((o) => o.status === 'served' && !isDeliv(o)), (o) => o.served_by_name || o.created_by_name || o.accepted_by_name, () => 1);
     const byCashier = group(R.bills, (b) => b.paid_by_name, (b) => Number(b.total));
     const tipsBy = group(R.bills.filter((b) => Number(b.tip) > 0), (b) => b.paid_by_name, (b) => Number(b.tip));
 
-    const speed = speedHtml(valid);
+    const speed = speedHtml(valid.filter((o) => !isDeliv(o)));
     main.innerHTML = `
       ${toolbar()}
       <p class="help">${esc(dm(f))} — ${esc(dm(addDays(t, -1)))} · «Продажи» — все не отменённые заказы; «Оплачено» — закрытые счета.</p>
@@ -269,7 +305,7 @@
           ${top.length > 12 ? `<details class="rp-table"><summary>Все блюда</summary><table><tbody>${top.map((d) => `<tr><td>${esc(d.k)}</td><td>${d.qty} шт.</td><td>${money(d.v)}</td></tr>`).join('')}</tbody></table></details>` : ''}
         </div></section>
         ${(R.voided || []).length ? `<section class="panel"><div class="panel-head"><h3>Отменённые оплаты<small>${R.voided.length}</small></h3></div><div class="panel-body">
-          <ul class="z-hist">${R.voided.map((b) => `<li><span><b>Чек №${esc(b.no)}</b> · стол ${esc(b.table_label)} · ${esc(new Date(b.paid_at).toLocaleString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }))}<br><small>${esc(b.voided_by_name || '')}: ${esc(b.void_reason || '')}</small></span><b>${money(b.total)}</b></li>`).join('')}</ul>
+          <ul class="z-hist">${R.voided.map((b) => `<li><span><b>Чек №${esc(b.no)}</b> · ${b.table_id || !Number(b.delivery_fee) ? `стол ${esc(b.table_label)}` : 'доставка'} · ${esc(new Date(b.paid_at).toLocaleString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }))}<br><small>${esc(b.voided_by_name || '')}: ${esc(b.void_reason || '')}</small></span><b>${money(b.total)}</b></li>`).join('')}</ul>
           <p class="help">Эти суммы не входят в «Оплачено». Заказы таких чеков оплачиваются заново или отменяются.</p></div></section>` : ''}
         ${discBy.length ? `<section class="panel"><div class="panel-head"><h3>Скидки по причинам<small>−${money(discounts)}</small></h3></div><div class="panel-body">${hbars(discBy, money, (r) => `счетов: ${r.n}`)}</div></section>` : ''}
         <section class="panel"><div class="panel-head"><h3>Способы оплаты</h3></div><div class="panel-body">
@@ -278,6 +314,7 @@
         </div></section>
       </div>
       ${speed}
+      ${deliveryHtml()}
       <section class="panel"><div class="panel-head"><h3>Выручка по часам дня</h3></div><div class="panel-body">
         ${bars(byHour, (v) => money(fromSen(v)), { anim })}
         <p class="help" style="margin:10px 0 0">По времени оплаты счёта, за весь выбранный период. Наведите или нажмите на столбик — покажем сумму, счета и заказы этого часа.</p>
@@ -313,7 +350,7 @@
       <p class="rv-avg"><b>${String(avg).replace('.', ',')}</b> из 5 · ${list.length} ${list.length % 10 === 1 && list.length % 100 !== 11 ? 'отзыв' : list.length % 10 >= 2 && list.length % 10 <= 4 && (list.length % 100 < 10 || list.length % 100 >= 20) ? 'отзыва' : 'отзывов'}</p>
       ${hbars(by, (v) => String(v))}
       <ul class="rv-list">${list.slice(0, 30).map((r) => `<li><div><span class="rv-stars" aria-label="${r.rating} из 5">${stars(r.rating)}</span>
-        <small>${esc(new Date(r.created_at).toLocaleString('ru-RU', { dateStyle: 'short', timeStyle: 'short' }))} · стол ${esc(r.table_label || '?')} · заказ №${esc(r.order_no || '?')}${r.lang ? ` · ${esc(String(r.lang).toUpperCase())}` : ''}</small></div>
+        <small>${esc(new Date(r.created_at).toLocaleString('ru-RU', { dateStyle: 'short', timeStyle: 'short' }))} · ${r.table_label === 'Доставка' && !r.table_id ? 'доставка' : `стол ${esc(r.table_label || '?')}`} · заказ №${esc(r.order_no || '?')}${r.lang ? ` · ${esc(String(r.lang).toUpperCase())}` : ''}</small></div>
         ${r.comment ? `<p>${esc(r.comment)}</p>` : ''}</li>`).join('')}</ul>
     </div></section>`;
   }
@@ -439,15 +476,17 @@
     const tag = `${ymd(f)}_${ymd(addDays(t, -1))}`;
     const dt = (iso) => (iso ? new Date(iso).toLocaleString('ru-RU') : '');
     if (kind === 'orders') {
-      csv(`заказы_${tag}.csv`, ['№', 'Дата и время', 'Стол', 'Статус', 'Позиции', 'Блюда', 'Сбор', 'Налог', 'Итого', 'Оплачен', 'Официант', 'Комментарий'],
-        R.orders.map((o) => [o.no, dt(o.created_at), o.table_label, { new: 'ждёт подачи', accepted: 'ждёт подачи', cooking: 'ждёт подачи', ready: 'ждёт подачи', served: 'подан', cancelled: 'отменён' }[o.status] || o.status,
+      const DST = { new: 'новая', accepted: 'принята', cooking: 'готовится', ready: 'ждёт курьера', on_the_way: 'в пути', served: 'доставлен', cancelled: 'отменён' };
+      csv(`заказы_${tag}.csv`, ['№', 'Дата и время', 'Стол', 'Статус', 'Позиции', 'Блюда', 'Сбор', 'Налог', 'Итого', 'Оплачен', 'Официант', 'Комментарий', 'Доставка', 'Км', 'Курьер'],
+        R.orders.map((o) => [o.no, dt(o.created_at), o.table_label, (isDeliv(o) ? DST : { new: 'ждёт подачи', accepted: 'ждёт подачи', cooking: 'ждёт подачи', ready: 'ждёт подачи', served: 'подан', cancelled: 'отменён' })[o.status] || o.status,
           (o.items || []).map((i) => `${i.qty}× ${tr(i.name) || i.id}${optNames(i).length ? ` (${optNames(i).join(', ')})` : ''}${i.note ? ` [${i.note}]` : ''}`).join('; '),
-          num(o.subtotal ?? o.total), num(o.service), num(o.tax), num(o.total), dt(o.paid_at), o.served_by_name || o.created_by_name || o.accepted_by_name || '', o.note || '']));
+          num(o.subtotal ?? o.total), num(o.service), num(o.tax), num(o.total), dt(o.paid_at), isDeliv(o) ? '' : o.served_by_name || o.created_by_name || o.accepted_by_name || '', o.note || '',
+          isDeliv(o) ? num(o.delivery_fee) : '', isDeliv(o) && o.distance_km != null ? num(o.distance_km) : '', o.courier_name || '']));
     } else if (kind === 'bills') {
-      csv(`счета_${tag}.csv`, ['Чек №', 'Оплачен', 'Стол', 'Заказы', 'Блюда', 'Сбор', 'Налог', 'Итого', 'Чаевые', 'Оплата', 'Части оплаты', 'Кто закрыл', 'Скидка', 'Причина скидки', 'Кто дал скидку', 'Округление'],
+      csv(`счета_${tag}.csv`, ['Чек №', 'Оплачен', 'Стол', 'Заказы', 'Блюда', 'Сбор', 'Налог', 'Итого', 'Чаевые', 'Оплата', 'Части оплаты', 'Кто закрыл', 'Скидка', 'Причина скидки', 'Кто дал скидку', 'Округление', 'Доставка'],
         R.bills.map((b) => [b.no, dt(b.paid_at), b.table_label, (b.order_nos || []).join(', '), num(b.subtotal), num(b.service), num(b.tax), num(b.total), num(b.tip), PAY[b.method] || b.method,
           (b.payments || []).map((p) => `${PAY[p.method] || p.method} ${num(p.amount)}`).join(' + '), b.paid_by_name || '',
-          num(b.discount || 0), b.discount_reason || '', b.discount_by_name || '', num(b.rounding || 0)]));
+          num(b.discount || 0), b.discount_reason || '', b.discount_by_name || '', num(b.rounding || 0), num(b.delivery_fee || 0)]));
     } else {
       const m = new Map();
       for (const o of R.orders) if (o.status !== 'cancelled') for (const i of o.items || []) {

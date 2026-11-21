@@ -1266,6 +1266,13 @@ begin
     exception when others then null;
     end;
   end if;
+  -- доставка: без сервисного сбора, стоимость доставки остаётся как была
+  if v_o.kind = 'delivery' then
+    v_ch := null;
+    select 0::numeric as service, round(v_sub * coalesce(st.tax_pct, 0) / 100, 2) as tax,
+           (v_sub + round(v_sub * coalesce(st.tax_pct, 0) / 100, 2) + v_o.delivery_fee)::numeric(10, 2) as total
+      into v_ch from public.settings st where st.id = 1;
+  end if;
   return query update public.orders
      set items = v_items, subtotal = v_sub, service = v_ch.service, tax = v_ch.tax, total = v_ch.total,
          edited_at = now(), edited_by_name = public.staff_name()
@@ -2600,7 +2607,7 @@ begin
           jsonb_build_array(jsonb_build_object('method', p_method, 'amount', v_o.total + v_round)), p_method,
           auth.uid(), public.staff_name(), v_round, clock_timestamp())
   returning * into v_bill;
-  return query update public.orders set status = 'served', paid_at = v_bill.paid_at, bill_id = v_bill.id,
+  return query update public.orders set status = 'served', paid_at = v_bill.paid_at, bill_id = v_bill.id, pay_method = p_method,
          served_by = auth.uid(), served_by_name = public.staff_name(),
          courier_id = coalesce(courier_id, auth.uid()), courier_name = coalesce(courier_name, public.staff_name()), picked_at = coalesce(picked_at, now())
    where id = p_id returning *;

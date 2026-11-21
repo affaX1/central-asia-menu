@@ -42,7 +42,9 @@
   const dayStart = () => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; };
   const r2 = (x) => Math.round(x * 100) / 100;
   const optNames = (i) => window.Floor.optNames(i);
-  const visibleOrder = (o) => !mineOnly() || !floor || floor.myTables().some((x) => x.id === o.table_id);
+  // доставка — не стол: её видят все, и при фильтре «Мои столы» тоже
+  const isDeliv = (o) => window.Floor.isDeliv(o);
+  const visibleOrder = (o) => isDeliv(o) || !mineOnly() || !floor || floor.myTables().some((x) => x.id === o.table_id);
 
   // ---------- звук и баннер ----------
   let audio = null;
@@ -100,10 +102,10 @@
   }
   function announce(fresh) {
     const o = fresh[fresh.length - 1];
-    bannerMsg = fresh.length > 1 ? t('b_new_many', fresh.length) : t('b_new_one', o.no, o.table_label);
+    bannerMsg = fresh.length > 1 ? t('b_new_many', fresh.length) : isDeliv(o) ? t('b_new_deliv', o.no) : t('b_new_one', o.no, o.table_label);
     bannerTo = 'orders';
     renderBanner();
-    buzz(bannerMsg, 'order-' + o.id);
+    buzz(bannerMsg, 'order-' + o.id, fresh.some(isDeliv) ? 'delivery' : 'order');   // у доставки свой звук
   }
   setInterval(() => {
     if (!api) return;
@@ -112,7 +114,8 @@
   }, 30000);
 
   function updateCount() {
-    const n = orders.filter((o) => window.Floor.ACTIVE.includes(o.status) && visibleOrder(o)).length;
+    // ждут подачи (столы) + новые доставки, которые ещё никто не принял
+    const n = orders.filter((o) => (isDeliv(o) ? o.status === 'new' : window.Floor.ACTIVE.includes(o.status)) && visibleOrder(o)).length;
     const el = $('#tab-count');
     if (el) { el.hidden = !n; el.textContent = n; }
     const calls = floor ? floor.openCalls().length : 0;
@@ -140,6 +143,7 @@
   }
 
   function orderCard(o) {
+    if (isDeliv(o)) return floor ? floor.delivCard(o) : '';
     const st = window.Floor.stOf(o.status);
     const isNew = st === 'new';
     return `<article class="o-card${isNew ? ' is-new' : ''}">
@@ -178,7 +182,10 @@
     }
     const mine = mineOnly();
     const vis = orders.filter(visibleOrder);
-    const by = (st) => vis.filter((o) => st.includes(o.status)).sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+    const by = (st) => vis.filter((o) => !isDeliv(o) && st.includes(o.status)).sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+    // доставка: от «новой» до «в пути» (дальше её ведёт курьер)
+    const deliv = vis.filter((o) => isDeliv(o) && window.Floor.DELIV_OPEN.includes(o.status) && !o.paid_at)
+      .sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
     const today = dayStart().getTime();
     const served = vis.filter((o) => o.status === 'served' && new Date(o.created_at).getTime() >= today)
       .sort((a, b) => new Date(b.served_at || b.updated_at) - new Date(a.served_at || a.updated_at));
@@ -200,6 +207,7 @@
       </div>
       ${mine && floor && !floor.myTables().length ? `<p class="notice info">${icon('table')}<span>${esc(t('no_my_tables'))}</span></p>` : ''}
       ${section(t('sec_new'), by(window.Floor.ACTIVE), t('e_new'), true)}
+      ${deliv.length || S.settings?.delivery_enabled ? section(t('sec_deliv'), deliv, t('e_deliv'), deliv.some((o) => o.status === 'new')) : ''}
       ${section(t('sec_served'), served.slice(0, 40), t('e_served'), false)}`;
   }
 

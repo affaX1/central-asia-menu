@@ -2,11 +2,14 @@
   'use strict';
 
   // =====================================================================
-  //  Меню для гостя. Гость смотрит меню и собирает свой список блюд,
-  //  чтобы показать его официанту. Список никуда не отправляется.
+  //  Приложение гостя. Вкладки: #home #menu #orders #profile,
+  //  подстраницы: #booking #delivery #scan #track/<id>.
+  //  Режимы: за столом (QR, помним 4 часа со сканирования) — заказ на стол;
+  //  доставка (точка на карте, цена по зонам ресторана); просто смотрим меню.
+  //  Вид — по макету владельца design/preview.html, стили в guest.css.
   // =====================================================================
 
-  // ---------- Тексты интерфейса на 5 языках ----------
+  // ---------- Тексты интерфейса на 6 языках ----------
   const T = {
     ru: {
       langName: 'Русский', locale: 'ru-RU', dir: 'ltr',
@@ -92,6 +95,39 @@
       bkCancelled: 'Бронь отменена', bkNew: 'Новая бронь', bkSent: 'Бронь отправлена', bkNeedName: 'Напишите имя.', bkNeedPhone: 'Проверьте телефон: только цифры, в начале можно +.', bkNeedTime: 'Выберите время.',
       bkErr: { bookings_off: 'Бронь через меню сейчас не принимается. Пожалуйста, позвоните в ресторан.', bad_time: 'Это время уже недоступно: бронь — минимум за 30 минут. Выберите другое время.', closed_then: 'В это время ресторан закрыт. Выберите другое время.', bad_request: 'Проверьте имя, телефон и число гостей.', too_many: 'С этого номера уже есть несколько броней. Если нужно ещё — позвоните в ресторан.' },
       voteTitle: 'Как вам блюда?', voteUp: 'Понравилось', voteDown: 'Не понравилось', del: 'Удалить', callDone: 'Официант уже идёт', billDone: 'Счёт несут', bkNet: 'Нет связи — бронь не изменилась. Проверьте интернет и попробуйте ещё раз.',
+      // ---------- приложение: вкладки, главная, режимы, сканер, доставка, профиль ----------
+      tabHome: 'Главная', tabMenu: 'Меню', tabOrders: 'Заказы', tabProfile: 'Профиль', back: 'Назад',
+      howEat: 'Как будем есть?', wayHere: 'Я в ресторане', wayHereSub: 'Наведите камеру на QR-код на столе', wayHereAt: (x) => `Стол ${x} — открыть меню`,
+      wayDelivery: 'Доставка', wayDeliverySub: 'Привезём домой', waySoon: 'Скоро', wayBookSub: 'Выберите день и время',
+      recommend: 'Сегодня советуем', allMenu: 'Всё меню',
+      modeTable: (x) => `Стол ${x} · вы в ресторане`, modeTableSub: 'Заказ придёт прямо на стол', modeChange: 'Сменить', modeExit: 'Выйти',
+      modeDv: 'Доставка', modeDvKm: (km, fee) => `Доставка · ${km} км · ${fee}`, modeDvSub: 'Адрес и стоимость — при оформлении', modeEdit: 'Изменить',
+      modeBrowse: 'Меню для просмотра', modeBrowseSub: 'Заказать можно за столом или с доставкой', modeChoose: 'Выбрать',
+      howTitle: 'Как будете заказывать?', howHint: 'Блюдо добавится, как только вы выберете способ.',
+      tableExpired: 'Прошло больше 4 часов — стол забыт. Чтобы заказать в ресторане, отсканируйте QR-код ещё раз.',
+      barTable: (x) => `Заказ на стол ${x}`, barTableSub: 'Отправить официанту', barDvSub: 'Оформить доставку', barBrowseSub: 'Выберите, как заказать',
+      scanTitle: 'QR-код стола', scanHint: 'Наведите камеру на QR-код на вашем столе', scanStart: 'Включить камеру', scanNoCam: 'На этом устройстве камера недоступна.',
+      scanDenied: 'Нет доступа к камере. Разрешите его в настройках браузера.', scanAlt: 'Или наведите обычную камеру телефона на QR-код на столе.',
+      scanBad: 'Это не QR-код стола нашего ресторана.', scanOk: (x) => `Стол ${x} — можно заказывать`,
+      dvAddr: 'Адрес', dvAddrPh: 'Улица, дом, подъезд, квартира', dvName: 'Имя', dvNamePh: 'Как к вам обращаться', dvNote: 'Комментарий', dvNotePh: 'Например: позвоните, когда подъедете',
+      dvMe: 'Моё местоположение', dvPinHint: 'Нажмите на карту, чтобы отметить, куда привезти', dvFrom: 'от ресторана', dvKm: (x) => `${x} км`,
+      dvPayCash: 'Наличными', dvPayCard: 'Картой курьеру', dvPayCashC: 'Наличными курьеру',
+      dvDishes: (n) => `Блюда · ${n}`, dvFeeUpTo: (km) => `Доставка · до ${km} км`, dvFee: 'Доставка',
+      dvSend: (s) => `Заказать доставку · ${s}`, dvMin: (s) => `Минимальный заказ для доставки — ${s} (без стоимости доставки).`,
+      dvOff: 'Доставка сейчас не работает. Можно заказать в ресторане.', dvTooFar: (km) => `До этой точки ${km} км — так далеко мы пока не возим.`,
+      dvNeedPoint: 'Отметьте на карте, куда привезти.', dvNeedAddr: 'Напишите адрес: улица, дом, квартира (не короче 5 символов).',
+      dvBadReq: 'Проверьте адрес, имя, телефон и способ оплаты.', dvTooMany: 'С этого номера уже есть несколько доставок в работе. Дождитесь их или позвоните в ресторан.',
+      dvGeoErr: 'Не получилось определить местоположение. Отметьте точку на карте.', dvMapErr: 'Карта не загрузилась. Проверьте интернет и попробуйте ещё раз.',
+      dvSaveHint: 'Имя, телефон и адрес сохранятся на этом телефоне — в следующий раз вводить не нужно.',
+      cartEmpty: 'Корзина пуста', cartEmptyHint: 'Добавьте блюда из меню — потом вернитесь сюда.', openMenu: 'Открыть меню', toDelivery: 'Оформить доставку',
+      trDv: (n) => `Доставка · заказ № ${n}`, trTable: (x, n) => `Стол ${x} · заказ № ${n}`,
+      dvSt: { new: 'Ждём подтверждения', accepted: 'Ресторан принял заказ', cooking: 'Готовим ваш заказ', ready: 'Заказ готов', on_the_way: 'Курьер уже в пути', served: 'Доставлено', cancelled: 'Заказ отменён' },
+      dvHint: { new: 'Ресторан видит заказ и скоро подтвердит его.', accepted: 'Скоро начнём готовить.', cooking: 'Повар готовит ваш заказ.', ready: 'Заказ готов — ждём курьера.', on_the_way: 'Курьер везёт ваш заказ.', served: 'Приятного аппетита!', cancelled: 'Если это ошибка — позвоните в ресторан.' },
+      stWait: 'Ждём подтверждения', stAccepted: 'Ресторан принял', stCooking: 'Готовим', stReady: 'Готово — ждём курьера', stWay: 'В пути', stDone: 'Доставлено',
+      courier: (x) => `Курьер ${x}`, kmToYou: (x) => `${x} км до вас`,
+      ordersEmpty: 'Здесь появятся ваши заказы', ordersHint: 'Заказы с этого телефона — за столом и с доставкой — за последние 3 дня.',
+      myData: 'Мои данные', profHint: 'Хранится только на этом телефоне — чтобы не вводить заново.', about: 'О ресторане', favsEmpty: 'Нажмите на сердечко в карточке блюда — оно появится здесь.',
+      bkParts: { morning: 'Утро', day: 'Обед', evening: 'Ужин', night: 'Ночь' }, bkBig: 'Большой компанией — лучше позвоните', bkSendAt: (s) => `Забронировать · ${s}`,
     },
     uz: {
       langName: "O'zbekcha", locale: 'uz-Latn-UZ', dir: 'ltr',
@@ -177,6 +213,39 @@
       bkCancelled: 'Bron bekor qilindi', bkNew: 'Yangi bron', bkSent: 'Bron yuborildi', bkNeedName: 'Ismingizni yozing.', bkNeedPhone: "Telefonni tekshiring: faqat raqamlar, boshida + bo'lishi mumkin.", bkNeedTime: 'Vaqtni tanlang.',
       bkErr: { bookings_off: "Hozir menyu orqali bron qabul qilinmayapti. Iltimos, restoranga qo'ng'iroq qiling.", bad_time: "Bu vaqt endi mavjud emas: bron kamida 30 daqiqa oldin qilinadi. Boshqa vaqtni tanlang.", closed_then: 'Bu vaqtda restoran yopiq. Boshqa vaqtni tanlang.', bad_request: 'Ism, telefon va mehmonlar sonini tekshiring.', too_many: "Bu raqamdan bir nechta bron bor. Yana kerak bo'lsa, restoranga qo'ng'iroq qiling." },
       voteTitle: 'Taomlar yoqdimi?', voteUp: 'Yoqdi', voteDown: 'Yoqmadi', del: "O'chirish", callDone: 'Ofitsiant kelmoqda', billDone: 'Hisob olib kelinmoqda', bkNet: "Aloqa yo'q — bron o'zgarmadi. Internetni tekshirib, qayta urinib ko'ring.",
+      // ---------- ilova ----------
+      tabHome: 'Bosh sahifa', tabMenu: 'Menyu', tabOrders: 'Buyurtmalar', tabProfile: 'Profil', back: 'Orqaga',
+      howEat: 'Qanday ovqatlanamiz?', wayHere: 'Men restorandaman', wayHereSub: 'Kamerani stoldagi QR-kodga qarating', wayHereAt: (x) => `Stol ${x} — menyuni ochish`,
+      wayDelivery: 'Yetkazib berish', wayDeliverySub: 'Uyingizga olib boramiz', waySoon: 'Tez orada', wayBookSub: 'Kun va vaqtni tanlang',
+      recommend: 'Bugun tavsiya qilamiz', allMenu: 'Butun menyu',
+      modeTable: (x) => `Stol ${x} · siz restorandasiz`, modeTableSub: "Buyurtma to'g'ri stolingizga keladi", modeChange: "O'zgartirish", modeExit: 'Chiqish',
+      modeDv: 'Yetkazib berish', modeDvKm: (km, fee) => `Yetkazib berish · ${km} km · ${fee}`, modeDvSub: 'Manzil va narx — rasmiylashtirishda', modeEdit: "O'zgartirish",
+      modeBrowse: "Menyuni ko'rish", modeBrowseSub: 'Stolda yoki yetkazib berish orqali buyurtma bering', modeChoose: 'Tanlash',
+      howTitle: 'Qanday buyurtma berasiz?', howHint: "Usulni tanlashingiz bilan taom qo'shiladi.",
+      tableExpired: "4 soatdan ko'p vaqt o'tdi — stol unutildi. Restoranda buyurtma berish uchun QR-kodni qayta skanerlang.",
+      barTable: (x) => `Stol ${x} uchun buyurtma`, barTableSub: 'Ofitsiantga yuborish', barDvSub: 'Yetkazib berishni rasmiylashtirish', barBrowseSub: 'Buyurtma usulini tanlang',
+      scanTitle: 'Stol QR-kodi', scanHint: 'Kamerani stolingizdagi QR-kodga qarating', scanStart: 'Kamerani yoqish', scanNoCam: 'Bu qurilmada kamera mavjud emas.',
+      scanDenied: "Kameraga ruxsat yo'q. Brauzer sozlamalarida ruxsat bering.", scanAlt: 'Yoki telefonning oddiy kamerasini stoldagi QR-kodga qarating.',
+      scanBad: 'Bu restoranimiz stolining QR-kodi emas.', scanOk: (x) => `Stol ${x} — buyurtma berish mumkin`,
+      dvAddr: 'Manzil', dvAddrPh: "Ko'cha, uy, podyezd, xonadon", dvName: 'Ism', dvNamePh: 'Sizga qanday murojaat qilaylik', dvNote: 'Izoh', dvNotePh: "Masalan: yetib kelganda qo'ng'iroq qiling",
+      dvMe: 'Mening joylashuvim', dvPinHint: 'Qayerga olib borishni xaritada belgilang', dvFrom: 'restorandan', dvKm: (x) => `${x} km`,
+      dvPayCash: 'Naqd pul', dvPayCard: 'Kuryerga karta bilan', dvPayCashC: 'Kuryerga naqd pul',
+      dvDishes: (n) => `Taomlar · ${n}`, dvFeeUpTo: (km) => `Yetkazib berish · ${km} km gacha`, dvFee: 'Yetkazib berish',
+      dvSend: (s) => `Yetkazib berishga buyurtma · ${s}`, dvMin: (s) => `Yetkazib berish uchun eng kam buyurtma — ${s} (yetkazib berish narxisiz).`,
+      dvOff: 'Yetkazib berish hozir ishlamayapti. Restoranda buyurtma berish mumkin.', dvTooFar: (km) => `Bu nuqtagacha ${km} km — hozircha bunchalik uzoqqa olib bormaymiz.`,
+      dvNeedPoint: 'Qayerga olib borishni xaritada belgilang.', dvNeedAddr: "Manzilni yozing: ko'cha, uy, xonadon (kamida 5 belgi).",
+      dvBadReq: "Manzil, ism, telefon va to'lov usulini tekshiring.", dvTooMany: "Bu raqamdan bir nechta yetkazib berish jarayonda. Ularni kuting yoki restoranga qo'ng'iroq qiling.",
+      dvGeoErr: "Joylashuvni aniqlab bo'lmadi. Nuqtani xaritada belgilang.", dvMapErr: "Xarita yuklanmadi. Internetni tekshirib, qayta urinib ko'ring.",
+      dvSaveHint: 'Ism, telefon va manzil shu telefonda saqlanadi — keyingi safar qayta kiritish shart emas.',
+      cartEmpty: "Savat bo'sh", cartEmptyHint: "Menyudan taom qo'shing — so'ng bu yerga qayting.", openMenu: 'Menyuni ochish', toDelivery: 'Yetkazib berishni rasmiylashtirish',
+      trDv: (n) => `Yetkazib berish · buyurtma № ${n}`, trTable: (x, n) => `Stol ${x} · buyurtma № ${n}`,
+      dvSt: { new: 'Tasdiq kutilmoqda', accepted: 'Restoran buyurtmani qabul qildi', cooking: 'Buyurtmangiz tayyorlanmoqda', ready: 'Buyurtma tayyor', on_the_way: "Kuryer yo'lda", served: 'Yetkazildi', cancelled: 'Buyurtma bekor qilindi' },
+      dvHint: { new: "Restoran buyurtmani ko'rdi va tez orada tasdiqlaydi.", accepted: 'Tez orada tayyorlashni boshlaymiz.', cooking: 'Oshpaz buyurtmangizni tayyorlamoqda.', ready: 'Buyurtma tayyor — kuryerni kutyapmiz.', on_the_way: 'Kuryer buyurtmangizni olib kelmoqda.', served: 'Yoqimli ishtaha!', cancelled: "Agar bu xato bo'lsa — restoranga qo'ng'iroq qiling." },
+      stWait: 'Tasdiq kutilmoqda', stAccepted: 'Restoran qabul qildi', stCooking: 'Tayyorlanmoqda', stReady: 'Tayyor — kuryer kutilmoqda', stWay: "Yo'lda", stDone: 'Yetkazildi',
+      courier: (x) => `Kuryer ${x}`, kmToYou: (x) => `sizgacha ${x} km`,
+      ordersEmpty: 'Buyurtmalaringiz shu yerda chiqadi', ordersHint: 'Shu telefondan berilgan buyurtmalar — stolda va yetkazib berish — oxirgi 3 kun.',
+      myData: "Mening ma'lumotlarim", profHint: 'Faqat shu telefonda saqlanadi — qayta kiritmaslik uchun.', about: 'Restoran haqida', favsEmpty: "Taom kartasidagi yurakchani bosing — u shu yerda paydo bo'ladi.",
+      bkParts: { morning: 'Ertalab', day: 'Tushlik', evening: 'Kechki ovqat', night: 'Tun' }, bkBig: "Katta davra bilan — qo'ng'iroq qilgan ma'qul", bkSendAt: (s) => `Band qilish · ${s}`,
     },
     en: {
       langName: 'English', locale: 'en-US', dir: 'ltr',
@@ -262,6 +331,39 @@
       bkCancelled: 'Booking cancelled', bkNew: 'New booking', bkSent: 'Booking sent', bkNeedName: 'Please enter your name.', bkNeedPhone: 'Check the phone number: digits only, + allowed at the start.', bkNeedTime: 'Please pick a time.',
       bkErr: { bookings_off: 'Bookings through the menu are closed right now. Please call the restaurant.', bad_time: 'This time is no longer available: book at least 30 minutes ahead. Please pick another time.', closed_then: 'The restaurant is closed at that time. Please pick another time.', bad_request: 'Please check the name, phone and number of guests.', too_many: 'This number already has several bookings. Please call the restaurant if you need more.' },
       voteTitle: 'How were the dishes?', voteUp: 'Liked it', voteDown: "Didn't like it", del: 'Delete', callDone: 'A waiter is coming', billDone: 'Bill is on its way', bkNet: 'No connection — the booking was not changed. Check the internet and try again.',
+      // ---------- app ----------
+      tabHome: 'Home', tabMenu: 'Menu', tabOrders: 'Orders', tabProfile: 'Profile', back: 'Back',
+      howEat: 'How would you like to eat?', wayHere: "I'm at the restaurant", wayHereSub: 'Point your camera at the QR code on your table', wayHereAt: (x) => `Table ${x} — open the menu`,
+      wayDelivery: 'Delivery', wayDeliverySub: 'Brought to your door', waySoon: 'Coming soon', wayBookSub: 'Pick a day and time',
+      recommend: "Today's picks", allMenu: 'Full menu',
+      modeTable: (x) => `Table ${x} · you're at the restaurant`, modeTableSub: 'Your order comes straight to your table', modeChange: 'Change', modeExit: 'Leave',
+      modeDv: 'Delivery', modeDvKm: (km, fee) => `Delivery · ${km} km · ${fee}`, modeDvSub: 'Address and fee at checkout', modeEdit: 'Edit',
+      modeBrowse: 'Browsing the menu', modeBrowseSub: 'Order at your table or for delivery', modeChoose: 'Choose',
+      howTitle: 'How would you like to order?', howHint: 'The dish will be added as soon as you choose.',
+      tableExpired: 'More than 4 hours have passed, so your table was forgotten. To order at the restaurant, scan the QR code again.',
+      barTable: (x) => `Order to table ${x}`, barTableSub: 'Send to the waiter', barDvSub: 'Check out for delivery', barBrowseSub: 'Choose how to order',
+      scanTitle: 'Table QR code', scanHint: 'Point the camera at the QR code on your table', scanStart: 'Turn on the camera', scanNoCam: 'The camera is not available on this device.',
+      scanDenied: 'No access to the camera. Allow it in your browser settings.', scanAlt: "Or point your phone's regular camera at the QR code on the table.",
+      scanBad: "This is not one of our restaurant's table QR codes.", scanOk: (x) => `Table ${x} — you can order now`,
+      dvAddr: 'Address', dvAddrPh: 'Street, building, entrance, unit', dvName: 'Name', dvNamePh: 'What should we call you', dvNote: 'Comment', dvNotePh: 'For example: call when you arrive',
+      dvMe: 'My location', dvPinHint: 'Tap the map to mark where to deliver', dvFrom: 'from the restaurant', dvKm: (x) => `${x} km`,
+      dvPayCash: 'Cash', dvPayCard: 'Card to courier', dvPayCashC: 'Cash to courier',
+      dvDishes: (n) => `Dishes · ${n}`, dvFeeUpTo: (km) => `Delivery · up to ${km} km`, dvFee: 'Delivery',
+      dvSend: (s) => `Order delivery · ${s}`, dvMin: (s) => `The minimum order for delivery is ${s} (not counting the delivery fee).`,
+      dvOff: 'Delivery is not available right now. You can order at the restaurant.', dvTooFar: (km) => `This point is ${km} km away — we don't deliver that far yet.`,
+      dvNeedPoint: 'Mark on the map where to deliver.', dvNeedAddr: 'Write the address: street, building, unit (at least 5 characters).',
+      dvBadReq: 'Check the address, name, phone and payment method.', dvTooMany: 'This number already has several deliveries in progress. Please wait for them or call the restaurant.',
+      dvGeoErr: "Couldn't find your location. Mark the point on the map.", dvMapErr: "The map didn't load. Check your connection and try again.",
+      dvSaveHint: "Your name, phone and address are saved on this phone, so you won't need to type them again.",
+      cartEmpty: 'Your cart is empty', cartEmptyHint: 'Add dishes from the menu, then come back here.', openMenu: 'Open the menu', toDelivery: 'Check out for delivery',
+      trDv: (n) => `Delivery · order No. ${n}`, trTable: (x, n) => `Table ${x} · order No. ${n}`,
+      dvSt: { new: 'Waiting for confirmation', accepted: 'The restaurant accepted your order', cooking: "We're cooking your order", ready: 'Your order is ready', on_the_way: 'The courier is on the way', served: 'Delivered', cancelled: 'Order cancelled' },
+      dvHint: { new: 'The restaurant has your order and will confirm it shortly.', accepted: "We'll start cooking soon.", cooking: 'The chef is preparing your order.', ready: 'Your order is ready — waiting for the courier.', on_the_way: 'The courier is bringing your order.', served: 'Enjoy your meal!', cancelled: 'If this is a mistake, please call the restaurant.' },
+      stWait: 'Waiting for confirmation', stAccepted: 'Restaurant accepted', stCooking: 'Cooking', stReady: 'Ready — waiting for the courier', stWay: 'On the way', stDone: 'Delivered',
+      courier: (x) => `Courier ${x}`, kmToYou: (x) => `${x} km to you`,
+      ordersEmpty: 'Your orders will appear here', ordersHint: 'Orders from this phone — at the table and for delivery — from the last 3 days.',
+      myData: 'My details', profHint: "Kept only on this phone, so you don't have to type them again.", about: 'About the restaurant', favsEmpty: 'Tap the heart on a dish and it will appear here.',
+      bkParts: { morning: 'Morning', day: 'Lunch', evening: 'Dinner', night: 'Night' }, bkBig: 'For a large group, it is best to call', bkSendAt: (s) => `Book · ${s}`,
     },
     ar: {
       // цифры привычные (0–9), как на ценниках и в часах работы
@@ -348,6 +450,39 @@
       bkCancelled: 'تم إلغاء الحجز', bkNew: 'حجز جديد', bkSent: 'تم إرسال الحجز', bkNeedName: 'اكتب اسمك.', bkNeedPhone: 'تحقق من رقم الهاتف: أرقام فقط، ويمكن البدء بـ +.', bkNeedTime: 'اختر الوقت.',
       bkErr: { bookings_off: 'الحجز عبر القائمة غير متاح الآن. يرجى الاتصال بالمطعم.', bad_time: 'هذا الوقت لم يعد متاحًا: الحجز قبل 30 دقيقة على الأقل. اختر وقتًا آخر.', closed_then: 'المطعم مغلق في هذا الوقت. اختر وقتًا آخر.', bad_request: 'تحقق من الاسم والهاتف وعدد الضيوف.', too_many: 'لدى هذا الرقم عدة حجوزات بالفعل. اتصل بالمطعم إذا احتجت المزيد.' },
       voteTitle: 'ما رأيك في الأطباق؟', voteUp: 'أعجبني', voteDown: 'لم يعجبني', del: 'حذف', callDone: 'النادل في الطريق', billDone: 'الفاتورة في الطريق', bkNet: 'لا يوجد اتصال — لم يتغير الحجز. تحقق من الإنترنت وحاول مرة أخرى.',
+      // ---------- التطبيق ----------
+      tabHome: 'الرئيسية', tabMenu: 'القائمة', tabOrders: 'الطلبات', tabProfile: 'حسابي', back: 'رجوع',
+      howEat: 'كيف تحب أن تأكل؟', wayHere: 'أنا في المطعم', wayHereSub: 'وجّه الكاميرا إلى رمز QR على الطاولة', wayHereAt: (x) => `الطاولة ${x} — افتح القائمة`,
+      wayDelivery: 'التوصيل', wayDeliverySub: 'نوصله إلى بابك', waySoon: 'قريبًا', wayBookSub: 'اختر اليوم والوقت',
+      recommend: 'ننصح اليوم', allMenu: 'القائمة كاملة',
+      modeTable: (x) => `الطاولة ${x} · أنت في المطعم`, modeTableSub: 'سيصل طلبك إلى طاولتك مباشرة', modeChange: 'تغيير', modeExit: 'خروج',
+      modeDv: 'التوصيل', modeDvKm: (km, fee) => `التوصيل · ${km} كم · ${fee}`, modeDvSub: 'العنوان والرسوم عند إتمام الطلب', modeEdit: 'تعديل',
+      modeBrowse: 'تصفّح القائمة', modeBrowseSub: 'اطلب من طاولتك أو مع التوصيل', modeChoose: 'اختيار',
+      howTitle: 'كيف تريد أن تطلب؟', howHint: 'سيُضاف الطبق بمجرد أن تختار.',
+      tableExpired: 'مرّت أكثر من 4 ساعات فنُسيت الطاولة. للطلب في المطعم امسح رمز QR مرة أخرى.',
+      barTable: (x) => `طلب إلى الطاولة ${x}`, barTableSub: 'إرسال إلى النادل', barDvSub: 'إتمام طلب التوصيل', barBrowseSub: 'اختر طريقة الطلب',
+      scanTitle: 'رمز QR للطاولة', scanHint: 'وجّه الكاميرا إلى رمز QR على طاولتك', scanStart: 'تشغيل الكاميرا', scanNoCam: 'الكاميرا غير متاحة على هذا الجهاز.',
+      scanDenied: 'لا يوجد إذن للكاميرا. اسمح بها في إعدادات المتصفح.', scanAlt: 'أو وجّه كاميرا الهاتف العادية إلى رمز QR على الطاولة.',
+      scanBad: 'هذا ليس رمز QR لطاولة في مطعمنا.', scanOk: (x) => `الطاولة ${x} — يمكنك الطلب الآن`,
+      dvAddr: 'العنوان', dvAddrPh: 'الشارع، المبنى، المدخل، الشقة', dvName: 'الاسم', dvNamePh: 'كيف نناديك', dvNote: 'ملاحظة', dvNotePh: 'مثال: اتصل عند الوصول',
+      dvMe: 'موقعي', dvPinHint: 'اضغط على الخريطة لتحديد مكان التوصيل', dvFrom: 'من المطعم', dvKm: (x) => `${x} كم`,
+      dvPayCash: 'نقدًا', dvPayCard: 'بالبطاقة للمندوب', dvPayCashC: 'نقدًا للمندوب',
+      dvDishes: (n) => `الأطباق · ${n}`, dvFeeUpTo: (km) => `التوصيل · حتى ${km} كم`, dvFee: 'التوصيل',
+      dvSend: (s) => `اطلب التوصيل · ${s}`, dvMin: (s) => `الحد الأدنى لطلب التوصيل ${s} (من دون رسوم التوصيل).`,
+      dvOff: 'التوصيل غير متاح الآن. يمكنك الطلب في المطعم.', dvTooFar: (km) => `هذه النقطة على بعد ${km} كم — لا نوصل إلى هذه المسافة بعد.`,
+      dvNeedPoint: 'حدّد على الخريطة مكان التوصيل.', dvNeedAddr: 'اكتب العنوان: الشارع، المبنى، الشقة (5 أحرف على الأقل).',
+      dvBadReq: 'تحقق من العنوان والاسم والهاتف وطريقة الدفع.', dvTooMany: 'لدى هذا الرقم عدة طلبات توصيل قيد التنفيذ. انتظرها أو اتصل بالمطعم.',
+      dvGeoErr: 'تعذّر تحديد موقعك. حدّد النقطة على الخريطة.', dvMapErr: 'لم يتم تحميل الخريطة. تحقق من الإنترنت وحاول مرة أخرى.',
+      dvSaveHint: 'سيُحفظ الاسم والهاتف والعنوان على هذا الهاتف فلن تحتاج إلى كتابتها مرة أخرى.',
+      cartEmpty: 'السلة فارغة', cartEmptyHint: 'أضف أطباقًا من القائمة ثم عد إلى هنا.', openMenu: 'افتح القائمة', toDelivery: 'إتمام طلب التوصيل',
+      trDv: (n) => `توصيل · طلب رقم ${n}`, trTable: (x, n) => `الطاولة ${x} · طلب رقم ${n}`,
+      dvSt: { new: 'بانتظار التأكيد', accepted: 'قبل المطعم طلبك', cooking: 'نحضّر طلبك', ready: 'طلبك جاهز', on_the_way: 'المندوب في الطريق', served: 'تم التوصيل', cancelled: 'أُلغي الطلب' },
+      dvHint: { new: 'استلم المطعم طلبك وسيؤكده قريبًا.', accepted: 'سنبدأ التحضير قريبًا.', cooking: 'الطاهي يحضّر طلبك.', ready: 'طلبك جاهز — بانتظار المندوب.', on_the_way: 'المندوب في طريقه إليك بطلبك.', served: 'بالهناء والشفاء!', cancelled: 'إذا كان هذا خطأ فاتصل بالمطعم.' },
+      stWait: 'بانتظار التأكيد', stAccepted: 'قبل المطعم', stCooking: 'نحضّر', stReady: 'جاهز — بانتظار المندوب', stWay: 'في الطريق', stDone: 'تم التوصيل',
+      courier: (x) => `المندوب ${x}`, kmToYou: (x) => `${x} كم إليك`,
+      ordersEmpty: 'ستظهر طلباتك هنا', ordersHint: 'الطلبات من هذا الهاتف — على الطاولة ومع التوصيل — خلال آخر 3 أيام.',
+      myData: 'بياناتي', profHint: 'تُحفظ على هذا الهاتف فقط حتى لا تكتبها مرة أخرى.', about: 'عن المطعم', favsEmpty: 'اضغط على القلب في بطاقة الطبق وسيظهر هنا.',
+      bkParts: { morning: 'الصباح', day: 'الغداء', evening: 'العشاء', night: 'الليل' }, bkBig: 'للمجموعات الكبيرة يُفضّل الاتصال', bkSendAt: (s) => `احجز · ${s}`,
     },
     ms: {
       langName: 'Bahasa Melayu', locale: 'ms-MY', dir: 'ltr',
@@ -433,6 +568,39 @@
       bkCancelled: 'Tempahan dibatalkan', bkNew: 'Tempahan baharu', bkSent: 'Tempahan dihantar', bkNeedName: 'Sila tulis nama anda.', bkNeedPhone: 'Semak nombor telefon: angka sahaja, boleh bermula dengan +.', bkNeedTime: 'Sila pilih masa.',
       bkErr: { bookings_off: 'Tempahan melalui menu ditutup buat masa ini. Sila hubungi restoran.', bad_time: 'Masa ini tidak lagi tersedia: tempah sekurang-kurangnya 30 minit lebih awal. Sila pilih masa lain.', closed_then: 'Restoran tutup pada masa itu. Sila pilih masa lain.', bad_request: 'Sila semak nama, telefon dan bilangan tetamu.', too_many: 'Nombor ini sudah ada beberapa tempahan. Hubungi restoran jika perlu lagi.' },
       voteTitle: 'Bagaimana hidangannya?', voteUp: 'Suka', voteDown: 'Tidak suka', del: 'Padam', callDone: 'Pelayan sedang datang', billDone: 'Bil sedang dibawa', bkNet: 'Tiada sambungan — tempahan tidak berubah. Semak internet dan cuba lagi.',
+      // ---------- aplikasi ----------
+      tabHome: 'Utama', tabMenu: 'Menu', tabOrders: 'Pesanan', tabProfile: 'Profil', back: 'Kembali',
+      howEat: 'Bagaimana anda mahu makan?', wayHere: 'Saya di restoran', wayHereSub: 'Halakan kamera ke kod QR di meja', wayHereAt: (x) => `Meja ${x} — buka menu`,
+      wayDelivery: 'Penghantaran', wayDeliverySub: 'Dihantar ke rumah anda', waySoon: 'Akan datang', wayBookSub: 'Pilih hari dan masa',
+      recommend: 'Cadangan hari ini', allMenu: 'Menu penuh',
+      modeTable: (x) => `Meja ${x} · anda di restoran`, modeTableSub: 'Pesanan terus ke meja anda', modeChange: 'Tukar', modeExit: 'Keluar',
+      modeDv: 'Penghantaran', modeDvKm: (km, fee) => `Penghantaran · ${km} km · ${fee}`, modeDvSub: 'Alamat dan caj semasa membuat pesanan', modeEdit: 'Ubah',
+      modeBrowse: 'Melihat menu', modeBrowseSub: 'Pesan di meja atau untuk penghantaran', modeChoose: 'Pilih',
+      howTitle: 'Bagaimana anda mahu memesan?', howHint: 'Hidangan akan ditambah sebaik sahaja anda memilih.',
+      tableExpired: 'Sudah lebih 4 jam, jadi meja anda dilupakan. Untuk memesan di restoran, imbas kod QR sekali lagi.',
+      barTable: (x) => `Pesanan ke meja ${x}`, barTableSub: 'Hantar kepada pelayan', barDvSub: 'Teruskan ke penghantaran', barBrowseSub: 'Pilih cara memesan',
+      scanTitle: 'Kod QR meja', scanHint: 'Halakan kamera ke kod QR di meja anda', scanStart: 'Hidupkan kamera', scanNoCam: 'Kamera tidak tersedia pada peranti ini.',
+      scanDenied: 'Tiada akses ke kamera. Benarkan dalam tetapan pelayar.', scanAlt: 'Atau halakan kamera biasa telefon ke kod QR di meja.',
+      scanBad: 'Ini bukan kod QR meja restoran kami.', scanOk: (x) => `Meja ${x} — anda boleh memesan`,
+      dvAddr: 'Alamat', dvAddrPh: 'Jalan, bangunan, pintu masuk, unit', dvName: 'Nama', dvNamePh: 'Bagaimana kami memanggil anda', dvNote: 'Komen', dvNotePh: 'Contoh: telefon apabila sampai',
+      dvMe: 'Lokasi saya', dvPinHint: 'Ketik peta untuk menandakan lokasi penghantaran', dvFrom: 'dari restoran', dvKm: (x) => `${x} km`,
+      dvPayCash: 'Tunai', dvPayCard: 'Kad kepada penghantar', dvPayCashC: 'Tunai kepada penghantar',
+      dvDishes: (n) => `Hidangan · ${n}`, dvFeeUpTo: (km) => `Penghantaran · hingga ${km} km`, dvFee: 'Penghantaran',
+      dvSend: (s) => `Pesan penghantaran · ${s}`, dvMin: (s) => `Pesanan minimum untuk penghantaran ialah ${s} (tidak termasuk caj penghantaran).`,
+      dvOff: 'Penghantaran tidak tersedia sekarang. Anda boleh memesan di restoran.', dvTooFar: (km) => `Lokasi ini ${km} km jauhnya — kami belum menghantar sejauh itu.`,
+      dvNeedPoint: 'Tandakan di peta lokasi penghantaran.', dvNeedAddr: 'Tulis alamat: jalan, bangunan, unit (sekurang-kurangnya 5 aksara).',
+      dvBadReq: 'Semak alamat, nama, telefon dan cara bayaran.', dvTooMany: 'Nombor ini sudah ada beberapa penghantaran yang sedang berjalan. Tunggu atau hubungi restoran.',
+      dvGeoErr: 'Lokasi anda tidak dapat dikesan. Tandakan titik di peta.', dvMapErr: 'Peta tidak dimuatkan. Semak internet dan cuba lagi.',
+      dvSaveHint: 'Nama, telefon dan alamat disimpan di telefon ini — tidak perlu ditaip semula lain kali.',
+      cartEmpty: 'Troli kosong', cartEmptyHint: 'Tambah hidangan dari menu, kemudian kembali ke sini.', openMenu: 'Buka menu', toDelivery: 'Teruskan ke penghantaran',
+      trDv: (n) => `Penghantaran · pesanan No. ${n}`, trTable: (x, n) => `Meja ${x} · pesanan No. ${n}`,
+      dvSt: { new: 'Menunggu pengesahan', accepted: 'Restoran menerima pesanan', cooking: 'Pesanan anda sedang dimasak', ready: 'Pesanan sudah siap', on_the_way: 'Penghantar dalam perjalanan', served: 'Telah dihantar', cancelled: 'Pesanan dibatalkan' },
+      dvHint: { new: 'Restoran telah menerima pesanan dan akan mengesahkannya sebentar lagi.', accepted: 'Kami akan mula memasak sebentar lagi.', cooking: 'Tukang masak sedang menyediakan pesanan anda.', ready: 'Pesanan siap — menunggu penghantar.', on_the_way: 'Penghantar sedang membawa pesanan anda.', served: 'Selamat menjamu selera!', cancelled: 'Jika ini satu kesilapan, sila hubungi restoran.' },
+      stWait: 'Menunggu pengesahan', stAccepted: 'Restoran menerima', stCooking: 'Sedang dimasak', stReady: 'Siap — menunggu penghantar', stWay: 'Dalam perjalanan', stDone: 'Telah dihantar',
+      courier: (x) => `Penghantar ${x}`, kmToYou: (x) => `${x} km ke lokasi anda`,
+      ordersEmpty: 'Pesanan anda akan muncul di sini', ordersHint: 'Pesanan dari telefon ini — di meja dan penghantaran — dalam 3 hari terakhir.',
+      myData: 'Maklumat saya', profHint: 'Disimpan hanya di telefon ini supaya tidak perlu ditaip semula.', about: 'Tentang restoran', favsEmpty: 'Ketik ikon hati pada hidangan dan ia akan muncul di sini.',
+      bkParts: { morning: 'Pagi', day: 'Tengah hari', evening: 'Makan malam', night: 'Malam' }, bkBig: 'Untuk kumpulan besar, lebih baik telefon', bkSendAt: (s) => `Tempah · ${s}`,
     },
     zh: {
       langName: '中文', locale: 'zh-CN', dir: 'ltr',
@@ -518,6 +686,39 @@
       bkCancelled: '预订已取消', bkNew: '新预订', bkSent: '预订已发送', bkNeedName: '请填写姓名。', bkNeedPhone: '请检查电话号码：只能是数字，开头可以有 +。', bkNeedTime: '请选择时间。',
       bkErr: { bookings_off: '目前无法通过菜单预订。请致电餐厅。', bad_time: '该时间已不可订：至少需提前 30 分钟预订。请选择其他时间。', closed_then: '餐厅在该时间不营业。请选择其他时间。', bad_request: '请检查姓名、电话和人数。', too_many: '该号码已有多个预订。如需更多，请致电餐厅。' },
       voteTitle: '菜品怎么样？', voteUp: '喜欢', voteDown: '不喜欢', del: '删除', callDone: '服务员马上来', billDone: '账单马上送到', bkNet: '没有网络 — 预订没有变化。请检查网络后重试。',
+      // ---------- 应用 ----------
+      tabHome: '首页', tabMenu: '菜单', tabOrders: '订单', tabProfile: '我的', back: '返回',
+      howEat: '您想怎么用餐？', wayHere: '我在餐厅', wayHereSub: '用相机扫描桌上的二维码', wayHereAt: (x) => `${x} 号桌 — 打开菜单`,
+      wayDelivery: '外送', wayDeliverySub: '送到您家门口', waySoon: '即将推出', wayBookSub: '选择日期和时间',
+      recommend: '今日推荐', allMenu: '全部菜单',
+      modeTable: (x) => `${x} 号桌 · 您在餐厅`, modeTableSub: '订单直接送到您的桌上', modeChange: '更换', modeExit: '退出',
+      modeDv: '外送', modeDvKm: (km, fee) => `外送 · ${km} 公里 · ${fee}`, modeDvSub: '下单时填写地址并计算运费', modeEdit: '修改',
+      modeBrowse: '浏览菜单', modeBrowseSub: '可在餐桌点餐，也可外送', modeChoose: '选择',
+      howTitle: '您想怎么点餐？', howHint: '选择方式后菜品会自动加入。',
+      tableExpired: '已超过 4 小时，桌号已失效。如需在餐厅点餐，请重新扫描二维码。',
+      barTable: (x) => `${x} 号桌的订单`, barTableSub: '发送给服务员', barDvSub: '去结算外送', barBrowseSub: '请选择点餐方式',
+      scanTitle: '餐桌二维码', scanHint: '将相机对准您桌上的二维码', scanStart: '打开相机', scanNoCam: '此设备无法使用相机。',
+      scanDenied: '没有相机权限。请在浏览器设置中允许。', scanAlt: '或者用手机自带相机扫描桌上的二维码。',
+      scanBad: '这不是本餐厅餐桌的二维码。', scanOk: (x) => `${x} 号桌 — 现在可以点餐`,
+      dvAddr: '地址', dvAddrPh: '街道、楼号、单元、门牌', dvName: '姓名', dvNamePh: '怎么称呼您', dvNote: '备注', dvNotePh: '例如：到了请打电话',
+      dvMe: '我的位置', dvPinHint: '点击地图标记送达地点', dvFrom: '距餐厅', dvKm: (x) => `${x} 公里`,
+      dvPayCash: '现金', dvPayCard: '向骑手刷卡', dvPayCashC: '向骑手付现金',
+      dvDishes: (n) => `菜品 · ${n}`, dvFeeUpTo: (km) => `外送 · ${km} 公里以内`, dvFee: '外送费',
+      dvSend: (s) => `下外送订单 · ${s}`, dvMin: (s) => `外送最低消费 ${s}（不含外送费）。`,
+      dvOff: '目前暂停外送。您可以在餐厅点餐。', dvTooFar: (km) => `该地点距离 ${km} 公里 — 暂时无法送达这么远。`,
+      dvNeedPoint: '请在地图上标记送达地点。', dvNeedAddr: '请填写地址：街道、楼号、门牌（至少 5 个字符）。',
+      dvBadReq: '请检查地址、姓名、电话和付款方式。', dvTooMany: '此号码已有多个外送订单正在进行。请等待完成或致电餐厅。',
+      dvGeoErr: '无法获取您的位置。请在地图上标记。', dvMapErr: '地图加载失败。请检查网络后重试。',
+      dvSaveHint: '姓名、电话和地址会保存在这部手机上，下次无需重新填写。',
+      cartEmpty: '购物车是空的', cartEmptyHint: '先从菜单添加菜品，再回到这里。', openMenu: '打开菜单', toDelivery: '去结算外送',
+      trDv: (n) => `外送 · 订单 ${n} 号`, trTable: (x, n) => `${x} 号桌 · 订单 ${n} 号`,
+      dvSt: { new: '等待确认', accepted: '餐厅已接单', cooking: '正在为您制作', ready: '订单已做好', on_the_way: '骑手正在路上', served: '已送达', cancelled: '订单已取消' },
+      dvHint: { new: '餐厅已收到订单，很快会确认。', accepted: '我们很快开始制作。', cooking: '厨师正在制作您的订单。', ready: '订单已做好 — 正在等骑手。', on_the_way: '骑手正在给您送餐。', served: '祝您用餐愉快！', cancelled: '如有误，请致电餐厅。' },
+      stWait: '等待确认', stAccepted: '餐厅已接单', stCooking: '制作中', stReady: '已做好 — 等待骑手', stWay: '配送中', stDone: '已送达',
+      courier: (x) => `骑手 ${x}`, kmToYou: (x) => `距您 ${x} 公里`,
+      ordersEmpty: '您的订单会显示在这里', ordersHint: '这部手机最近 3 天的订单 — 堂食和外送。',
+      myData: '我的信息', profHint: '只保存在这部手机上，免得重复填写。', about: '关于餐厅', favsEmpty: '点击菜品上的爱心，它就会出现在这里。',
+      bkParts: { morning: '早上', day: '午餐', evening: '晚餐', night: '夜间' }, bkBig: '人数较多时最好打电话预订', bkSendAt: (s) => `预订 · ${s}`,
     },
   };
 
@@ -551,6 +752,7 @@
         servicePct: 0, taxPct: 0, taxName: 'SST', taxOnService: true,
         halal: !!r.halal, halalNote: nonEmpty(r.halalNote),
         defaultLanguage: b.defaultLanguage, bookingsEnabled: false,
+        deliveryEnabled: false, deliveryLat: null, deliveryLng: null, deliveryZones: [], deliveryMin: 0,
       },
       categories: b.categories.map((c) => ({ id: c.id, name: c.name, from: c.from || null, to: c.to || null })),
       dishes: b.dishes.filter((d) => !d.hidden).map((d) => ({
@@ -576,6 +778,15 @@
         servicePct: Number(st.service_pct) || 0, taxPct: Number(st.tax_pct) || 0, taxName: st.tax_name || 'SST', taxOnService: st.tax_on_service !== false,
         halal: !!st.halal, halalNote: nonEmpty(st.halal_note),
         defaultLanguage: st.default_language, bookingsEnabled: st.bookings_enabled !== false,
+        // доставка: точка ресторана и зоны «до N км — цена»; без точки или без зон доставки нет
+        ...(() => {
+          const zones = (Array.isArray(st.delivery_zones) ? st.delivery_zones : [])
+            .map((z) => ({ km: Number(z?.km), fee: Number(z?.fee) })).filter((z) => z.km > 0 && z.fee >= 0).sort((a, b) => a.km - b.km);
+          const lat = st.delivery_lat == null ? null : Number(st.delivery_lat);
+          const lng = st.delivery_lng == null ? null : Number(st.delivery_lng);
+          const ok = !!st.delivery_enabled && Number.isFinite(lat) && Number.isFinite(lng) && lat !== null && lng !== null && zones.length > 0;
+          return { deliveryEnabled: ok, deliveryLat: lat, deliveryLng: lng, deliveryZones: zones, deliveryMin: Number(st.delivery_min) || 0 };
+        })(),
       },
       categories: shown.map((c) => ({ id: c.id, name: c.name, from: c.avail_from || null, to: c.avail_to || null })),
       dishes: dishes.filter((d) => !d.hidden && ids.has(d.category_id))
@@ -627,27 +838,65 @@
   let attention = false;   // в списке что-то изменилось, гость ещё не открыл его
 
   // Стол из QR: ?t=<код стола>. Код проверяет сервер — придумать номер стола нельзя.
-  const TABLE_TTL = 6 * 60 * 60 * 1000;
+  // Телефон помнит стол 4 часа С МОМЕНТА СКАНИРОВАНИЯ и не продлевает их: раньше стол помнился «навсегда»,
+  // и из дома можно было заказать «на стол 5».
+  const TABLE_TTL = 4 * 60 * 60 * 1000;
+  const TOKEN_RE = /^[a-f0-9]{20}$/;
   let tableToken = '';
+  let tableAt = 0;            // когда отсканировали QR
   let table = '';             // название стола, подтверждённое сервером
   let tableState = 'none';    // none — нет кода | checking | ok | invalid | unknown (нет связи)
   let wifi = null;            // { name, pass } — приходит вместе со столом (только гостю за столом)
+  let tableExpiredNote = false;
+  const fromQrUrl = new URLSearchParams(location.search).has('t');
   {
     const p = new URLSearchParams(location.search);
-    const fromUrl = (p.get('t') || '').trim().toLowerCase();
     if (p.has('t')) {
-      tableToken = /^[a-f0-9]{20}$/.test(fromUrl) ? fromUrl : '';
+      const fromUrl = (p.get('t') || '').trim().toLowerCase();
+      tableToken = TOKEN_RE.test(fromUrl) ? fromUrl : '';
       tableState = tableToken ? 'checking' : 'invalid';
-      store.set('table', tableToken ? { token: tableToken, at: Date.now() } : null);
+      tableAt = Date.now();
+      store.set('table', tableToken ? { token: tableToken, at: tableAt } : null);
+      if (tableToken) store.set('mode', null);   // за столом — не доставка
+      // код убираем из адресной строки: перезагрузка или вкладка из истории не «продлевают» стол
+      try {
+        p.delete('t');
+        const qs = p.toString();
+        history.replaceState(history.state, '', location.pathname + (qs ? `?${qs}` : '') + (location.hash || ''));
+      } catch { /* в некоторых обёртках адрес менять нельзя — не страшно */ }
     } else {
       const saved = store.get('table', null);
-      if (saved?.token && Date.now() - saved.at < TABLE_TTL) {
+      const age = saved?.token ? Date.now() - Number(saved.at) : Infinity;
+      if (saved?.token && TOKEN_RE.test(saved.token) && age >= 0 && age < TABLE_TTL) {
         tableToken = saved.token;
+        tableAt = Number(saved.at);
         table = saved.label || '';
         tableState = 'checking';
+      } else if (saved) {
+        store.set('table', null);
+        tableExpiredNote = saved.token && age < 24 * 60 * 60 * 1000;   // вчерашний стол — скажем один раз
       }
     }
   }
+  const atTable = () => !!tableToken && tableState !== 'invalid' && tableState !== 'none';
+  // доставка выбрана гостем (помним на телефоне); работает, только пока ресторан её включил
+  let dvMode = store.get('mode', null) === 'delivery';
+  const dvReady = () => ONLINE && !!M && !!R().deliveryEnabled;
+  // режим: за столом (QR) · доставка · просто смотрим меню
+  const mode = () => (atTable() ? 'table' : dvMode && dvReady() ? 'delivery' : 'browse');
+
+  // Мои данные: имя, телефон, адрес и точка доставки — только на этом телефоне
+  const str = (v, n) => String(v ?? '').slice(0, n);
+  const numOrNull = (v) => (v == null || v === '' || !Number.isFinite(Number(v)) ? null : Number(v));
+  let profile = (() => {
+    const p = store.get('profile', null) || {};
+    const bc = store.get('bookingContact', null) || {};
+    const lat = numOrNull(p.lat);
+    const lng = numOrNull(p.lng);
+    return { name: str(p.name || bc.name, 60), phone: str(p.phone || bc.phone, 20), address: str(p.address, 300), lat: lat != null && lng != null ? lat : null, lng: lat != null && lng != null ? lng : null };
+  })();
+  const saveProfile = () => store.set('profile', profile);
+  const PHONE_RE = /^\+?[0-9][0-9 ()-]{5,19}$/;
 
   // Заказы гостя: черновик комментария, защита от повторной отправки, отправленные заказы
   let note = store.get('note', '') || '';
@@ -659,13 +908,13 @@
   let sending = false;
   let sendError = '';
   let pendingKey = store.get('pendingKey', null);  // { key, sig } — один ключ на одну попытку заказа
-  let myOrders = (store.get('myOrders', []) || []).filter((o) => o && o.id && o.token && Date.now() - o.at < 24 * 60 * 60 * 1000);
+  let myOrders = (store.get('myOrders', []) || []).filter((o) => o && o.id && o.token && Date.now() - o.at < 3 * 24 * 60 * 60 * 1000);
   let tracked = store.get('tracked', {}) || {};     // id → последний ответ сервера по заказу
   let trackStale = false;
   let justSent = null;
 
   let query = '';
-  let sheet = null;        // { type: 'dish', id } | { type: 'order' } | { type: 'lang' } | { type: 'hours' }
+  let sheet = null;        // { type: 'dish', id } | { type: 'order' } | { type: 'lang' } | { type: 'hours' } | { type: 'how' } …
   let lastFocus = null;
   let activeCat = null;
   let spyLockUntil = 0;
@@ -758,7 +1007,7 @@
     if (!Number(c.service) && !Number(c.tax)) return total;
     return `<dl class="charges">
       <div><dt>${esc(t('subtotal'))}</dt><dd>${money(c.sub)}</dd></div>
-      ${Number(c.service) ? `<div><dt>${esc(t('svcBtn')(withPct ? pct(r.servicePct) : ''))}</dt><dd>${money(c.service)}</dd></div>` : ''}
+      ${Number(c.service) ? `<div><dt>${esc(t('service')(withPct ? pct(r.servicePct) : ''))}</dt><dd>${money(c.service)}</dd></div>` : ''}
       ${Number(c.tax) ? `<div><dt>${esc(withPct ? `${r.taxName} ${pct(r.taxPct)}%` : r.taxName)}</dt><dd>${money(c.tax)}</dd></div>` : ''}
     </dl>${total}`;
   }
@@ -796,96 +1045,150 @@
     return `${t('today')}: ${today.closed ? t('dayOff') : `${clock(today.open)}–${clock(today.close)}`}`;
   }
 
-  // ---------- Шапка ----------
+  // ---------- Общие куски разметки ----------
   function monogram(name) {
     const words = String(name || '').split(/\s+/).filter((w) => /\p{L}/u.test(w));
     return (words.slice(0, 2).map((w) => w.match(/\p{L}/u)[0]).join('') || 'R').toUpperCase();
   }
+  // блок перерисовываем, только если разметка изменилась: ничего не мигает, ряды не сбиваются
+  function setHtml(el, html) {
+    if (!el || el._html === html) return false;
+    const rows = [...el.querySelectorAll('[data-keep-x]')].map((r) => [r.dataset.keepX, r.scrollLeft]);
+    el.innerHTML = html;
+    el._html = html;
+    for (const [k, x] of rows) { const r = el.querySelector(`[data-keep-x="${k}"]`); if (r) r.scrollLeft = x; }
+    return true;
+  }
+  // шапка экрана-подстраницы: «назад» и заголовок
+  const subHead = (title, extra = '') => `<header class="htop"><button type="button" class="round back" data-act="back" aria-label="${esc(t('back'))}">${icon('back', 'flip')}</button><h1>${esc(title)}</h1>${extra}</header>`;
+  const pageHead = (title) => `<header class="ptop"><h1>${esc(title)}</h1></header>`;
+  const langBtn = () => (LANGS.length > 1 ? `<button type="button" class="lang-pill" data-sheet="lang" aria-label="${esc(`${t('language')}: ${t('langName')}`)}">${icon('globe', 'sm')}<span>${esc(lang.toUpperCase())}</span></button>` : '');
+  function openPill() {
+    const st = statusInfo();
+    return `<button type="button" class="open-pill ${st.open ? 'ok' : 'off'}" data-sheet="hours" aria-label="${esc(`${st.text}. ${t('hours')}`)}"><span class="dot" aria-hidden="true"></span>${esc(st.text)}</button>`;
+  }
+  function halalPill() {
+    const r = R();
+    if (!r.halal) return '';
+    return r.halalNote
+      ? `<button type="button" class="open-pill halal" data-sheet="halal">${icon('check', 'sm')}${esc(t('halal'))}</button>`
+      : `<span class="open-pill halal">${icon('check', 'sm')}${esc(t('halal'))}</span>`;
+  }
+  // адрес и телефон ресторана — только если ресторан их указал
+  function infoLinks() {
+    const r = R();
+    const out = [];
+    const addr = L(r.address);
+    if (addr) {
+      const q = r.address?.en || r.address?.ms || addr;
+      const href = r.mapUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${r.name}, ${q}`)}`;
+      out.push(`<a class="row-link" href="${esc(href)}" target="_blank" rel="noopener" aria-label="${esc(`${t('openMap')}: ${addr}`)}">${icon('pin')}<span class="grow">${esc(addr)}</span>${icon('chevron', 'sm chev')}</a>`);
+    }
+    if (r.phone) {
+      out.push(`<a class="row-link" href="tel:${esc(r.phone.replace(/[^\d+]/g, ''))}" aria-label="${esc(`${t('call')}: ${r.phone}`)}">${icon('phone')}<span class="grow"><bdi dir="ltr">${esc(r.phone)}</bdi></span>${icon('chevron', 'sm chev')}</a>`);
+    }
+    return out.join('');
+  }
 
+  // ---------- Шапка страницы и общие подписи ----------
   function renderHeader() {
     document.documentElement.lang = lang;
     document.documentElement.dir = t('dir');
     $('#search').placeholder = t('search');
     $('#search-clear').setAttribute('aria-label', t('clearSearch'));
+    $('#search-btn').setAttribute('aria-label', t('search'));
     $('#sheet-close').setAttribute('aria-label', t('close'));
-    const langBtn = $('#lang-btn');
-    langBtn.hidden = LANGS.length < 2;
-    langBtn.innerHTML = `${icon('globe')}<span>${esc(lang.toUpperCase())}</span>`;
-    langBtn.setAttribute('aria-label', `${t('language')}: ${t('langName')}`);
-    const dark = document.documentElement.dataset.theme === 'dark';
-    const themeBtn = $('#theme-btn');
-    themeBtn.innerHTML = icon(dark ? 'sun' : 'moon');
-    themeBtn.setAttribute('aria-label', dark ? t('themeLight') : t('themeDark'));
+    $('#m-title').textContent = t('menuWord');
+    document.title = M ? `${R().name} — ${t('menuWord')}` : t('menuWord');
+    $('#foot').textContent = M ? L(R().footer) : '';
+    renderTabs();
+    renderModeBanner();
+    renderHome();
+    if (route.name === 'profile') renderProfile();
+  }
 
+  // ---------- Нижние вкладки ----------
+  const TAB_LIST = [['home', 'home', 'tabHome'], ['menu', 'book', 'tabMenu'], ['orders', 'bag', 'tabOrders'], ['profile', 'user', 'tabProfile']];
+  const isActiveOrder = (o) => !!o && !['served', 'cancelled'].includes(o.status) && !o.paid_at;
+  function renderTabs() {
+    const on = TAB_LIST.some(([n]) => n === route.name) ? route.name : '';
+    const live = myOrders.some((o) => isActiveOrder(tracked[o.id]));
+    setHtml($('#tabbar'), TAB_LIST.map(([n, ic, k]) => `<button type="button" class="tab${n === on ? ' on' : ''}" data-act="go" data-to="${n}"${n === on ? ' aria-current="page"' : ''}>
+      <span class="tab-ic">${icon(ic)}${n === 'orders' && live ? '<i class="tab-dot" aria-hidden="true"></i>' : ''}</span><span>${esc(t(k))}</span></button>`).join(''));
+  }
+
+  // ---------- Главная ----------
+  function wayMain(act, ic, title, sub) {
+    return `<button type="button" class="way main" data-act="${act}"><span class="way-ico">${icon(ic)}</span>
+      <span class="way-txt"><b>${esc(title)}</b><span>${esc(sub)}</span></span><span class="way-go" aria-hidden="true">${icon('arrow', 'flip')}</span></button>`;
+  }
+  // способы поесть: «Я в ресторане» (QR), доставка (или «скоро»), бронь стола
+  function waysHtml(inSheet) {
+    if (!ONLINE || !M) return '';
+    const here = atTable() && !inSheet
+      ? wayMain('way-here', 'check', t('wayHere'), t('wayHereAt')(table || '…'))
+      : wayMain('way-here', 'qr', t('wayHere'), t('wayHereSub'));
+    const dvOn = dvReady();
+    const bk = !inSheet && (R().bookingsEnabled || !!booking);
+    const dv = `<button type="button" class="way${dvOn ? '' : ' off'}${bk ? '' : ' wide'}" data-act="way-dv"${dvOn ? '' : ' disabled'}>
+        <span class="way-ico">${icon('moto')}</span><b>${esc(t('wayDelivery'))}</b><span>${esc(dvOn ? t('wayDeliverySub') : t('waySoon'))}</span></button>`;
+    const bkTile = bk ? `<button type="button" class="way" data-act="go" data-to="booking">
+        <span class="way-ico">${icon('calendar')}</span><b>${esc(t('bkTitle'))}</b><span>${esc(bkActive() ? `${t('bkNo')(booking.no)} · ${bkWhen(booking.at)}` : t('wayBookSub'))}</span></button>` : '';
+    return `<div class="ways">${here}${dv}${bkTile}</div>`;
+  }
+  // «Сегодня советуем»: блюда дня, потом хиты (по заказам и по отметке ресторана) — ничего не выдумываем
+  function recList() {
+    const out = [];
+    for (const d of [...(M?.dishes || []).filter((x) => x.featured), ...hitsList()]) if (d?.available && !out.includes(d)) out.push(d);
+    return out.slice(0, 8);
+  }
+  function renderHome() {
+    const el = $('#scr-home');
     if (!M) {
-      document.title = t('menuWord');
-      $('#r-name').textContent = '';
-      $('#r-tagline').textContent = '';
-      $('#logo').innerHTML = '';
-      $('#r-info').innerHTML = '';
-      $('#foot').textContent = '';
+      setHtml(el, state === 'error'
+        ? `<div class="state" role="alert">${icon('alert')}<h2>${esc(t('loadError'))}</h2><p>${esc(t('loadErrorHint'))}</p><button type="button" class="btn" data-act="retry">${icon('refresh')}${esc(t('retry'))}</button></div>`
+        : `<div class="home-skel" aria-busy="true"><p class="sr-only" role="status">${esc(t('loading'))}</p><div class="skel skel-hero"></div><div class="skel skel-way"></div><div class="skel skel-way"></div></div>`);
       return;
     }
     const r = R();
-    document.title = `${r.name} — ${t('menuWord')}`;
-    $('#r-name').textContent = r.name;
-    $('#r-tagline').textContent = L(r.tagline);
-    // без настоящего логотипа — только название (квадрат с буквами выглядел как иконка приложения)
-    $('#logo').innerHTML = r.logoUrl ? `<img src="${esc(r.logoUrl)}" alt="">` : '';
-    $('#logo').hidden = !r.logoUrl;
-
-    const st = statusInfo();
-    const badges = [];
-    if (table && tableState !== 'invalid') badges.push(`<span class="badge">${icon('table', 'sm')}${esc(t('table'))} ${esc(table)}</span>`);
-    if (wifi && tableState !== 'invalid' && !tableToken) badges.push(`<button type="button" class="badge" data-sheet="wifi">${icon('wifi', 'sm')}${esc(t('wifi'))}</button>`);
-    badges.push(`<button type="button" class="badge ${st.open ? 'ok' : 'off'}" data-sheet="hours" aria-label="${esc(`${st.text}. ${t('hours')}`)}"><span class="dot"></span>${esc(st.text)}${icon('chevron', 'sm chev')}</button>`);
-    if (ONLINE && (booking || r.bookingsEnabled)) {
-      const on = bkActive();
-      badges.push(`<button type="button" class="badge bk-badge${on ? ' on' : ''}" data-act="booking">${icon('calendar', 'sm')}${esc(on ? t('bkNo')(booking.no) : t('bkBtn'))}</button>`);
-    }
-    if (r.halal) {
-      badges.push(r.halalNote
-        ? `<button type="button" class="badge halal" data-sheet="halal">${icon('check', 'sm')}${esc(t('halal'))}</button>`
-        : `<span class="badge halal">${icon('check', 'sm')}${esc(t('halal'))}</span>`);
-    }
-
-    const links = [];
-    // часы работы открываются нажатием на «Открыто / Закрыто» — отдельной строки нет, меню видно раньше
+    const tag = L(r.tagline);
     const addr = L(r.address);
-    if (addr) {
-      const q = r.address?.en || r.address?.ms || addr;
-      const href = r.mapUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${r.name}, ${q}`)}`;
-      links.push(`<a class="info-link" href="${esc(href)}" target="_blank" rel="noopener" aria-label="${esc(`${t('openMap')}: ${addr}`)}">${icon('pin')}
-        <span class="grow">${esc(addr)}</span>${icon('chevron', 'chev')}</a>`);
-    }
-    if (r.phone) {
-      links.push(`<a class="info-link" href="tel:${esc(r.phone.replace(/[^\d+]/g, ''))}" aria-label="${esc(`${t('call')}: ${r.phone}`)}">${icon('phone')}
-        <span class="grow"><bdi dir="ltr">${esc(r.phone)}</bdi></span>${icon('chevron', 'chev')}</a>`);
-    }
-    $('#r-info').innerHTML = `<div class="info-row">${badges.join('')}</div>${links.length ? `<div class="info-grid">${links.join('')}</div>` : ''}`;
-    $('#foot').textContent = L(r.footer);
+    const mark = r.logoUrl ? `<span class="mark-logo"><img src="${esc(r.logoUrl)}" alt=""></span>` : `<svg class="ic star8" aria-hidden="true"><use href="#i-star8"/></svg>`;
+    const ways = waysHtml(false);
+    const rec = recList();
+    const recHtml = rec.length
+      ? `<div class="h2"><h2>${esc(t('recommend'))}</h2><button type="button" class="link" data-act="go" data-to="menu">${esc(t('allMenu'))}</button></div>
+        <div class="tiles" data-keep-x="rec">${rec.map(tile).join('')}</div>`
+      : `<div class="info-list"><button type="button" class="row-link" data-act="go" data-to="menu">${icon('book')}<span class="grow">${esc(t('allMenu'))}</span>${icon('chevron', 'sm chev')}</button></div>`;
+    const links = infoLinks();
+    setHtml(el, `<div class="topbar"><div class="mark">${mark}<b>${esc(r.name)}</b></div>${langBtn()}</div>
+      <section class="hero" aria-labelledby="r-name">
+        ${tag ? `<p class="eyebrow">${esc(tag)}</p>` : ''}
+        <h1 id="r-name">${esc(r.name)}</h1>
+        ${addr ? `<p class="hero-addr">${esc(addr)}</p>` : ''}
+        <div class="hero-pills">${openPill()}${halalPill()}</div>
+      </section>
+      ${ways ? `<div class="h2"><h2>${esc(t('howEat'))}</h2></div>${ways}` : ''}
+      ${recHtml}
+      ${links ? `<div class="info-list">${links}</div>` : ''}
+      ${L(r.footer) ? `<p class="home-foot">${esc(L(r.footer))}</p>` : ''}`);
   }
 
   // ---------- Карточки ----------
-  // заглушка без фото: своя картинка у каждой категории (казан, пиала, шампур…) — не фото еды
-  const PH = [['kazan', /plov|плов|palov|osh|بلوف/i], ['bowl', /soup|суп|шурп|sho'?rva|sup|شورب/i], ['skewer', /grill|шашлык|кебаб|мангал|kabob|sate|مشاوي/i],
-    ['samsa', /bakery|samsa|самс|выпеч|лепёш|non|roti|معجنات/i], ['salad', /salad|салат|سلط/i], ['sweet', /dessert|десерт|сладк|shirin|pencuci|حلوي/i],
-    ['tea', /drink|напит|чай|tea|ichimlik|minuman|مشروب/i], ['egg', /breakfast|завтрак|nonushta|sarapan|فطور/i], ['manty', /main|горяч|manty|issiq|utama|رئيسي/i]];
-  function phKind(d) {
-    const c = catOf(d);
-    const hay = `${c?.id || ''} ${Object.values(c?.name || {}).join(' ')}`;
-    return (PH.find(([, re]) => re.test(hay)) || ['dish'])[0];
+  // без фото — узор гирих (восьмиконечная звезда) на тёплом фоне; оттенок постоянный для каждого блюда
+  const tint = (d) => { let h = 0; for (const ch of String(d?.id || '')) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return (h % 3) + 1; };
+  const img = (d) => `<img src="${esc(d.photo)}" alt="" loading="lazy" decoding="async">`;
+  function thumb(d, cls = '') {
+    return `<span class="thumb tint-${tint(d)}${d?.photo ? ' has-img' : ''}${cls ? ` ${cls}` : ''}" aria-hidden="true">${d?.photo ? img(d) : ''}</span>`;
   }
-  function photo(d, cls = '', flag = false, extra = '') {
-    const kind = d?.photo ? '' : phKind(d);
-    const img = d?.photo
-      ? `<img src="${esc(d.photo)}" alt="${esc(L(d.name))}" loading="lazy" decoding="async" width="800" height="600" onload="this.dataset.ok=1" onerror="this.dataset.ok=1">`
-      : icon(kind === 'dish' ? 'dish' : `ph-${kind}`);
-    const sold = flag && d && !d.available ? `<span class="sold-flag">${esc(t('soldOut'))}</span>` : '';
-    return `<div class="photo ${cls}${d?.photo ? ' has-img' : ` ph ph-${kind}`}">${img}${sold}${extra}</div>`;
+  function tile(d) {
+    return `<article class="tile tint-${tint(d)}${d.photo ? ' has-photo' : ''}" data-open="${esc(d.id)}" tabindex="0" role="button" aria-label="${esc(L(d.name))}">
+      <span class="tile-art${d.photo ? ' has-img' : ''}" aria-hidden="true">${d.photo ? img(d) : ''}</span>
+      <span class="tile-slot slot" data-slot="${esc(d.id)}" data-kind="tile">${control(d.id, 'tile')}</span>
+      <b class="tile-nm">${esc(L(d.name))}</b><span class="tile-pr">${priceHtml(d)}</span></article>`;
   }
 
-  // метки: акция (с часами — «до 17:00»), «осталось 3», потом метки ресторана
+  // метки: акция (с часами — «до 17:00»), «осталось 3», потом метки ресторана — тихим текстом
   function tagsHtml(d) {
     const list = [];
     if (promoNow(d)) list.push(`<span class="tag tag-promo">${esc(d.promoTo ? t('promoUntil')(clock(d.promoTo)) : t('promo'))}</span>`);
@@ -908,20 +1211,18 @@
     const on = isFav(id);
     return `<button type="button" class="fav-btn${on ? ' on' : ''}" data-act="fav" data-id="${esc(id)}" aria-pressed="${on}" aria-label="${esc(favLabel(id))}">${icon('heart')}</button>`;
   }
+  const strip = (cls, id, title, list) => `<section class="strip ${cls}" aria-labelledby="${id}"><div class="sec"><h2 id="${id}">${esc(title)}</h2><i aria-hidden="true"></i></div>
+    <div class="tiles" data-keep-x="${id}">${list.map(tile).join('')}</div></section>`;
   function favsHtml() {
     if (query || filterCount()) return '';
     const list = favs.map((id) => byId[id]).filter(Boolean);
-    if (!list.length) return '';
-    return `<section class="hits favs" aria-labelledby="h-favs"><div class="cat-title"><h2 id="h-favs">${esc(t('favs'))}</h2></div>
-      <div class="hits-row">${list.map(miniCard).join('')}</div></section>`;
+    return list.length ? strip('favs', 'h-favs', t('favs'), list) : '';
   }
-  // меняем только сердечки и ряд «Мои любимые» — остальное меню не перерисовываем (фото не мигают)
+  // меняем только сердечки и ряд «Мои любимые» — остальное меню не перерисовываем
   function toggleFav(id, btn) {
     favs = isFav(id) ? favs.filter((x) => x !== id) : [id, ...favs];
     store.set('favs', favs);
-    // точка опоры: нажатое сердечко в меню (или первый видимый раздел) — после вставки ряда экран не прыгает
-    const anchor = btn?.closest('#menu') && !btn.closest('.favs') ? btn
-      : [...document.querySelectorAll('#menu > section.cat')].find((x) => x.getBoundingClientRect().bottom > 0) || null;
+    const anchor = [...document.querySelectorAll('#menu > section.cat')].find((x) => x.getBoundingClientRect().bottom > 0) || null;
     const top0 = anchor?.getBoundingClientRect().top;
     document.querySelectorAll('.fav-btn').forEach((b) => {
       const on = isFav(b.dataset.id);
@@ -931,18 +1232,14 @@
     });
     const old = $('#menu > .favs');
     const html = favsHtml();
-    if (old) { if (html) old.outerHTML = html; else old.remove(); } else if (html) $('#menu > .hits:not(.day-dish), #menu > section.cat')?.insertAdjacentHTML('beforebegin', html);
-    if (anchor && document.contains(anchor)) {
+    if (old) { if (html) old.outerHTML = html; else old.remove(); } else if (html) $('#menu > .hits, #menu > section.cat')?.insertAdjacentHTML('beforebegin', html);
+    $('#menu')._html = null;
+    if (route.name === 'menu' && anchor && document.contains(anchor)) {
       const dy = anchor.getBoundingClientRect().top - top0;
       if (dy) window.scrollBy({ top: dy, behavior: 'instant' });
     }
-    // сердечко «подпрыгивает» — только по нажатию
-    if (!reduced()) {
-      document.querySelectorAll(`.fav-btn[data-id="${CSS.escape(id)}"]`).forEach((b) => {
-        b.classList.remove('pop'); void b.offsetWidth; b.classList.add('pop');
-        b.addEventListener('animationend', () => b.classList.remove('pop'), { once: true });
-      });
-    }
+    if (route.name === 'profile') renderProfile();
+    void btn;
   }
 
   // ---------- «Блюдо дня» ----------
@@ -950,33 +1247,35 @@
     if (query || filterCount()) return '';
     const list = (M?.dishes || []).filter((d) => d.featured && d.available);
     if (!list.length) return '';
-    const title = `<div class="cat-title"><h2 id="h-day">${esc(t('dayDish'))}</h2></div>`;
-    if (list.length > 1) return `<section class="hits day-dish" aria-labelledby="h-day">${title}<div class="hits-row">${list.map(miniCard).join('')}</div></section>`;
+    if (list.length > 1) return strip('day-dish', 'h-day', t('dayDish'), list);
     const d = list[0];
     const desc = L(d.desc);
-    return `<section class="day-dish" aria-labelledby="h-day">${title}
-      <article class="feature${d.photo ? '' : ' no-photo'}" data-open="${esc(d.id)}" tabindex="0" role="button" aria-label="${esc(L(d.name))}">
-        ${d.photo ? photo(d, 'feature-photo') : ''}
+    return `<section class="strip day-dish" aria-labelledby="h-day"><div class="sec"><h2 id="h-day">${esc(t('dayDish'))}</h2><i aria-hidden="true"></i></div>
+      <article class="feature" data-open="${esc(d.id)}" tabindex="0" role="button" aria-label="${esc(L(d.name))}">
+        <span class="feature-art tint-${tint(d)}${d.photo ? ' has-img' : ''}" aria-hidden="true">${d.photo ? img(d) : ''}</span>
         <div class="feature-body"><h3>${esc(L(d.name))}</h3>${desc ? `<p class="desc">${esc(desc)}</p>` : ''}${tagsHtml(d)}
-          <div class="card-foot"><div class="price-wrap">${priceHtml(d)}<span class="amount">${esc(amount(d))}</span></div><div class="slot" data-slot="${esc(d.id)}">${control(d.id)}</div></div>
+          <div class="dfoot"><span class="dprice">${priceHtml(d)}${amount(d) ? `<small>${esc(amount(d))}</small>` : ''}</span><span class="slot" data-slot="${esc(d.id)}">${control(d.id)}</span></div>
         </div></article></section>`;
   }
 
-  function control(id) {
+  // кнопка у блюда: «+ Добавить» → терракотовые «− 1 +»; на плитке — круглый «+»
+  function control(id, kind = '') {
     const dd = byId[id];
+    const small = kind === 'tile';
     if (dd?.available && !catOpen(catOf(dd))) return `<span class="sold later">${esc(t('fromTime')(clock(catOf(dd).from)))}</span>`;
-    if (!orderable(dd)) return `<span class="sold">${esc(t('soldOut'))}</span>`;
-    if (hasOptions(byId[id])) {
+    if (!orderable(dd)) return small ? '' : `<span class="sold">${esc(t('soldOut'))}</span>`;
+    const name = itemName(id);
+    if (hasOptions(dd)) {
       const c = dishCount(id);
-      return `<button type="button" class="add${c ? ' has-n' : ''}" data-act="pick" data-id="${esc(id)}" aria-label="${esc(`${t('chooseOptions')}: ${itemName(id)}`)}">${c ? `<span class="add-n">${c}</span>` : ''}${icon('plus')}</button>`;
+      return `<button type="button" class="${small ? 'plus' : 'addb'}${c ? ' has-n' : ''}" data-act="pick" data-id="${esc(id)}" aria-label="${esc(`${t('chooseOptions')}: ${name}`)}">${c ? `<span class="add-n">${c}</span>` : icon('plus')}${small ? '' : `<span>${esc(t('add'))}</span>`}</button>`;
     }
     const n = order[id] || 0;
-    const plus = `<button type="button" data-act="inc" data-id="${esc(id)}" aria-label="${esc(`${t('add')}: ${itemName(id)}`)}">${icon('plus')}</button>`;
-    if (!n) return plus.replace('<button', '<button class="add"');
-    return `<div class="stepper"><button type="button" data-act="dec" data-id="${esc(id)}" aria-label="${esc(`${t('remove')}: ${itemName(id)}`)}">${icon('minus')}</button><span aria-live="polite">${n}</span>${plus}</div>`;
+    const plus = (cls) => `<button type="button"${cls} data-act="inc" data-id="${esc(id)}" aria-label="${esc(`${t('add')}: ${name}`)}">${icon('plus')}${cls && !small ? `<span>${esc(t('add'))}</span>` : ''}</button>`;
+    if (!n) return plus(` class="${small ? 'plus' : 'addb'}"`);
+    return `<div class="qty${small ? ' sm' : ''}"><button type="button" data-act="dec" data-id="${esc(id)}" aria-label="${esc(`${t('remove')}: ${name}`)}">${icon('minus')}</button><span aria-live="polite">${n}</span>${plus('')}</div>`;
   }
 
-  // кнопки количества у строки списка (строка = блюдо + варианты)
+  // кнопки количества у строки корзины (строка = блюдо + варианты)
   function lineControl(key) {
     const n = order[key] || 0;
     return `<div class="stepper"><button type="button" data-act="dec" data-key="${esc(key)}" aria-label="${esc(`${t('remove')}: ${lineName(key)}`)}">${icon('minus')}</button><span aria-live="polite">${n}</span><button type="button" data-act="inc" data-key="${esc(key)}" aria-label="${esc(`${t('add')}: ${lineName(key)}`)}">${icon('plus')}</button></div>`;
@@ -993,18 +1292,14 @@
 
   function card(d) {
     const desc = L(d.desc);
-    const compo = compoHtml(d);
-    return `
-      <article class="card${d.available ? '' : ' is-sold'}${d.photo ? '' : ' no-photo'}" data-open="${esc(d.id)}" tabindex="0" role="button" aria-label="${esc(L(d.name))}">
-        ${d.photo ? photo(d, '', true) : ''}
-        <div class="card-body">
+    const meta = [amount(d), d.prepMin ? t('prep')(d.prepMin) : ''].filter(Boolean).join(' · ');
+    return `<article class="dish${d.available ? '' : ' is-sold'}" data-open="${esc(d.id)}" tabindex="0" role="button" aria-label="${esc(L(d.name))}">
+        ${thumb(d)}
+        <div class="dish-body">
           <h3>${esc(L(d.name))}</h3>
-          ${compo || (desc ? `<p class="desc">${esc(desc)}</p>` : '<p class="desc"></p>')}
-          ${tagsHtml(d)}${d.photo || d.available ? '' : `<span class="sold-txt">${esc(t('soldOut'))}</span>`}
-          <div class="card-foot">
-            <div class="price-wrap">${priceHtml(d)}<span class="amount">${esc([amount(d), d.prepMin ? t('prep')(d.prepMin) : ''].filter(Boolean).join(' · '))}</span></div>
-            <div class="slot" data-slot="${esc(d.id)}">${control(d.id)}</div>
-          </div>
+          ${compoHtml(d) || (desc ? `<p class="desc">${esc(desc)}</p>` : '')}
+          ${tagsHtml(d)}
+          <div class="dfoot"><span class="dprice">${priceHtml(d)}${meta ? `<small>${esc(meta)}</small>` : ''}</span><span class="slot" data-slot="${esc(d.id)}">${control(d.id)}</span></div>
         </div>
       </article>`;
   }
@@ -1014,14 +1309,13 @@
     const cats = $('#cats');
     if (state === 'loading' && !M) {
       cats.innerHTML = '';
-      main.innerHTML = `<p class="sr-only" role="status">${esc(t('loading'))}</p>
-        ${[0, 1].map(() => `<div class="skel-title"></div><div class="grid">${'<div class="skel"></div>'.repeat(3)}</div>`).join('')}`;
+      setHtml(main, `<p class="sr-only" role="status">${esc(t('loading'))}</p>${'<div class="skel skel-row"></div>'.repeat(5)}`);
       return;
     }
     if (state === 'error' && !M) {
       cats.innerHTML = '';
-      main.innerHTML = `<div class="state" role="alert">${icon('alert')}<h2>${esc(t('loadError'))}</h2>
-        <p>${esc(t('loadErrorHint'))}</p><button type="button" class="btn" data-act="retry">${icon('refresh')}${esc(t('retry'))}</button></div>`;
+      setHtml(main, `<div class="state" role="alert">${icon('alert')}<h2>${esc(t('loadError'))}</h2>
+        <p>${esc(t('loadErrorHint'))}</p><button type="button" class="btn" data-act="retry">${icon('refresh')}${esc(t('retry'))}</button></div>`);
       return;
     }
 
@@ -1032,23 +1326,26 @@
       .sort((a, b) => ((b.c.from && catOpen(b.c)) - (a.c.from && catOpen(a.c))) || a.i - b.i);
     lastOpenSig = timeSig();
 
-    cats.innerHTML = groups.map(({ c }) => `<button type="button" class="chip" data-cat="${esc(c.id)}">${esc(L(c.name))}</button>`).join('');
+    const catsHtml = groups.map(({ c }) => `<button type="button" class="chip" data-cat="${esc(c.id)}">${esc(L(c.name))}</button>`).join('');
+    if (cats._html !== catsHtml) { cats.innerHTML = catsHtml; cats._html = catsHtml; activeCat = null; }
 
     const offline = (stale ? `<p class="notice info" role="status">${icon('alert')}<span>${esc(t('offline'))}</span></p>` : '')
       + (ONLINE && tableState === 'invalid' ? `<p class="notice bad" role="alert">${icon('alert')}<span>${esc(t('badTable'))}</span></p>` : '');
+    let html;
     if (!M.dishes.length) {
-      main.innerHTML = `${offline}<div class="state">${icon('dish')}<h2>${esc(t('emptyMenu'))}</h2><p>${esc(t('emptyMenuHint'))}</p></div>`;
+      html = `${offline}<div class="state">${icon('dish')}<h2>${esc(t('emptyMenu'))}</h2><p>${esc(t('emptyMenuHint'))}</p></div>`;
     } else if (!groups.length) {
-      main.innerHTML = `${offline}<div class="state">${icon('search')}<h2>${esc(t('nothing'))}</h2>
+      html = `${offline}<div class="state">${icon('search')}<h2>${esc(t('nothing'))}</h2>
         <p>${esc(t('nothingHint'))}</p><button type="button" class="btn ghost" data-act="show-all">${esc(t('showAll'))}</button></div>`;
     } else {
-      main.innerHTML = offline + dayHtml() + favsHtml() + hitsHtml() + groups.map(({ c, items }) => `
+      html = offline + dayHtml() + favsHtml() + hitsHtml() + groups.map(({ c, items }) => `
         <section class="cat" id="cat-${esc(c.id)}" data-cat="${esc(c.id)}" aria-labelledby="h-${esc(c.id)}">
-          <div class="cat-title"><h2 id="h-${esc(c.id)}">${esc(L(c.name))}</h2>${c.from ? `<span class="cat-time${catOpen(c) ? ' now' : ''}">${icon('clock', 'sm')}${esc(catOpen(c) ? `${t('nowServing')} · ${clock(c.from)}–${clock(c.to)}` : t('servedAt')(clock(c.from), clock(c.to)))}</span>` : ''}</div>
-          <div class="grid">${items.map(card).join('')}</div>
+          <div class="sec"><h2 id="h-${esc(c.id)}">${esc(L(c.name))}</h2><i aria-hidden="true"></i></div>
+          ${c.from ? `<p class="cat-time${catOpen(c) ? ' now' : ''}">${icon('clock', 'sm')}${esc(catOpen(c) ? `${t('nowServing')} · ${clock(c.from)}–${clock(c.to)}` : t('servedAt')(clock(c.from), clock(c.to)))}</p>` : ''}
+          <div class="list">${items.map(card).join('')}</div>
         </section>`).join('');
     }
-    activeCat = null;
+    setHtml(main, html);
     onScroll();
   }
 
@@ -1065,7 +1362,7 @@
         const changed = JSON.stringify(v) !== JSON.stringify(stats);
         stats = v;
         store.set('stats', stats);
-        if (changed) renderMenu();
+        if (changed) { renderMenu(); renderHome(); }
       }
     } catch { /* без рекомендаций */ }
   }
@@ -1073,17 +1370,10 @@
     const ids = [...(stats.popular || []), ...(M?.dishes || []).filter((d) => (d.tags || []).includes('hit')).map((d) => d.id)];
     return [...new Set(ids)].map((id) => byId[id]).filter((d) => d && d.available).slice(0, 8);
   }
-  function miniCard(d) {
-    return `<article class="mini${d.photo ? '' : ' no-photo'}" data-open="${esc(d.id)}" tabindex="0" role="button" aria-label="${esc(L(d.name))}">
-      ${d.photo ? photo(d, 'mini-photo') : ''}<b>${esc(L(d.name))}</b>
-      <div class="mini-foot">${priceHtml(d)}<div class="slot" data-slot="${esc(d.id)}">${control(d.id)}</div></div></article>`;
-  }
   function hitsHtml() {
     if (query || filterCount()) return '';
     const list = hitsList();
-    if (list.length < 3) return '';
-    return `<section class="hits" aria-labelledby="h-hits"><div class="cat-title"><h2 id="h-hits">${esc(t('hits'))}</h2></div>
-      <div class="hits-row">${list.map(miniCard).join('')}</div></section>`;
+    return list.length < 3 ? '' : strip('hits', 'h-hits', t('hits'), list);
   }
   // к блюду: сначала то, что указал ресторан, потом что чаще берут вместе
   function pairsFor(ids, limit = 3) {
@@ -1100,7 +1390,7 @@
   function pairsHtml(list, title) {
     if (!list.length) return '';
     return `<h4>${esc(title)}</h4><ul class="pair-list">${list.map((d) => `<li data-open="${esc(d.id)}" role="button" tabindex="0">
-      ${photo(d, 'pair-photo')}<span class="grow"><b>${esc(L(d.name))}</b><small>${money(priceOf(d))}</small></span>
+      ${thumb(d, 'sm')}<span class="grow"><b>${esc(L(d.name))}</b><small>${money(priceOf(d))}</small></span>
       <span class="slot" data-slot="${esc(d.id)}">${control(d.id)}</span></li>`).join('')}</ul>`;
   }
 
@@ -1116,7 +1406,7 @@
     });
   }
   function onScroll() {
-    if (Date.now() < spyLockUntil) return;
+    if (route.name !== 'menu' || Date.now() < spyLockUntil) return;
     const sections = [...document.querySelectorAll('section.cat')];
     if (!sections.length) return;
     const line = $('#cats').getBoundingClientRect().bottom + 16;
@@ -1127,17 +1417,6 @@
     }
     if (cur !== activeCat) setActive(cur);
   }
-  // как в iOS: при прокрутке вниз плашка заказа становится компактнее, вверх — обычной
-  let lastY = window.scrollY;
-  window.addEventListener('scroll', () => {
-    const y = window.scrollY;
-    const bar = $('#order-bar');
-    if (Math.abs(y - lastY) > 6) {
-      bar?.classList.toggle('compact', y > lastY && y > 200);
-      document.body.classList.toggle('scrolled', y > 120);
-      lastY = y;
-    }
-  }, { passive: true });
   let ticking = false;
   window.addEventListener('scroll', () => {
     if (ticking) return;
@@ -1167,35 +1446,49 @@
     .map((o) => ({ ...o, data: tracked[o.id] }))
     .find((o) => o.data && o.data.status !== 'cancelled' && Date.now() - o.at < 12 * 60 * 60 * 1000);
 
+  // сумма для режима: за столом — с сервисом и налогом; доставка — без сервиса, с налогом и доставкой
+  const r2 = (x) => Math.round(Number(x) * 100) / 100;
+  function dvTotals() {
+    const { sum } = totals();
+    const sen = Math.round(sum * 100);
+    const tax = Math.round((sen * (Number(R().taxPct) || 0)) / 100 + 1e-9) / 100;   // как round(sub * tax_pct / 100, 2) на сервере
+    const q = dv.quote?.ok ? dv.quote : null;
+    const fee = q ? Number(q.fee) || 0 : 0;
+    return { sub: sen / 100, service: 0, tax, fee, q, total: r2(sen / 100 + tax + fee) };
+  }
+  const modeTotal = () => {
+    const m = mode();
+    if (m === 'delivery') return dvTotals().total;
+    return m === 'table' ? charges(totals().sum).total : r2(totals().sum);
+  };
+
+  // плашка внизу: «Заказ на стол 5 · Отправить официанту», «Доставка», «Мой заказ» — или статус последнего заказа
   function renderBar() {
     const bar = $('#order-bar');
-    if (!M) { bar.hidden = true; document.body.classList.remove('has-bar'); return; }
-    const { count, sum } = totals();
+    const onTab = route.name === 'menu' || route.name === 'home';
+    if (!M || !onTab) { bar.hidden = true; document.body.classList.remove('has-bar'); return; }
+    const { count } = totals();
     const last = count ? null : latestOrder();
     bar.classList.toggle('status-bar', !!last);
     if (count) {
+      const m = mode();
+      const tot = modeTotal();
+      const title = m === 'table' ? t('barTable')(table || '…') : m === 'delivery' ? t('modeDv') : t('order');
+      const sub = !ONLINE ? '' : m === 'table' ? t('barTableSub') : m === 'delivery' ? t('barDvSub') : t('barBrowseSub');
       bar.dataset.go = 'order';
-      const tot = charges(sum).total;
-      bar.innerHTML = `<span class="bar-left"><span class="count">${count}</span>${esc(t('order'))}${attention ? '<span class="warn-dot" aria-hidden="true"></span>' : ''}</span><span class="bar-sum">${money(tot)}</span>`;
-      bar.setAttribute('aria-label', `${t('order')}: ${count}, ${t('total')} ${money(tot)}`);
-      roll('bar', [bar.querySelector('.bar-sum')], tot);
+      bar.innerHTML = `<span class="count">${count}</span><span class="bar-txt"><b>${esc(title)}</b>${sub ? `<small>${esc(sub)}</small>` : ''}</span>${attention ? '<span class="warn-dot" aria-hidden="true"></span>' : ''}<span class="bar-sum"><bdi dir="ltr">${money(tot)}</bdi></span>`;
+      bar.setAttribute('aria-label', `${title}: ${count}, ${t('total')} ${money(tot)}`);
+      roll('bar', [bar.querySelector('.bar-sum bdi')], tot);
     } else if (last) {
+      const kind = last.kind || last.data.kind || 'table';
+      const txt = statusText(last.data, kind);
       bar.dataset.go = 'track:' + last.id;
-      const st = guestStatus(last.data.status);
-      bar.innerHTML = `<span class="bar-left">${icon('list')}<span class="bar-txt">${esc(t('orderNo')(last.no))}</span></span><span class="bar-sum st-${esc(st)}">${st === 'accepted' ? icon('check', 'sm') : ''}<span class="bar-txt">${esc(t('statuses')[st])}</span></span>`;
-      bar.setAttribute('aria-label', `${t('orderNo')(last.no)}: ${t('statuses')[st]}`);
+      bar.innerHTML = `<span class="count">${icon(kind === 'delivery' ? 'moto' : 'list', 'sm')}</span><span class="bar-txt"><b>${esc(t('orderNo')(last.no))}</b><small>${esc(txt)}</small></span><span class="bar-go" aria-hidden="true">${icon('chevron', 'flip-rtl')}</span>`;
+      bar.setAttribute('aria-label', `${t('orderNo')(last.no)}: ${txt}`);
     }
-    // пока блюдо летит в плашку, она «подпрыгнет» в момент приземления
-    if (count > (renderBar.lastCount || 0) && !bar.hidden && !flyHold) bumpBar();
-    renderBar.lastCount = count;
     if (!count) delete rolls.bar;
     bar.hidden = !count && !last;
     document.body.classList.toggle('has-bar', !bar.hidden);
-  }
-
-  function bumpBar() {
-    const bar = $('#order-bar');
-    bar.classList.remove('bump'); void bar.offsetWidth; bar.classList.add('bump');
   }
 
   // ---------- Сумма плавно «докручивается» до нового значения ----------
@@ -1211,7 +1504,7 @@
     const whole = Number.isInteger(from) && Number.isInteger(to);
     const t0 = performance.now();
     const step = (now) => {
-      const p = Math.min(1, (now - t0) / 350);
+      const p = Math.min(1, (now - t0) / 300);
       const v = p < 1 ? from + (to - from) * (1 - (1 - p) ** 3) : to;
       const shown = p < 1 ? (whole ? Math.round(v) : Math.round(v * 100) / 100) : to;
       els.forEach((el) => { el.textContent = money(shown); });
@@ -1223,37 +1516,6 @@
     r.raf = requestAnimationFrame(step);
   }
 
-  // ---------- Полёт блюда в «Мой заказ» ----------
-  // круглая копия фото летит по дуге: X — равномерно, Y — сначала вверх, потом вниз (только transform/opacity)
-  let flyHold = false;
-  const QUIET = true;
-  function flyToBar(src) {
-    if (QUIET) return false;   // взрослый вид: без полёта, плашка просто обновляется
-    const bar = $('#order-bar');
-    if (bar.hidden || !src) return false;
-    const a = src.getBoundingClientRect();
-    const b = (bar.querySelector('.count') || bar).getBoundingClientRect();
-    if (!a.width || !b.width) return false;
-    const size = 44;
-    const x0 = a.left + a.width / 2 - size / 2;
-    const y0 = a.top + a.height / 2 - size / 2;
-    const outer = document.createElement('div');
-    outer.className = 'fly';
-    outer.setAttribute('aria-hidden', 'true');
-    outer.style.cssText = `left:${x0}px;top:${y0}px;--dx:${b.left + b.width / 2 - size / 2 - x0}px;--dy:${b.top + b.height / 2 - size / 2 - y0}px`;
-    const dot = document.createElement('div');
-    dot.className = `${src.className} fly-dot`;
-    dot.innerHTML = src.innerHTML;
-    dot.querySelectorAll('.fav-btn, .sold-flag').forEach((x) => x.remove());
-    outer.appendChild(dot);
-    document.body.appendChild(outer);
-    let done = false;
-    const land = () => { if (done) return; done = true; outer.remove(); bumpBar(); };
-    dot.addEventListener('animationend', land, { once: true });
-    setTimeout(land, 1200);   // на всякий случай: анимацию могли не показать
-    return true;
-  }
-
   function remember(key) {
     const { id, opts } = parseKey(key);
     const d = byId[id];
@@ -1262,7 +1524,7 @@
   }
 
   function refreshSlots() {
-    document.querySelectorAll('[data-slot]').forEach((el) => { el.innerHTML = control(el.dataset.slot); });
+    document.querySelectorAll('[data-slot]').forEach((el) => { el.innerHTML = control(el.dataset.slot, el.dataset.kind); });
   }
 
   // сколько порций ещё можно добавить (ресторан ведёт остаток — больше, чем есть, сервер не примет)
@@ -1285,10 +1547,11 @@
     refreshSlots();
     renderBar();
     if (sheet?.type === 'order') renderSheet();
+    if (route.name === 'delivery') updateDelivery();
     return n > was;
   }
 
-  // Почему сейчас нельзя отправить заказ (пустая строка — можно)
+  // Почему сейчас нельзя отправить заказ на стол (пустая строка — можно)
   function orderBlocker() {
     if (!ONLINE) return t('noServer');
     if (tableState === 'none') return t('noTable');
@@ -1296,6 +1559,25 @@
     if (!R().ordersEnabled) return t('ordersOff');
     if (!R().ordersWhenClosed && !SCH.status(R().schedule, R().timezone).open) return `${t('closedNoOrders')} ${statusInfo().text}.`;
     if (lines().some((l) => !l.ok)) return t('removeSold');
+    return '';
+  }
+  const kmText = (x) => new Intl.NumberFormat(t('locale'), { maximumFractionDigits: 1 }).format(Number(x) || 0);
+  // Почему сейчас нельзя заказать доставку (пустая строка — можно). Имя, телефон и адрес проверяем при отправке.
+  function dvBlocker() {
+    if (!ONLINE) return t('noServer');
+    if (!dvReady() || !R().ordersEnabled) return t('dvOff');
+    if (!R().ordersWhenClosed && !SCH.status(R().schedule, R().timezone).open) return `${t('closedNoOrders')} ${statusInfo().text}.`;
+    if (lines().some((l) => !l.ok)) return t('removeSold');
+    if (profile.lat == null) return t('dvNeedPoint');
+    const q = dv.quote;
+    if (q && !q.ok) {
+      if (q.reason === 'too_far') return t('dvTooFar')(kmText(q.km));
+      if (q.reason === 'off') return t('dvOff');
+      if (q.reason === 'net') return `${t('loadError')}. ${t('loadErrorHint')}`;
+      return t('dvNeedPoint');
+    }
+    const min = q?.ok ? Number(q.min) || 0 : Number(R().deliveryMin) || 0;
+    if (min > 0 && lines().length && dvTotals().sub < min) return t('dvMin')(money(min));
     return '';
   }
 
@@ -1312,15 +1594,15 @@
       : `<button type="button" class="dn-add" data-act="dn-open" data-key="${esc(key)}">${icon('plus', 'sm')}${esc(t('dishNote'))}</button>`;
   }
 
+  // корзина (шторка): строки, пожелания, комментарий; низ зависит от режима
   function orderSheetHtml() {
     const ls = lines();
+    const m = mode();
     const out = [`<h2 class="sheet-title" id="sheet-title">${esc(t('order'))}</h2>`];
-    if (table && tableState !== 'invalid') {
-      out.push(`<p class="table-line"><span>${esc(t('yourTable'))}</span><span class="table-tag">${icon('table')}${esc(t('table'))} ${esc(table)}</span></p>`);
-    }
+    if (m === 'table') out.push(`<p class="mode-line is-table">${icon('check', 'sm')}<span>${esc(t('modeTable')(table || '…'))}</span></p>`);
+    else if (m === 'delivery') out.push(`<p class="mode-line is-dv">${icon('moto', 'sm')}<span>${esc(t('modeDv'))}</span></p>`);
     if (!ls.length) {
-      out.push(`<div class="state">${icon('list')}<p>${esc(t('orderEmpty'))}</p></div>`);
-      out.push(myOrdersHtml());
+      out.push(`<div class="state">${icon('bag')}<p>${esc(t('orderEmpty'))}</p></div>`);
       return out.join('');
     }
     const gone = ls.filter((l) => !l.ok);
@@ -1330,11 +1612,11 @@
       out.push(`<p class="notice" role="status">${icon('alert')}<span>${esc(t('priceNotice')(txt))}</span></p>`);
     }
     // строку можно смахнуть влево — под ней терракотовая кнопка «Удалить»
-    out.push(`<ul class="order-list cart-list">${ls.map(({ key, id, n, d, ok, unit, names }) => `
+    out.push(`<ul class="cart-list">${ls.map(({ key, id, n, d, ok, unit, names }) => `
       <li class="cart-line${ok ? '' : ' gone'}" data-line="${esc(key)}">
         <button type="button" class="swipe-del" data-act="swipe-del" data-key="${esc(key)}" tabindex="-1" aria-hidden="true">${icon('trash')}<span>${esc(t('del'))}</span></button>
         <div class="cl-row">
-        ${photo(d)}
+        ${thumb(d, 'sm')}
         <span class="o-name"><b>${esc(itemName(id))}</b>${names.length ? `<em class="o-opts">${esc(names.join(', '))}</em>` : ''}<small>${ok ? `${money(unit)} × ${n}` : esc(d?.available && !catOpen(catOf(d)) ? t('notNowRow')(clock(catOf(d).from), clock(catOf(d).to)) : t('soldOutRow'))}</small></span>
         <span class="o-sum">${ok ? money(unit * n) : ''}</span>
         <div class="o-ctl">${ok ? lineControl(key) : '<span></span>'}
@@ -1348,81 +1630,129 @@
         <textarea id="note-input" rows="3" maxlength="300" aria-labelledby="note-l" placeholder="${esc(t('notePh'))}">${esc(note)}</textarea></section>`);
     }
     out.push(pairsHtml(pairsFor(ls.map((l) => l.id), 3), t('upsell')));
-    out.push(chargesHtml(charges(totals().sum), true));
+    if (m === 'delivery') { const c = dvTotals(); out.push(chargesHtml({ sub: c.sub, service: 0, tax: c.tax, total: r2(c.sub + c.tax) }, true)); }
+    else if (m === 'table') out.push(chargesHtml(charges(totals().sum), true));
+    else out.push(chargesHtml({ sub: totals().sum, service: 0, tax: 0, total: r2(totals().sum) }, false));
     out.push(`<button type="button" class="link-clear" data-act="clear">${icon('trash', 'sm')}${esc(t('clear'))}</button>`);
 
-    // закреплённый низ: причина, ошибка, кнопка отправки
-    const block = orderBlocker();
+    // закреплённый низ: причина, ошибка, кнопка
     const foot = [];
-    if (block) foot.push(`<p class="notice ${tableState === 'invalid' || !ONLINE ? 'bad' : ''}" role="status">${icon('alert')}<span>${esc(block)}</span></p>`);
-    else if (tableState === 'checking') foot.push(`<p class="notice info" role="status">${icon('refresh')}<span>${esc(t('checkingTable'))}</span></p>`);
-    if (sendError) foot.push(`<p class="notice bad" role="alert">${icon('alert')}<span>${esc(sendError)}</span></p>`);
-    if (ONLINE) {
+    if (!ONLINE) {
+      foot.push(`<p class="notice" role="status">${icon('alert')}<span>${esc(t('noServer'))}</span></p>`);
+    } else if (m === 'table') {
+      const block = orderBlocker();
+      if (block) foot.push(`<p class="notice ${tableState === 'invalid' ? 'bad' : ''}" role="status">${icon('alert')}<span>${esc(block)}</span></p>`);
+      else if (tableState === 'checking') foot.push(`<p class="notice info" role="status">${icon('refresh')}<span>${esc(t('checkingTable'))}</span></p>`);
+      if (sendError) foot.push(`<p class="notice bad" role="alert">${icon('alert')}<span>${esc(sendError)}</span></p>`);
       foot.push(`<button type="button" class="btn block send-btn" data-act="send"${block || sending ? ' disabled' : ''}>
         ${sending ? `<span class="spinner" aria-hidden="true"></span><span>${esc(t('sending'))}</span>` : `<span>${esc(t('sendOrder'))}</span><span class="send-sum"><bdi dir="ltr">${money(charges(totals().sum).total)}</bdi></span>`}</button>`);
+    } else if (m === 'delivery') {
+      foot.push(`<button type="button" class="btn block send-btn" data-act="to-delivery"><span>${esc(t('toDelivery'))}</span>${icon('arrow', 'flip')}</button>`);
+    } else {
+      foot.push(`<p class="sheet-desc how-q">${esc(t('howTitle'))}</p>${waysHtml(true)}`);
     }
     out.push(`<div class="sheet-actions">${foot.join('')}</div>`);
-    out.push(myOrdersHtml());
     return out.join('');
   }
 
-  function myOrdersHtml() {
-    const list = myOrders.filter((o) => tracked[o.id]).slice(0, 5);
-    if (!list.length) return '';
-    return `<h4>${esc(t('myOrders'))}</h4><ul class="my-orders">${list.map((o) => {
-      const st = guestStatus(tracked[o.id].status);
-      return `<li><button type="button" class="my-order" data-act="track" data-id="${esc(o.id)}">
-        <span><b>${esc(t('orderNo')(o.no))}</b><small>${esc(t('sentAt')(timeOf(tracked[o.id].created_at)))}</small></span>
-        <span class="st st-${esc(st)}">${st === 'accepted' ? icon('check', 'sm') : ''}${esc(t('statuses')[st])}</span>${icon('chevron', 'chev')}</button></li>`;
-    }).join('')}</ul>`;
+  const timeOf = (iso) => new Intl.DateTimeFormat(t('locale'), { hour: '2-digit', minute: '2-digit', hour12: lang === 'en' }).format(new Date(iso));
+  const dayTimeOf = (iso) => {
+    const d = new Date(iso);
+    const today = new Date().toDateString() === d.toDateString();
+    return today ? timeOf(iso) : `${new Intl.DateTimeFormat(t('locale'), { day: 'numeric', month: 'short' }).format(d)}, ${timeOf(iso)}`;
+  };
+  // в ресторане всё просто: заказ отправлен → подан (или отменён). Без «принят / готовится / готово» (правило владельца).
+  const guestStatus = (s) => (['served', 'cancelled'].includes(s) ? s : 'new');
+  // доставка: свои этапы — ждём подтверждения → приняли → готовим → в пути → доставлено
+  const DV_STATUSES = ['new', 'accepted', 'cooking', 'ready', 'on_the_way', 'served', 'cancelled'];
+  const dvStatus = (s) => (DV_STATUSES.includes(s) ? s : 'new');
+  function statusText(o, kind) {
+    if (!o) return '';
+    if (kind !== 'delivery') return t('statuses')[guestStatus(o.status)];
+    const s = dvStatus(o.status);
+    return s === 'cancelled' ? t('statuses').cancelled
+      : s === 'new' ? t('stWait') : s === 'ready' ? t('stReady') : s === 'on_the_way' ? t('stWay') : s === 'served' ? t('stDone') : t('stCooking');
+  }
+  const stKind = (o, kind) => {
+    const s = o?.status;
+    if (s === 'cancelled') return 'off';
+    if (s === 'served') return 'ok';
+    return kind === 'delivery' && s !== 'new' ? 'go' : 'wait';
+  };
+
+  // шаги доставки — как на макете: точка, линия, время там, где оно известно
+  function dvStepsHtml(o) {
+    const s = dvStatus(o.status);
+    const rank = { new: 0, accepted: 1, cooking: 1, ready: 2, on_the_way: 3, served: 4 }[s] ?? 0;
+    // имя курьера — в карточке ниже; здесь только расстояние, как на макете
+    const way = o.distance_km != null ? t('kmToYou')(kmText(o.distance_km)) : '';
+    const steps = [
+      { b: rank >= 1 ? t('stAccepted') : t('stWait'), at: o.accepted_at, done: rank >= 1, now: rank === 0 },
+      { b: s === 'ready' ? t('stReady') : t('stCooking'), done: rank >= 3, now: rank === 1 || rank === 2 },
+      { b: t('stWay'), small: rank === 3 ? way : '', at: o.picked_at, done: rank >= 4, now: rank === 3 },
+      { b: t('stDone'), at: o.served_at, done: rank >= 4, now: false },
+    ];
+    return `<ol class="steps">${steps.map((x) => `<li class="st${x.done ? ' done' : x.now ? ' now' : ''}"${x.now ? ' aria-current="step"' : ''}>
+      <span class="dot" aria-hidden="true">${x.done ? icon('check') : ''}</span>
+      <b>${esc(x.b)}${x.small ? `<small>${esc(x.small)}</small>` : ''}</b><em>${x.at && (x.done || x.now) ? esc(timeOf(x.at)) : ''}</em></li>`).join('')}</ol>`;
   }
 
-  const timeOf = (iso) => new Intl.DateTimeFormat(t('locale'), { hour: '2-digit', minute: '2-digit', hour12: lang === 'en' }).format(new Date(iso));
-  // гость видит три состояния: отправлен → принят официантом (кухонные этапы тоже считаются принятым) / отменён
-  // гость видит путь заказа: отправлен → принят → готовится → готово (несут) → подано / отменён
-  // в ресторане всё просто: заказ отправлен → подан (или отменён). Без «принят / готовится / готово».
-  const guestStatus = (s) => (['served', 'cancelled'].includes(s) ? s : 'new');
-
-  const shownStatus = {};   // что гость уже видел — новый статус «подпрыгивает»
-  let renderedTrack = null; // какую шторку заказа уже показали — появление играет один раз
-  const STATUS_ICON = { new: 'clock', accepted: 'check', served: 'check', cancelled: 'x' };
-  // фаза бесконечной анимации привязана к часам: перерисовка не сбивает пульс
-  const phase = (ms) => `--ph:-${Date.now() % ms}ms`;
-  function trackSheetHtml(id) {
+  // ---------- «Где мой заказ» (экран) ----------
+  function trackHtml(id) {
     const o = tracked[id];
     const mine = myOrders.find((x) => x.id === id);
-    if (!o || !mine) return `<div class="state">${icon('alert')}<p>${esc(t('errServer'))}</p></div>`;
-    const gs = guestStatus(o.status);
-    const enter = renderedTrack !== id;
-    renderedTrack = id;
-    const before = enter ? null : shownStatus[id];
-    const changed = before && before !== gs;
-    setTimeout(() => { if (tracked[id]) shownStatus[id] = guestStatus(tracked[id].status); }, 0);
-    const sentNow = justSent === id && gs === 'new';
-    const ic = sentNow ? 'check' : STATUS_ICON[gs];
-    const kind = gs === 'new' || gs === 'cancelled' ? gs : 'ok';
-    return `<div class="track${enter ? ' enter' : ''}">
-      <h2 class="sheet-title tr-a" id="sheet-title" style="--i:0">${esc(t('orderNo')(o.no))}</h2>
-      <p class="track-meta tr-a" style="--i:1"><span class="table-tag">${icon('table')}${esc(t('table'))} ${esc(o.table_label)}</span><span class="tm-time">${icon('clock', 'sm')}${esc(timeOf(o.created_at))}</span>${o.paid_at ? `<span class="badge ok paid-tag">${icon('check', 'sm')}${esc(t('paid'))}</span>` : ''}</p>
-      <div class="track-card tr-a is-${kind}${changed ? ' pop' : ''}${sentNow && enter ? ' sent' : ''}" style="--i:2" aria-live="polite">
-        <span class="track-icon" style="${phase(2000)}">${icon(ic)}</span>
-        <div><b>${esc(t('statuses')[gs])}</b><span>${esc(t('statusHint')[gs])}</span></div>
-      </div>
+    if (!o || !mine) {
+      return `${subHead(t('order'))}<div class="state">${mine ? '<span class="spinner" aria-hidden="true"></span>' : `${icon('alert')}<p>${esc(t('errServer'))}</p>`}
+        <button type="button" class="btn ghost" data-act="go" data-to="orders">${esc(t('myOrders'))}</button></div>`;
+    }
+    const kind = o.kind || mine.kind || 'table';
+    const dvk = kind === 'delivery';
+    const gs = dvk ? dvStatus(o.status) : guestStatus(o.status);
+    const head = dvk ? t('dvSt')[gs] : t('statuses')[gs];
+    const hint = dvk ? t('dvHint')[gs] : t('statusHint')[gs];
+    const sentNow = justSent === id && o.status === 'new';
+    const items = (o.items || []).map((i) => {
+      const on = (i.opts || []).map((x) => L(x.name)).filter(Boolean);
+      return `<li><span class="o-name"><b>${esc(L(i.name) || i.id)}${Number(i.qty) > 1 ? ` <span class="x">× ${Number(i.qty)}</span>` : ''}</b>${on.length ? `<em class="o-opts">${esc(on.join(', '))}</em>` : ''}${i.note ? `<span class="dn-show static"><span class="dn-mark" aria-hidden="true">!</span><span>${esc(i.note)}</span></span>` : ''}</span><b class="o-sum">${money(i.price * i.qty)}</b></li>`;
+    }).join('');
+    const sub = Number(o.subtotal ?? o.total) || 0;
+    const r = R();
+    const sumRows = [
+      Number(o.service) ? `<div><span>${esc(t('service')(''))}</span><b>${money(o.service)}</b></div>` : '',
+      Number(o.tax) ? `<div><span>${esc(r.taxName || 'SST')}</span><b>${money(o.tax)}</b></div>` : '',
+      dvk ? `<div><span>${esc(t('dvFee'))}</span><b>${money(o.delivery_fee || 0)}</b></div>` : '',
+    ].join('');
+    const payTxt = o.paid_at ? t('paid') : o.pay_method === 'card' ? t('dvPayCard') : t('dvPayCashC');
+    const courier = dvk && o.courier_name && ['on_the_way', 'served'].includes(o.status)
+      ? `<div class="courier"><span class="ava" aria-hidden="true">${esc(monogram(o.courier_name).slice(0, 1))}</span><b>${esc(t('courier')(o.courier_name))}<small>${esc(`${payTxt} · ${money(o.total)}`)}</small></b></div>` : '';
+    const where = dvk && o.address
+      ? `<p class="where">${icon('pin', 'sm')}<span>${esc(o.address)}${o.distance_km != null ? ` · ${esc(t('dvKm')(kmText(o.distance_km)))}` : ''}</span></p>` : '';
+    return `${subHead(t('order'))}
+      <section class="track-card is-${stKind(o, kind)}${sentNow ? ' sent' : ''}" aria-live="polite">
+        <p class="no">${esc(dvk ? t('trDv')(o.no) : t('trTable')(o.table_label, o.no))}</p>
+        <h2>${esc(head)}</h2>
+        <p class="hint">${esc(hint)}</p>
+        ${dvk && gs !== 'cancelled' ? dvStepsHtml(o) : `<p class="t-meta">${icon(gs === 'served' ? 'check' : gs === 'cancelled' ? 'x' : 'clock', 'sm')}<span>${esc(t('sentAt')(timeOf(o.created_at)))}</span>${o.paid_at ? `<span class="paid-tag">${icon('check', 'sm')}${esc(t('paid'))}</span>` : ''}</p>`}
+        ${where}
+      </section>
+      ${courier}
       ${trackStale ? `<p class="notice info">${icon('alert')}<span>${esc(t('statusStale'))}</span></p>` : ''}
       ${o.edited_at ? `<p class="notice info">${icon('refresh')}<span>${esc(t('edited')(timeOf(o.edited_at)))}</span></p>` : ''}
-      <ul class="order-list track-list tr-a" style="--i:4">${(o.items || []).map((i) => {
-        const on = (i.opts || []).map((x) => L(x.name)).filter(Boolean);
-        return `
-        <li><span class="o-name"><b>${esc(L(i.name) || i.id)}</b>${on.length ? `<em class="o-opts">${esc(on.join(', '))}</em>` : ''}${i.note ? `<span class="dn-show static"><span class="dn-mark" aria-hidden="true">!</span><span>${esc(i.note)}</span></span>` : ''}<small>${money(i.price)} × ${i.qty}</small></span><span class="o-sum">${money(i.price * i.qty)}</span></li>`;
-      }).join('')}</ul>
+      <section class="sum-card">
+        <ul class="track-list">${items}</ul>
+        <div class="sum-rows">${sumRows ? `<div><span>${esc(t('subtotal'))}</span><b>${money(sub)}</b></div>${sumRows}` : ''}<div class="tot"><span>${esc(t('total'))}</span><b>${money(o.total)}</b></div></div>
+      </section>
       ${o.note ? `<p class="notice info">${icon('list')}<span><b>${esc(t('note'))}:</b> ${esc(o.note)}</span></p>` : ''}
-      ${chargesHtml({ sub: o.subtotal ?? o.total, service: o.service || 0, tax: o.tax || 0, total: o.total }, false)}
       ${reviewHtml(id, o)}
-      <div class="track-actions tr-a" style="--i:5">
-        ${o.paid_at ? `<button type="button" class="btn" data-act="receipt" data-id="${esc(id)}">${icon('list', 'sm')}<span>${esc(t('receipt'))}</span></button>` : ''}
-        ${gs !== 'cancelled' ? `<button type="button" class="btn soft" data-act="repeat" data-id="${esc(id)}">${icon('refresh', 'sm')}<span>${esc(t('repeat'))}</span></button>` : ''}
-        <button type="button" class="btn ghost" data-act="more"><span>${esc(t('orderMore'))}</span></button>
-      </div></div>`;
+      <div class="track-actions">
+        ${o.paid_at ? `<button type="button" class="btn ghost" data-act="receipt" data-id="${esc(id)}">${icon('list', 'sm')}<span>${esc(t('receipt'))}</span></button>` : ''}
+        ${o.status !== 'cancelled' ? `<button type="button" class="btn soft" data-act="repeat" data-id="${esc(id)}">${icon('refresh', 'sm')}<span>${esc(t('repeat'))}</span></button>` : ''}
+        <button type="button" class="btn ghost" data-act="go" data-to="menu"><span>${esc(t('orderMore'))}</span></button>
+      </div>`;
+  }
+  function renderTrack() {
+    if (route.name !== 'track') return;
+    setHtml($('#scr-track'), trackHtml(route.arg));
   }
 
   // ---------- Чек в телефоне ----------
@@ -1435,7 +1765,7 @@
     if (sheet?.type === 'receipt' && sheet.id === id) { sheet.data = data; renderSheet(); }
   }
   function receiptHtml() {
-    const back = `<button type="button" class="btn ghost" data-act="track" data-id="${esc(sheet.id)}">${esc(t('receiptBack'))}</button>`;
+    const back = `<button type="button" class="btn ghost" data-act="close-sheet">${esc(t('receiptBack'))}</button>`;
     const b = sheet.data;
     if (b === undefined) return `<h2 class="sheet-title" id="sheet-title">${esc(t('receipt'))}</h2><div class="state"><span class="spinner" aria-hidden="true"></span></div>`;
     if (b === 'error') return `<h2 class="sheet-title" id="sheet-title">${esc(t('receipt'))}</h2><p class="notice">${icon('alert')}<span>${esc(t('errServer'))}</span></p><div class="track-actions">${back}</div>`;
@@ -1473,7 +1803,7 @@
         <div class="rc-block">
           ${row(t('subtotal'), num(n('subtotal')))}
           ${n('discount') ? row(`${t('rcDiscount')}${b.discount_pct ? ` ${Number(b.discount_pct)}%` : ''}`, `−${num(n('discount'))}`) : ''}
-          ${n('service') ? row(t('svcBtn')(pctOf(n('service'), n('subtotal') - n('discount')).replace('%', '')), num(n('service'))) : ''}
+          ${n('service') ? row(t('service')(pctOf(n('service'), n('subtotal') - n('discount')).replace('%', '')), num(n('service'))) : ''}
           ${n('tax') ? row(`${r.taxName || 'SST'} ${pctOf(n('tax'), taxBase)}`.trim(), num(n('tax'))) : ''}
         </div>
         ${row(t('total'), cur(n('total')), 'rc-total')}
@@ -1527,11 +1857,12 @@
   // оценки блюд гостя: { заказ: { блюдо: 1 | -1 } } — помним, чтобы кнопки оставались выбранными
   let dishVotes = store.get('votes', {}) || {};
   // анимации отзыва играют только по действию гостя и один раз — перерисовка статуса их не повторяет
-  const starsIntro = new Set();   // у каких заказов звёзды уже «пробежали» при появлении
   let starsLit = false;           // гость только что поставил оценку
   let thanksFor = null;           // отзыв только что ушёл — «спасибо» появляется мягко
   function reviewHtml(id, o) {
-    if (!ONLINE || (!['served', 'ready', 'cooking'].includes(o.status) && !o.paid_at)) return '';
+    // за столом — можно уже за едой; доставку — когда её привезли
+    const can = o.kind === 'delivery' ? o.status === 'served' || !!o.paid_at : ['served', 'ready', 'cooking'].includes(o.status) || !!o.paid_at;
+    if (!ONLINE || !can) return '';
     if (reviewed[id]) {
       const fresh = thanksFor === id ? ' thanks-in' : '';
       thanksFor = null;
@@ -1543,9 +1874,8 @@
       return `<p class="notice ok${fresh}">${icon('check')}<span>${esc(t('rateThanks'))}</span></p>`;
     }
     const r = reviewDraft.rating;
-    const anim = starsLit ? ' lit' : starsIntro.has(id) ? '' : ' intro';
+    const anim = starsLit ? ' lit' : '';
     starsLit = false;
-    starsIntro.add(id);
     return `<section class="review" aria-labelledby="rv-t"><h4 id="rv-t">${esc(t('rateTitle'))}</h4>
       <div class="stars${anim}" role="radiogroup" aria-label="${esc(t('rateTitle'))}">${[1, 2, 3, 4, 5].map((n) => `<button type="button" class="star${n <= r ? ' on' : ''}" style="--i:${n - 1}" data-act="rate" data-n="${n}" role="radio" aria-checked="${n === r}" aria-label="${esc(t('rateStar')(n))}"><svg class="ic" aria-hidden="true"><use href="#i-star"/></svg></button>`).join('')}</div>
       ${r ? votesHtml(id, o) : ''}
@@ -1580,7 +1910,7 @@
     const mine = myOrders.find((x) => x.id === id);
     if (!mine || !reviewDraft.rating || reviewBusy) return;
     reviewBusy = true;
-    renderSheet();
+    renderTrack();
     try {
       // оценки блюд — вместе с отзывом (повторная отправка безопасна: сервер перезаписывает)
       const votes = Object.fromEntries(Object.entries(dishVotes[id] || {}).filter(([, v]) => v === 1 || v === -1));
@@ -1595,7 +1925,7 @@
       toast(t('rateThanks'), 'good');
     } catch { toast(t('errServer'), 'bad'); }
     reviewBusy = false;
-    renderSheet();
+    renderTrack();
   }
   document.addEventListener('input', (e) => { if (e.target.id === 'review-text') reviewDraft.text = e.target.value; });
   function repeatOrder(id) {
@@ -1621,8 +1951,11 @@
     store.set('order', order);
     refreshSlots();
     renderBar();
-    if (added) { openSheet({ type: 'order' }); toast(skipped ? t('repeatSome') : t('repeatDone')(added), skipped ? '' : 'good'); }
-    else toast(t('repeatSome'), 'bad');
+    if (added) {
+      if (route.name !== 'menu') go('menu');
+      openSheet({ type: 'order' });
+      toast(skipped ? t('repeatSome') : t('repeatDone')(added), skipped ? '' : 'good');
+    } else toast(t('repeatSome'), 'bad');
   }
 
   // ---------- Выбор вариантов блюда ----------
@@ -1668,7 +2001,7 @@
   function renderTableActions() {
     const el = $('#table-actions');
     if (!el) return;
-    const show = ONLINE && !!tableToken && tableState !== 'invalid' && tableState !== 'none';
+    const show = ONLINE && atTable() && (route.name === 'menu' || route.name === 'home');
     el.hidden = !show;
     document.body.classList.toggle('has-dock', show);
     if (!show) { el.innerHTML = ''; return; }
@@ -1704,7 +2037,7 @@
       scheduleCalls();
     } catch (e) {
       const m = String(e?.message || '');
-      if (/bad_table/.test(m)) { tableState = 'invalid'; table = ''; store.set('table', null); renderHeader(); renderMenu(); }
+      if (/bad_table/.test(m)) { forgetTable(); tableState = 'invalid'; if (sheet) closeSheet(); renderAll(); }
       toast(/too_many/.test(m) ? t('errTooMany') : t('callErr'), 'bad');
     } finally {
       calling = false;
@@ -1799,6 +2132,56 @@
     return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
   }
   const cartSig = () => JSON.stringify([tableToken, note.trim(), lines().map((l) => [l.key, l.n, l.unit]).sort()]);
+  // строки корзины в том виде, как их ждут place_order и place_delivery
+  const itemsPayload = () => lines().map((l) => ({ id: l.id, qty: l.n, price: l.unit, ...(l.opts.length ? { opts: l.opts } : {}), ...(dishNotes[l.key]?.trim() ? { note: dishNotes[l.key].trim().slice(0, 120) } : {}) }));
+  // 1) свежие цены и наличие: если что-то изменилось — показываем гостю и НЕ отправляем
+  async function freshCheck() {
+    const before = JSON.stringify(lines().map((l) => [l.key, l.ok, l.unit]));
+    const fresh = await refreshMenu(true);
+    if (!fresh) throw Object.assign(new Error('network'), { net: true });
+    return JSON.stringify(lines().map((l) => [l.key, l.ok, l.unit])) === before;
+  }
+  // сервер подтвердил — только теперь «отправлен»: запоминаем заказ, чистим корзину, открываем «Где мой заказ»
+  function placed(o, kind) {
+    myOrders = [{ id: o.id, token: o.guest_token, no: o.no, at: Date.now(), kind }, ...myOrders.filter((x) => x.id !== o.id)].slice(0, 20);
+    tracked[o.id] = { ...o, kind, table_label: o.table_label || (kind === 'delivery' ? '' : table), updated_at: o.created_at };
+    store.set('myOrders', myOrders);
+    store.set('tracked', tracked);
+    order = {};
+    seen = {};
+    note = '';
+    priceChanges = [];
+    pendingKey = null;
+    dishNotes = {};
+    noteOpen = null;
+    saveDishNotes();
+    ['order', 'seen', 'note', 'pendingKey'].forEach((k) => store.set(k, k === 'order' || k === 'seen' ? {} : k === 'note' ? '' : null));
+    refreshSlots();
+    justSent = o.id;
+    if (sheet) closeSheet();
+    go('track', o.id, route.name === 'delivery');
+    schedulePoll(true);
+  }
+  // ошибка сервера → понятный гостю текст (и свежее меню, если дело в нём)
+  async function orderErr(e, kind) {
+    const m = String(e?.message || '');
+    const dvk = kind === 'delivery';
+    if (e?.net) return t('errNetwork');
+    if (/sold_out/.test(m)) {
+      // порций осталось меньше, чем в заказе: свежее меню и точная подсказка, сколько осталось
+      await refreshMenu(true);
+      const d = byId[(m.match(/sold_out:([^\s"]+)/) || [])[1]];
+      return d && d.stock > 0 ? t('errStockLeft')(L(d.name), d.stock) : t('errChanged');
+    }
+    if (/price_changed|unavailable|options|not_now|bad_items/.test(m)) { await refreshMenu(true); return t('errChanged'); }
+    if (!dvk && /bad_table/.test(m)) { forgetTable(); tableState = 'invalid'; return ''; }
+    if (dvk && /delivery_off/.test(m)) { await refreshMenu(true); return t('dvOff'); }
+    if (/closed|orders_off/.test(m)) { await refreshMenu(true); return dvk ? dvBlocker() || t('dvOff') : ''; }
+    if (/too_many/.test(m)) return dvk ? t('dvTooMany') : t('errTooMany');
+    if (dvk && /too_far|bad_point|below_min/.test(m)) { await quote(); return dvBlocker() || t('dvBadReq'); }
+    if (dvk && /bad_request|empty/.test(m)) return t('dvBadReq');
+    return t('errServer');
+  }
 
   async function sendOrder() {
     if (sending || !lines().length || orderBlocker()) { renderSheet(); return; }
@@ -1806,11 +2189,7 @@
     sendError = '';
     renderSheet();
     try {
-      // 1) свежие цены и наличие: если что-то изменилось — показываем гостю и НЕ отправляем
-      const before = JSON.stringify(lines().map((l) => [l.key, l.ok, l.unit]));
-      const fresh = await refreshMenu(true);
-      if (!fresh) throw Object.assign(new Error('network'), { net: true });
-      if (JSON.stringify(lines().map((l) => [l.key, l.ok, l.unit])) !== before) { sendError = t('errChanged'); return; }
+      if (!(await freshCheck())) { sendError = t('errChanged'); return; }
       if (orderBlocker()) return;
       // 2) один ключ на одну попытку: повторное нажатие и плохой интернет не создадут второй заказ
       const sig = cartSig();
@@ -1820,48 +2199,22 @@
       }
       const rows = await rpc('place_order', {
         p_table: tableToken,
-        p_items: lines().map((l) => ({ id: l.id, qty: l.n, price: l.unit, ...(l.opts.length ? { opts: l.opts } : {}), ...(dishNotes[l.key]?.trim() ? { note: dishNotes[l.key].trim().slice(0, 120) } : {}) })),
+        p_items: itemsPayload(),
         p_note: note.trim() || null,
         p_lang: lang,
         p_client_key: pendingKey.key,
       });
       const o = Array.isArray(rows) ? rows[0] : rows;
       if (!o?.id || !o.guest_token) throw new Error('bad_reply');
-      // 3) сервер подтвердил — только теперь говорим «отправлен»
-      myOrders = [{ id: o.id, token: o.guest_token, no: o.no, at: Date.now() }, ...myOrders.filter((x) => x.id !== o.id)].slice(0, 10);
-      tracked[o.id] = { ...o, updated_at: o.created_at };
-      store.set('myOrders', myOrders);
-      store.set('tracked', tracked);
-      order = {};
-      seen = {};
-      note = '';
-      priceChanges = [];
-      pendingKey = null;
-      dishNotes = {};
-      noteOpen = null;
-      saveDishNotes();
-      ['order', 'seen', 'note', 'pendingKey'].forEach((k) => store.set(k, k === 'order' || k === 'seen' ? {} : k === 'note' ? '' : null));
-      refreshSlots();
-      justSent = o.id;
-      sheet = { type: 'track', id: o.id };
-      schedulePoll(true);
+      sending = false;
+      placed(o, 'table');
     } catch (e) {
-      const m = String(e?.message || '');
-      if (e?.net) sendError = t('errNetwork');
-      else if (/sold_out/.test(m)) {
-        // порций осталось меньше, чем в заказе: свежее меню и точная подсказка, сколько осталось
-        await refreshMenu(true);
-        const d = byId[(m.match(/sold_out:([^\s"]+)/) || [])[1]];
-        sendError = d && d.stock > 0 ? t('errStockLeft')(L(d.name), d.stock) : t('errChanged');
-      } else if (/price_changed|unavailable|options|not_now/.test(m)) { await refreshMenu(true); sendError = t('errChanged'); }
-      else if (/bad_table/.test(m)) { tableState = 'invalid'; table = ''; store.set('table', null); sendError = ''; }
-      else if (/closed|orders_off/.test(m)) { await refreshMenu(true); sendError = ''; }
-      else if (/too_many/.test(m)) sendError = t('errTooMany');
-      else sendError = t('errServer');
+      sendError = await orderErr(e, 'table');
     } finally {
       sending = false;
       renderHeader();
       renderBar();
+      renderTableActions();
       renderSheet();
     }
   }
@@ -1870,7 +2223,8 @@
   let pollTimer = null;
   async function pollOrders() {
     if (!ONLINE) return;
-    const recent = myOrders.filter((o) => Date.now() - o.at < 24 * 60 * 60 * 1000).slice(0, 5);
+    // последние сутки — все (чек, отзыв); старше — только незавершённые
+    const recent = myOrders.filter((o) => Date.now() - o.at < 24 * 60 * 60 * 1000 || !tracked[o.id] || isActiveOrder(tracked[o.id])).slice(0, 8);
     if (!recent.length) return;
     let ok = true;
     let changed = false;
@@ -1891,57 +2245,90 @@
       gone.forEach((id) => delete tracked[id]);
       store.set('myOrders', myOrders);
       changed = true;
-      if (sheet?.type === 'track' && gone.includes(sheet.id)) closeSheet();
     }
     if (trackStale === ok) changed = true;
     trackStale = !ok;
     if (changed) {
       store.set('tracked', tracked);
       renderBar();
-      if (sheet?.type === 'track' || sheet?.type === 'order') renderSheet();
+      renderTabs();
+      if (route.name === 'track') renderTrack();
+      if (route.name === 'orders') renderOrders();
     }
   }
   function schedulePoll(soon) {
     clearTimeout(pollTimer);
     if (!ONLINE || !myOrders.length) return;
-    const active = myOrders.some((o) => ['new', 'accepted', 'cooking', 'ready'].includes(tracked[o.id]?.status) && !tracked[o.id]?.paid_at);
+    const active = myOrders.some((o) => isActiveOrder(tracked[o.id]));
     pollTimer = setTimeout(async () => {
       if (!document.hidden) await pollOrders();
       schedulePoll();
     }, soon ? 3000 : active ? 10000 : 60000);
   }
 
+  // ---------- Стол ----------
+  async function tableInfo(token) {   // { label, wifi } | null — нет такого стола; без связи — исключение
+    const rows = await rpc('table_info', { p_token: token });
+    const row = Array.isArray(rows) ? rows[0] : rows;
+    return row?.label ? { label: row.label, wifi: row.wifi_name ? { name: row.wifi_name, pass: row.wifi_pass || '' } : null } : null;
+  }
+  // забыть стол: вышли сами, прошло 4 часа или сервер сказал, что кода больше нет
+  function forgetTable() {
+    tableToken = '';
+    tableAt = 0;
+    table = '';
+    wifi = null;
+    tableState = 'none';
+    openCalls = { waiter: false, bill: false, reasons: [] };
+    clearTimeout(callsTimer);
+    store.set('table', null);
+  }
+  function setTable(token, info) {
+    tableToken = token;
+    tableAt = Date.now();
+    table = info.label;
+    wifi = info.wifi;
+    tableState = 'ok';
+    store.set('table', { token, at: tableAt, label: table });
+    dvMode = false;
+    store.set('mode', null);
+    pollCalls().then(scheduleCalls);
+  }
   async function checkTable() {
     if (!ONLINE || !tableToken) { if (!tableToken && tableState !== 'invalid') tableState = 'none'; return; }
+    const token = tableToken;
     try {
-      const rows = await rpc('table_info', { p_token: tableToken });
-      const row = Array.isArray(rows) ? rows[0] : rows;
-      if (row?.label) {
-        table = row.label;
-        wifi = row.wifi_name ? { name: row.wifi_name, pass: row.wifi_pass || '' } : null;
+      const info = await tableInfo(token);
+      if (token !== tableToken) return;   // пока ждали, гость отсканировал другой стол
+      if (info) {
+        table = info.label;
+        wifi = info.wifi;
         tableState = 'ok';
-        store.set('table', { token: tableToken, at: Date.now(), label: table });
+        // время сканирования НЕ продлеваем — через 4 часа стол забудется
+        store.set('table', { token, at: tableAt, label: table });
         pollCalls().then(scheduleCalls);
       } else {
-        table = '';
-        wifi = null;
+        forgetTable();
         tableState = 'invalid';
-        store.set('table', null);
       }
     } catch {
       tableState = 'unknown'; // нет связи: проверит сервер при отправке
     }
-    renderHeader();
-    renderTableActions();
-    renderMenu();
-    if (sheet?.type === 'order') renderSheet();
+    renderAll();
+  }
+  // 4 часа со сканирования прошли, пока страница была открыта
+  function expireTable() {
+    if (!tableToken || Date.now() - tableAt < TABLE_TTL) return false;
+    forgetTable();
+    toast(t('tableExpired'));
+    renderAll();
+    return true;
   }
 
   // ---------- Бронь стола ----------
   // На телефоне — только номер брони, её секрет и последний известный статус; правду знает сервер.
   let booking = (() => { const b = store.get('booking', null); return b && b.id && b.token ? b : null; })();
-  const bkForm = { day: null, time: null, people: 2, name: '', phone: '', note: '', busy: false, error: '', key: null, sig: '', ask: false };
-  { const c = store.get('bookingContact', null); if (c) { bkForm.name = String(c.name || '').slice(0, 60); bkForm.phone = String(c.phone || '').slice(0, 20); } }
+  const bkForm = { day: null, time: null, people: 2, name: profile.name, phone: profile.phone, note: '', busy: false, error: '', key: null, sig: '', ask: false };
   let bkTimer = null;
   const pad2 = (n) => String(n).padStart(2, '0');
   const bkActive = () => !!booking && ['new', 'confirmed'].includes(booking.status) && new Date(booking.at).getTime() > Date.now();
@@ -1976,7 +2363,7 @@
     const c = SCH.mins(d.close);
     return c > o ? m >= o && m < c : m >= o;
   }
-  // 14 дней вперёд; время — каждые 30 минут, когда ресторан открыт и не раньше чем через 30 минут
+  // 14 дней вперёд; время — каждые 30 минут, когда ресторан открыт. Сегодняшнее время ближе 30 минут — серое.
   function bkDays() {
     let today;
     try {
@@ -1995,8 +2382,9 @@
         if (!openAt(wd, m)) continue;
         const at = zoned(day, m);
         if (at >= soon) slots.push({ m, iso: new Date(at).toISOString() });
+        else if (k === 0 && at > Date.now() - 2 * 3600000) slots.push({ m, iso: new Date(at).toISOString(), off: true });
       }
-      out.push({ key: `${u.getUTCFullYear()}-${pad2(u.getUTCMonth() + 1)}-${pad2(u.getUTCDate())}`, k, u, wd, slots });
+      out.push({ key: `${u.getUTCFullYear()}-${pad2(u.getUTCMonth() + 1)}-${pad2(u.getUTCDate())}`, k, u, wd, slots, free: slots.some((x) => !x.off) });
     }
     return out;
   }
@@ -2009,46 +2397,65 @@
       return `${day}, ${time}`;
     } catch { return d.toLocaleString(); }
   }
+  // утро / обед / ужин / ночь — по часу слота
+  const bkPart = (m) => (m >= 5 * 60 && m < 12 * 60 ? 'morning' : m >= 12 * 60 && m < 17 * 60 ? 'day' : m >= 17 * 60 && m < 22 * 60 ? 'evening' : 'night');
 
   function bookingHtml() {
-    const title = `<h2 class="sheet-title" id="sheet-title">${esc(t('bkTitle'))}</h2>`;
-    if (booking) return title + bookingCardHtml();
-    if (!R().bookingsEnabled) return `${title}<p class="notice">${icon('alert')}<span>${esc(t('bkErr').bookings_off)}</span></p>`;
+    const head = subHead(t('bkTitle'));
+    if (booking) return `${head}<div class="pad">${bookingCardHtml()}</div>`;
+    if (!R().bookingsEnabled) return `${head}<div class="pad"><p class="notice">${icon('alert')}<span>${esc(t('bkErr').bookings_off)}</span></p></div>`;
     const f = bkForm;
     const days = bkDays();
-    if (!days.some((d) => d.key === f.day && d.slots.length)) f.day = days.find((d) => d.slots.length)?.key || null;
+    if (!days.some((d) => d.key === f.day && d.free)) f.day = days.find((d) => d.free)?.key || null;
     const day = days.find((d) => d.key === f.day);
-    if (f.time && !day?.slots.some((x) => x.iso === f.time)) f.time = null;
+    if (f.time && !day?.slots.some((x) => x.iso === f.time && !x.off)) f.time = null;
     const fmt = (o) => { try { return new Intl.DateTimeFormat(t('locale'), { ...o, timeZone: 'UTC' }); } catch { return new Intl.DateTimeFormat('en', { ...o, timeZone: 'UTC' }); } };
     const wdF = fmt({ weekday: 'short' });
-    const dF = fmt({ day: 'numeric', month: 'short' });
-    const dayChips = days.map((d) => `<button type="button" class="bk-chip bk-day${d.key === f.day ? ' on' : ''}" data-act="bk-day" data-day="${d.key}" aria-pressed="${d.key === f.day}"${d.slots.length ? '' : ' disabled'}>
-        <small>${esc(d.k === 0 ? t('today') : wdF.format(d.u))}</small><b>${esc(dF.format(d.u))}</b>${d.slots.length ? '' : `<small>${esc(t('bkDayOff'))}</small>`}</button>`).join('');
-    const times = day?.slots.length
-      ? `<div class="bk-times">${day.slots.map((x) => `<button type="button" class="bk-chip bk-time${x.iso === f.time ? ' on' : ''}" data-act="bk-time" data-at="${x.iso}" aria-pressed="${x.iso === f.time}"><bdi dir="ltr">${esc(clock(`${pad2(Math.floor(x.m / 60))}:${pad2(x.m % 60)}`))}</bdi></button>`).join('')}</div>`
-      : `<p class="hint-note">${esc(t('bkNoTimes'))}</p>`;
-    return `${title}
-      <h4>${esc(t('bkDate'))}</h4><div class="bk-days">${dayChips}</div>
-      <h4>${esc(t('bkTime'))}</h4>${times}
-      <div class="bk-people"><span>${esc(t('bkPeople'))}</span>
-        <div class="stepper"><button type="button" data-act="bk-people" data-d="-1" aria-label="${esc(`${t('bkPeople')} −1`)}"${f.people <= 1 ? ' disabled' : ''}>${icon('minus')}</button><span aria-live="polite">${f.people}</span><button type="button" data-act="bk-people" data-d="1" aria-label="${esc(`${t('bkPeople')} +1`)}"${f.people >= 20 ? ' disabled' : ''}>${icon('plus')}</button></div></div>
-      <label class="bk-field"><span>${esc(t('bkName'))}</span><input id="bk-name" autocomplete="name" maxlength="60" value="${esc(f.name)}"></label>
-      <label class="bk-field"><span>${esc(t('bkPhone'))}</span><input id="bk-phone" type="tel" inputmode="tel" autocomplete="tel" maxlength="20" dir="ltr" placeholder="${esc(t('bkPhonePh'))}" value="${esc(f.phone)}"></label>
-      <label class="bk-field"><span>${esc(t('bkNote'))}</span><textarea id="bk-note" rows="2" maxlength="300" placeholder="${esc(t('bkNotePh'))}">${esc(f.note)}</textarea></label>
-      <div class="sheet-actions">
+    const dF = fmt({ day: 'numeric' });
+    const mF = fmt({ month: 'short' });
+    const dayPills = days.map((d) => `<button type="button" class="day${d.key === f.day ? ' on' : ''}" data-act="bk-day" data-day="${d.key}" aria-pressed="${d.key === f.day}"${d.free ? '' : ' disabled'} aria-label="${esc(`${wdF.format(d.u)} ${dF.format(d.u)} ${mF.format(d.u)}${d.free ? '' : `, ${t('bkDayOff')}`}`)}">
+        <small>${esc(d.k === 0 ? t('today') : wdF.format(d.u))}</small><b>${esc(dF.format(d.u))}</b><small class="mon">${esc(d.free ? mF.format(d.u) : t('bkDayOff'))}</small></button>`).join('');
+    // время группами: утро, обед, ужин, ночь (по порядку дня)
+    const groups = [];
+    for (const x of day?.slots || []) {
+      const p = bkPart(x.m);
+      if (!groups.length || groups[groups.length - 1].p !== p) groups.push({ p, list: [] });
+      groups[groups.length - 1].list.push(x);
+    }
+    const times = day?.free
+      ? groups.map((g) => `<p class="grp">${esc(t('bkParts')[g.p])}<i aria-hidden="true"></i></p><div class="times">${g.list.map((x) => `<button type="button" class="time${x.iso === f.time ? ' on' : ''}" data-act="bk-time" data-at="${x.iso}" aria-pressed="${x.iso === f.time}"${x.off ? ' disabled' : ''}><bdi dir="ltr">${esc(clock(`${pad2(Math.floor(x.m / 60))}:${pad2(x.m % 60)}`))}</bdi></button>`).join('')}</div>`).join('')
+      : `<p class="hint-note pad">${esc(t('bkNoTimes'))}</p>`;
+    const r = R();
+    const big = r.phone ? `<small>${esc(t('bkBig'))} · <a href="tel:${esc(r.phone.replace(/[^\d+]/g, ''))}"><bdi dir="ltr">${esc(r.phone)}</bdi></a></small>` : '';
+    return `${head}
+      <div class="days" data-keep-x="bk-days" role="group" aria-label="${esc(t('bkDate'))}">${dayPills}</div>
+      <div class="guests"><b>${esc(t('bkPeople'))}${big}</b>
+        <div class="step"><button type="button" data-act="bk-people" data-d="-1" aria-label="${esc(`${t('bkPeople')} −1`)}"${f.people <= 1 ? ' disabled' : ''}>${icon('minus')}</button><b aria-live="polite">${f.people}</b><button type="button" data-act="bk-people" data-d="1" aria-label="${esc(`${t('bkPeople')} +1`)}"${f.people >= 20 ? ' disabled' : ''}>${icon('plus')}</button></div></div>
+      <div class="bk-times" role="group" aria-label="${esc(t('bkTime'))}">${times}</div>
+      <div class="two">
+        <label class="field"><small>${esc(t('bkName'))}</small><input id="bk-name" autocomplete="name" maxlength="60" placeholder="${esc(t('dvNamePh'))}" value="${esc(f.name)}"></label>
+        <label class="field"><small>${esc(t('bkPhone'))}</small><input id="bk-phone" type="tel" inputmode="tel" autocomplete="tel" maxlength="20" dir="ltr" placeholder="${esc(t('bkPhonePh'))}" value="${esc(f.phone)}"></label>
+      </div>
+      <label class="field"><small>${esc(t('bkNote'))}</small><textarea id="bk-note" rows="2" maxlength="300" placeholder="${esc(t('bkNotePh'))}">${esc(f.note)}</textarea></label>
+      <div class="cta-bar">
         ${f.error ? `<p class="notice bad" role="alert">${icon('alert')}<span>${esc(f.error)}</span></p>` : ''}
-        <button type="button" class="btn block send-btn bk-send" data-act="bk-send"${f.busy ? ' disabled' : ''}>${f.busy ? `<span class="spinner" aria-hidden="true"></span><span>${esc(t('sending'))}</span>` : `<span>${esc(t('bkSend'))}</span>`}</button>
+        <button type="button" class="cta" data-act="bk-send"${f.busy ? ' disabled' : ''}>${f.busy ? `<span class="spinner" aria-hidden="true"></span><span>${esc(t('sending'))}</span>` : `<span>${esc(f.time ? t('bkSendAt')(bkWhen(f.time)) : t('bkSend'))}</span>`}</button>
       </div>`;
   }
 
   // карточка брони: «Бронь №101 · сб, 22 нояб., 19:30 · 4 гостя» и статус
-  function bookingCardHtml() {
+  function bookingCardHtml(compact) {
     const b = booking;
     const st = b.status || 'new';
     const stText = st === 'confirmed' && b.table_label ? `${t('bkStatus').confirmed}, ${t('bkTable')(b.table_label)}` : (t('bkStatus')[st] || st);
     const kind = st === 'cancelled' || st === 'no_show' ? 'off' : st === 'new' ? 'wait' : 'ok';
     const canCancel = bkActive();
     const f = bkForm;
+    const card = `<div class="bk-card is-${kind}" aria-live="polite">
+        <span class="bk-icon">${icon(kind === 'ok' ? 'check' : kind === 'off' ? 'x' : 'clock')}</span>
+        <div><b>${esc(stText)}</b><span>${esc([t('bkNo')(b.no), bkWhen(b.at), t('bkGuests')(b.people)].join(' · '))}</span></div>
+      </div>`;
+    if (compact) return `<button type="button" class="bk-open" data-act="go" data-to="booking">${card}</button>`;
     const actions = canCancel
       ? (f.ask
         ? `<p class="bk-ask">${esc(t('bkCancelAsk')(b.no))}</p><div class="btn-pair">
@@ -2056,42 +2463,38 @@
             <button type="button" class="btn soft" data-act="bk-cancel-yes"${f.busy ? ' disabled' : ''}>${f.busy ? '<span class="spinner" aria-hidden="true"></span>' : ''}<span>${esc(t('bkCancelYes'))}</span></button></div>`
         : `<button type="button" class="btn ghost" data-act="bk-cancel">${esc(t('bkCancel'))}</button>`)
       : `<button type="button" class="btn" data-act="bk-new">${esc(t('bkNew'))}</button>`;
-    return `<div class="bk-card is-${kind}" aria-live="polite">
-        <span class="bk-icon">${icon(kind === 'ok' ? 'check' : kind === 'off' ? 'x' : 'clock')}</span>
-        <div><b>${esc(stText)}</b><span>${esc([t('bkNo')(b.no), bkWhen(b.at), t('bkGuests')(b.people)].join(' · '))}</span></div>
-      </div>
+    return `${card}
       ${st === 'new' && canCancel ? `<p class="hint-note">${esc(t('bkWait'))}</p>` : ''}
       ${f.error ? `<p class="notice bad" role="alert">${icon('alert')}<span>${esc(f.error)}</span></p>` : ''}
       <div class="bk-actions">${actions}</div>`;
   }
 
-  function openBooking() {
-    bkForm.error = '';
-    bkForm.ask = false;
-    openSheet({ type: 'booking' });
-    pollBooking();
-    scheduleBooking();
+  function renderBooking() {
+    if (route.name !== 'booking' || !M) return;
+    setHtml($('#scr-booking'), bookingHtml());
   }
   async function sendBooking() {
     const f = bkForm;
     if (f.busy) return;
     const name = f.name.trim();
     const phone = f.phone.trim().replace(/\s+/g, ' ');
-    f.error = !f.time ? t('bkNeedTime') : !name ? t('bkNeedName') : !/^\+?[0-9][0-9 ()-]{5,19}$/.test(phone) ? t('bkNeedPhone') : '';
+    f.error = !f.time ? t('bkNeedTime') : !name ? t('bkNeedName') : !PHONE_RE.test(phone) ? t('bkNeedPhone') : '';
     if (!f.error && new Date(f.time).getTime() < Date.now() + 30 * 60000) { f.time = null; f.error = t('bkErr').bad_time; }
-    if (f.error) { renderSheet(); return; }
+    if (f.error) { renderBooking(); return; }
     // один ключ на одну попытку: повторное нажатие и потерянный ответ не создадут вторую бронь
     const sig = JSON.stringify([name, phone, f.time, f.people, f.note.trim()]);
     if (!f.key || f.sig !== sig) { f.key = uuid(); f.sig = sig; }
     f.busy = true;
-    renderSheet();
+    renderBooking();
     try {
       const rows = await rpc('book_table', { p_name: name, p_phone: phone, p_at: f.time, p_people: f.people, p_note: f.note.trim() || null, p_lang: lang, p_client_key: f.key });
       const r = Array.isArray(rows) ? rows[0] : rows;
       if (!r?.id || !r.guest_token) throw new Error('bad_reply');
       booking = { id: r.id, token: r.guest_token, no: r.no, at: r.at, people: r.people, status: r.status || 'new', table_label: null };
       store.set('booking', booking);
-      store.set('bookingContact', { name, phone });
+      profile.name = name;
+      profile.phone = phone;
+      saveProfile();
       Object.assign(f, { time: null, note: '', key: null, sig: '', error: '', ask: false });
       toast(t('bkSent'), 'good');
       scheduleBooking();
@@ -2104,14 +2507,14 @@
     } finally {
       f.busy = false;
       renderHeader();
-      if (sheet?.type === 'booking') renderSheet();
+      renderBooking();
     }
   }
   async function cancelBooking() {
     if (!booking || bkForm.busy) return;
     bkForm.busy = true;
     bkForm.error = '';
-    renderSheet();
+    renderBooking();
     try {
       await rpc('cancel_booking', { p_id: booking.id, p_token: booking.token });
       booking = { ...booking, status: 'cancelled' };
@@ -2123,10 +2526,10 @@
       bkForm.busy = false;
       bkForm.ask = false;
       renderHeader();
-      if (sheet?.type === 'booking') renderSheet();
+      renderBooking();
     }
   }
-  // статус спрашиваем, когда шторка брони открыта (раз в 20 с) и когда гость вернулся на страницу
+  // статус спрашиваем, когда открыт экран брони (раз в 20 с) и когда гость вернулся на страницу
   async function pollBooking() {
     if (!ONLINE || !booking) return;
     const was = booking;
@@ -2143,12 +2546,12 @@
       }
       store.set('booking', booking);
       renderHeader();
-      if (sheet?.type === 'booking' && !bkForm.busy) renderSheet();
+      if (!bkForm.busy) renderBooking();
     } catch { /* нет связи — показываем последний известный статус */ }
   }
   function scheduleBooking() {
     clearTimeout(bkTimer);
-    if (sheet?.type !== 'booking' || !booking) return;
+    if (route.name !== 'booking' || !booking) return;
     bkTimer = setTimeout(async () => { if (!document.hidden) await pollBooking(); scheduleBooking(); }, 20000);
   }
 
@@ -2205,7 +2608,7 @@
               <span class="opt-name">${esc(L(c.name))}</span>${pr ? `<span class="opt-price"><bdi dir="ltr">${pr > 0 ? '+' : '−'}${money(Math.abs(pr))}</bdi></span>` : ''}</label>`;
           }).join('')}</fieldset>`).join('')}</div>` : '';
       body.innerHTML = `
-        ${photo(d, 'big', true, favBtn(d.id))}
+        <div class="art tint-${tint(d)}${d.photo ? ' has-img' : ''}"${d.photo ? ` data-zoom="${esc(d.id)}"` : ''}>${d.photo ? img(d) : ''}${favBtn(d.id)}</div>
         ${tagsHtml(d)}
         <h2 class="sheet-title" id="sheet-title">${esc(L(d.name))}</h2>
         ${L(d.desc) ? `<p class="sheet-desc">${esc(L(d.desc))}</p>` : ''}
@@ -2223,7 +2626,6 @@
           <div class="slot" data-slot="${esc(d.id)}">${control(d.id)}</div>
         </div>`}
         ${pairsHtml(pairsFor([d.id]), t('pairs'))}`;
-      if (d.photo) body.querySelector('.photo.big')?.setAttribute('data-zoom', d.id);
       return;
     }
 
@@ -2284,13 +2686,10 @@
       return;
     }
     if (sheet.type === 'receipt') { body.innerHTML = receiptHtml(); return; }
-    if (sheet.type === 'track') { body.innerHTML = trackSheetHtml(sheet.id); return; }
-    if (sheet.type === 'booking') {
-      // ряд дней прокручивается вбок — после перерисовки остаётся на месте
-      const sl = body.querySelector('.bk-days')?.scrollLeft || 0;
-      body.innerHTML = bookingHtml();
-      const row = body.querySelector('.bk-days');
-      if (row) row.scrollLeft = sl;
+    if (sheet.type === 'how') {
+      // как будете заказывать: за столом (QR) или доставка — блюдо добавится после выбора
+      body.innerHTML = `<h2 class="sheet-title" id="sheet-title">${esc(t('howTitle'))}</h2>
+        ${pendingAdd ? `<p class="sheet-desc">${esc(t('howHint'))}</p>` : ''}${waysHtml(true)}`;
       return;
     }
     body.innerHTML = orderSheetHtml();
@@ -2323,7 +2722,6 @@
   function closeSheet() {
     if (!sheet) return;
     if (sheet.type === 'order') priceChanges = [];
-    if (sheet.type === 'track') { justSent = null; renderedTrack = null; }
     sheet = null;
     delete rolls.sheet;
     clearTimeout(bkTimer);
@@ -2540,15 +2938,529 @@
   }
 
   // ---------- Тема ----------
-  const media = matchMedia('(prefers-color-scheme: dark)');
+  // светлая по умолчанию, даже если телефон в тёмной теме; тёмная — только если гость выбрал её сам
   let theme = store.get('theme', null);
   function applyTheme() {
-    const th = theme || (media.matches ? 'dark' : 'light');
+    const th = theme === 'dark' ? 'dark' : 'light';
     document.documentElement.dataset.theme = th;
-    document.querySelector('meta[name="theme-color"]').setAttribute('content', th === 'dark' ? '#1B1611' : '#FAF5EC');
-    renderHeader();
+    document.querySelector('meta[name="theme-color"]').setAttribute('content', th === 'dark' ? '#1A1511' : '#F7F1E7');
   }
-  media.addEventListener?.('change', applyTheme);
+
+  // ---------- Плашка режима над меню ----------
+  function renderModeBanner() {
+    const el = $('#mode-banner');
+    if (!el) return;
+    if (!M || !ONLINE) { setHtml(el, ''); return; }
+    const m = mode();
+    const x = (act) => `<button type="button" class="mode-x" data-act="${act}" aria-label="${esc(t('modeExit'))}" title="${esc(t('modeExit'))}">${icon('x')}</button>`;
+    let html;
+    if (m === 'table') {
+      html = `<div class="mode is-table">${icon(tableState === 'ok' ? 'check' : 'clock')}<p><b>${esc(t('modeTable')(table || '…'))}</b><small>${esc(t('modeTableSub'))}</small></p>
+        <button type="button" class="mode-btn" data-act="scan">${esc(t('modeChange'))}</button>${x('table-exit')}</div>`;
+    } else if (m === 'delivery') {
+      const q = dv.quote?.ok ? dv.quote : null;
+      html = `<div class="mode is-dv">${icon('moto')}<p><b>${esc(q ? t('modeDvKm')(kmText(q.km), money(q.fee)) : t('modeDv'))}</b><small>${esc(q && profile.address.trim() ? profile.address.trim() : t('modeDvSub'))}</small></p>
+        <button type="button" class="mode-btn" data-act="go" data-to="delivery">${esc(t('modeEdit'))}</button>${x('dv-exit')}</div>`;
+    } else {
+      html = `<div class="mode is-browse">${icon('book')}<p><b>${esc(t('modeBrowse'))}</b><small>${esc(t('modeBrowseSub'))}</small></p>
+        <button type="button" class="mode-btn" data-act="choose">${esc(t('modeChoose'))}</button></div>`;
+    }
+    setHtml(el, html);
+  }
+
+  // гость нажал «добавить», а способ ещё не выбран: спрашиваем «в ресторане или доставка», блюдо добавим после
+  let pendingAdd = null;
+  const needWay = () => ONLINE && !!M && mode() === 'browse';
+  function askHow(p) {
+    pendingAdd = p;
+    openSheet({ type: 'how' });
+  }
+  function applyPending() {
+    const p = pendingAdd;
+    pendingAdd = null;
+    if (!p) return;
+    if (p.act === 'inc') { change(p.key, 1); return; }
+    const d = byId[p.id];
+    if (!d || !orderable(d) || !optInfo(d, p.sel).ok || stockBlocked(d, p.qty)) return;
+    const key = makeKey(d.id, p.sel);
+    order[key] = Math.min(99, (order[key] || 0) + p.qty);
+    remember(key);
+    store.set('order', order);
+    refreshSlots();
+    renderBar();
+  }
+
+  // ---------- Заказы ----------
+  function renderOrders() {
+    if (route.name !== 'orders') return;
+    const list = myOrders.filter((o) => tracked[o.id]).sort((a, b) => b.at - a.at);
+    const body = list.length
+      ? `<ul class="olist">${list.map((o) => {
+        const d = tracked[o.id];
+        const kind = o.kind || d.kind || 'table';
+        const where = kind === 'delivery' ? t('modeDv') : `${t('table')} ${d.table_label || ''}`.trim();
+        return `<li><button type="button" class="ocard" data-act="go" data-to="track" data-arg="${esc(o.id)}">
+          <span class="oc-ico">${icon(kind === 'delivery' ? 'moto' : 'table')}</span>
+          <span class="oc-main"><b>${esc(t('orderNo')(o.no))}</b><small>${esc(`${where} · ${dayTimeOf(d.created_at)}`)}</small></span>
+          <span class="oc-end"><span class="pst is-${stKind(d, kind)}">${esc(statusText(d, kind))}</span><b>${money(d.total)}</b></span></button></li>`;
+      }).join('')}</ul><p class="hint-note pad">${esc(t('ordersHint'))}</p>`
+      : `<div class="state">${icon('bag')}<h2>${esc(t('ordersEmpty'))}</h2><p>${esc(t('ordersHint'))}</p><button type="button" class="btn" data-act="go" data-to="menu">${esc(t('openMenu'))}</button></div>`;
+    setHtml($('#scr-orders'), `${pageHead(t('tabOrders'))}${body}`);
+  }
+
+  // ---------- Профиль ----------
+  let profBuilt = '';
+  function renderProfile() {
+    if (route.name !== 'profile') return;
+    const el = $('#scr-profile');
+    if (!M) { profBuilt = ''; setHtml(el, pageHead(t('tabProfile'))); return; }
+    // поля ввода рисуем один раз (иначе при обновлении экрана пропадает курсор), остальное — отдельно
+    if (profBuilt !== lang || !el.querySelector('#pf-dyn')) {
+      profBuilt = lang;
+      el._html = null;
+      el.innerHTML = `${pageHead(t('tabProfile'))}
+        <section class="pgroup" aria-labelledby="pf-h"><h2 class="psec" id="pf-h">${esc(t('myData'))}</h2>
+          <label class="field"><small>${esc(t('dvName'))}</small><input id="pf-name" autocomplete="name" maxlength="60" placeholder="${esc(t('dvNamePh'))}" value="${esc(profile.name)}"></label>
+          <label class="field"><small>${esc(t('bkPhone'))}</small><input id="pf-phone" type="tel" inputmode="tel" autocomplete="tel" maxlength="20" dir="ltr" placeholder="${esc(t('bkPhonePh'))}" value="${esc(profile.phone)}"></label>
+          <label class="field"><small>${esc(t('dvAddr'))}</small><input id="pf-addr" autocomplete="street-address" maxlength="300" placeholder="${esc(t('dvAddrPh'))}" value="${esc(profile.address)}"></label>
+          <p class="hint-note">${esc(t('profHint'))}</p>
+        </section>
+        <div id="pf-dyn"></div>`;
+    }
+    const r = R();
+    const chev = icon('chevron', 'sm chev');
+    const dark = document.documentElement.dataset.theme === 'dark';
+    const bk = booking ? bookingCardHtml(true)
+      : ONLINE && r.bookingsEnabled ? `<div class="rows"><button type="button" class="row-link" data-act="go" data-to="booking">${icon('calendar')}<span class="grow">${esc(t('bkBtn'))}</span>${chev}</button></div>` : '';
+    const wifiRow = atTable() && wifi ? `<div class="rows"><button type="button" class="row-link" data-sheet="wifi">${icon('wifi')}<span class="grow">${esc(t('wifi'))}</span><span class="val" dir="ltr">${esc(wifi.name)}</span>${chev}</button></div>` : '';
+    const favList = favs.map((id) => byId[id]).filter(Boolean);
+    const favHtml = favList.length
+      ? `<ul class="pair-list">${favList.map((d) => `<li data-open="${esc(d.id)}" role="button" tabindex="0">${thumb(d, 'sm')}<span class="grow"><b>${esc(L(d.name))}</b><small>${money(priceOf(d))}</small></span><span class="slot" data-slot="${esc(d.id)}">${control(d.id)}</span></li>`).join('')}</ul>`
+      : `<p class="hint-note">${esc(t('favsEmpty'))}</p>`;
+    const halal = r.halal ? `<button type="button" class="row-link" data-sheet="${r.halalNote ? 'halal' : 'hours'}">${icon('check')}<span class="grow">${esc(t('halal'))}</span>${r.halalNote ? chev : ''}</button>` : '';
+    setHtml($('#pf-dyn'), `
+      ${bk ? `<section class="pgroup"><h2 class="psec">${esc(t('bkTitle'))}</h2>${bk}</section>` : ''}
+      ${wifiRow ? `<section class="pgroup"><h2 class="psec">${esc(t('wifi'))}</h2>${wifiRow}</section>` : ''}
+      <section class="pgroup"><h2 class="psec">${esc(t('favs'))}</h2>${favHtml}</section>
+      <section class="pgroup"><div class="rows">
+        ${LANGS.length > 1 ? `<button type="button" class="row-link" data-sheet="lang">${icon('globe')}<span class="grow">${esc(t('language'))}</span><span class="val">${esc(t('langName'))}</span>${chev}</button>` : ''}
+        <button type="button" class="row-link" data-act="theme" role="switch" aria-checked="${dark}">${icon(dark ? 'moon' : 'sun')}<span class="grow">${esc(t('themeDark'))}</span><span class="switch${dark ? ' on' : ''}" aria-hidden="true"></span></button>
+      </div></section>
+      <section class="pgroup"><h2 class="psec">${esc(t('about'))}</h2><div class="rows">
+        <button type="button" class="row-link" data-sheet="hours">${icon('clock')}<span class="grow">${esc(t('hours'))}</span><span class="val">${esc(statusInfo().text)}</span>${chev}</button>
+        ${halal}${infoLinks()}
+      </div></section>`);
+  }
+
+  // ---------- Доставка ----------
+  const dv = { pay: store.get('dvPay', 'cash') === 'card' ? 'card' : 'cash', quote: null, quoting: false, busy: false, error: '' };
+  // библиотеки грузим только когда они нужны; версии закреплены, целостность проверяет браузер
+  const LEAFLET = {
+    js: 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js', jsSri: 'sha384-cxOPjt7s7Iz04uaHJceBmS+qpjv2JkIHNVcuOrM+YHwZOmJGBXI00mdUXEq65HTH',
+    css: 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css', cssSri: 'sha384-sHL9NAb7lN7rfvG5lfHpm643Xkcjzp4jFvuavGOndn6pjVqS6ny56CAt3nsEVT4H',
+  };
+  const JSQR = { js: 'https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js', sri: 'sha384-b5Ya4Bq3qCyz39m2ISh+4DxjAIljdeFwK/BsXLuj9gugaNwAcj/ia15fxNZL9Nlx' };
+  function loadScript(src, sri) {
+    return new Promise((res, rej) => {
+      const s = document.createElement('script');
+      s.src = src;
+      s.integrity = sri;
+      s.crossOrigin = 'anonymous';
+      s.onload = () => res();
+      s.onerror = () => { s.remove(); rej(new Error('load')); };
+      document.head.appendChild(s);
+    });
+  }
+  let leafletP = null;
+  function loadLeaflet() {
+    if (window.L?.map) return Promise.resolve(window.L);
+    if (!leafletP) {
+      if (!document.querySelector('link[data-leaflet]')) {
+        const css = document.createElement('link');
+        Object.assign(css, { rel: 'stylesheet', href: LEAFLET.css, integrity: LEAFLET.cssSri, crossOrigin: 'anonymous' });
+        css.dataset.leaflet = '1';
+        // перед guest.css — наши правила для карты важнее
+        document.head.insertBefore(css, document.querySelector('link[href^="guest.css"]'));
+      }
+      leafletP = loadScript(LEAFLET.js, LEAFLET.jsSri).then(() => window.L).catch((e) => { leafletP = null; throw e; });
+    }
+    return leafletP;
+  }
+
+  let dvBuilt = '';
+  function renderDelivery() {
+    if (route.name !== 'delivery') return;
+    const el = $('#scr-delivery');
+    if (!M) { dvBuilt = ''; setHtml(el, subHead(t('modeDv'))); return; }
+    const sig = `${lang}|${dvReady()}`;
+    if (dvBuilt !== sig || !el.querySelector('#dv-cta') === dvReady()) {
+      dvBuilt = sig;
+      el._html = null;
+      destroyMap();   // контейнер карты новый — карту создаём заново
+      if (!dvReady()) {
+        el.innerHTML = `${subHead(t('modeDv'))}<div class="state">${icon('moto')}<h2>${esc(`${t('wayDelivery')} · ${t('waySoon')}`)}</h2><p>${esc(t('dvOff'))}</p>
+          <button type="button" class="btn" data-act="go" data-to="menu">${esc(t('openMenu'))}</button></div>`;
+        return;
+      }
+      el.innerHTML = `${subHead(t('modeDv'))}
+        <div class="map-wrap"><div id="dv-map" class="map" dir="ltr" role="application" aria-label="${esc(t('dvPinHint'))}"></div>
+          <span class="chipm" id="dv-chip" aria-live="polite"></span>
+          <button type="button" class="round map-me" data-act="dv-me" aria-label="${esc(t('dvMe'))}" title="${esc(t('dvMe'))}">${icon('locate')}</button></div>
+        <label class="field"><small>${esc(t('dvAddr'))}</small><input id="dv-addr" autocomplete="street-address" maxlength="300" placeholder="${esc(t('dvAddrPh'))}" value="${esc(profile.address)}"></label>
+        <div class="two">
+          <label class="field"><small>${esc(t('dvName'))}</small><input id="dv-name" autocomplete="name" maxlength="60" placeholder="${esc(t('dvNamePh'))}" value="${esc(profile.name)}"></label>
+          <label class="field"><small>${esc(t('bkPhone'))}</small><input id="dv-phone" type="tel" inputmode="tel" autocomplete="tel" maxlength="20" dir="ltr" placeholder="${esc(t('bkPhonePh'))}" value="${esc(profile.phone)}"></label>
+        </div>
+        <label class="field"><small>${esc(t('dvNote'))}</small><textarea id="dv-note" rows="2" maxlength="300" placeholder="${esc(t('dvNotePh'))}">${esc(note)}</textarea></label>
+        <div id="dv-sum"></div>
+        <div class="pay" id="dv-pay" role="radiogroup" aria-label="${esc(t('payHow'))}"></div>
+        <p class="hint-note pad">${esc(t('dvSaveHint'))}</p>
+        <div class="cta-bar" id="dv-cta"></div>`;
+    }
+    updateDelivery();
+    // цена считается и без карты (карта могла не загрузиться — точку даст «Моё местоположение»)
+    if (profile.lat != null && !dv.quoting && (!dv.quote || dv.quote.reason === 'net')) quote();
+    initMap();
+  }
+  // меняем только сумму, кнопку и подсказки — поля ввода не трогаем
+  function updateDelivery() {
+    if (route.name !== 'delivery' || !$('#dv-cta')) return;
+    const q = dv.quote;
+    $('#dv-chip').innerHTML = dv.quoting ? `<span class="spinner sm" aria-hidden="true"></span>`
+      : q?.km != null ? `${icon('pin', 'sm')}<b>${esc(t('dvKm')(kmText(q.km)))}</b><em>${esc(t('dvFrom'))}</em>`
+        : `${icon('pin', 'sm')}<em>${esc(t('dvPinHint'))}</em>`;
+    $('#dv-pay').innerHTML = [['cash', 'cash', 'dvPayCash'], ['card', 'card', 'dvPayCard']].map(([v, ic, k]) => `<button type="button" class="pay-chip${dv.pay === v ? ' on' : ''}" data-act="dv-pay" data-pay="${v}" role="radio" aria-checked="${dv.pay === v}">${icon(ic, 'sm')}<span>${esc(t(k))}</span></button>`).join('');
+    const { count } = totals();
+    const c = dvTotals();
+    const r = R();
+    $('#dv-sum').innerHTML = count ? `<div class="sum">
+        <div><span>${esc(t('dvDishes')(count))}</span><b>${money(c.sub)}</b></div>
+        ${c.tax ? `<div><span>${esc(`${r.taxName || 'SST'} ${pct(r.taxPct)}%`)}</span><b>${money(c.tax)}</b></div>` : ''}
+        <div><span>${esc(c.q ? t('dvFeeUpTo')(kmText(c.q.zone_km)) : t('dvFee'))}</span><b>${c.q ? money(c.fee) : '—'}</b></div>
+        <div class="tot"><span>${esc(t('total'))}</span><b>${money(c.total)}</b></div></div>` : '';
+    const block = count ? dvBlocker() : '';
+    const msg = dv.error || block;
+    $('#dv-cta').innerHTML = `${msg ? `<p class="notice${dv.error ? ' bad' : ''}" role="${dv.error ? 'alert' : 'status'}">${icon('alert')}<span>${esc(msg)}</span></p>` : ''}
+      ${count ? `<button type="button" class="cta" data-act="dv-send"${block || dv.busy || dv.quoting || !c.q ? ' disabled' : ''}>${dv.busy ? `<span class="spinner" aria-hidden="true"></span><span>${esc(t('sending'))}</span>` : `<span>${esc(t('dvSend')(money(c.total)))}</span>`}</button>`
+    : `<p class="notice info">${icon('bag')}<span>${esc(`${t('cartEmpty')}. ${t('cartEmptyHint')}`)}</span></p><button type="button" class="cta" data-act="go" data-to="menu"><span>${esc(t('openMenu'))}</span></button>`}`;
+  }
+
+  let map = null;
+  let pin = null;
+  function destroyMap() { if (map) { map.remove(); map = null; pin = null; } }
+  async function initMap() {
+    const box = $('#dv-map');
+    if (!box || !dvReady()) return;
+    let L;
+    try { L = await loadLeaflet(); } catch {
+      if ($('#dv-map') === box && !map) box.innerHTML = `<div class="map-fail">${icon('alert')}<span>${esc(t('dvMapErr'))}</span><button type="button" class="btn small ghost" data-act="dv-map-retry">${esc(t('retry'))}</button></div>`;
+      return;
+    }
+    if (route.name !== 'delivery' || $('#dv-map') !== box) return;
+    const r = R();
+    const home = [r.deliveryLat, r.deliveryLng];
+    if (map && map.getContainer() !== box) destroyMap();
+    if (!map) {
+      box.innerHTML = '';
+      const has = profile.lat != null;
+      map = L.map(box, { zoomControl: false }).setView(has ? [profile.lat, profile.lng] : home, has ? 15 : 13);
+      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>',
+      }).addTo(map);
+      map.attributionControl.setPrefix('<a href="https://leafletjs.com" target="_blank" rel="noopener">Leaflet</a>');
+      map.on('click', (e) => setPoint(e.latlng.lat, e.latlng.lng));
+      // ресторан — звезда; пунктирный круг — дальняя зона доставки (из настроек ресторана)
+      L.marker(home, { icon: L.divIcon({ className: 'mk-home', html: '<svg class="ic" aria-hidden="true"><use href="#i-star8"/></svg>', iconSize: [34, 34], iconAnchor: [17, 17] }), keyboard: false, interactive: false }).addTo(map);
+      const far = Math.max(...r.deliveryZones.map((z) => z.km));
+      L.circle(home, { radius: far * 1000, color: '#B4472F', weight: 1.2, opacity: 0.5, dashArray: '4 6', fillColor: '#B4472F', fillOpacity: 0.04, interactive: false }).addTo(map);
+    }
+    placePin();
+    requestAnimationFrame(() => map?.invalidateSize());
+  }
+  function placePin() {
+    if (!map || profile.lat == null || !window.L) return;
+    const ll = [profile.lat, profile.lng];
+    if (pin) { pin.setLatLng(ll); return; }
+    const icn = window.L.divIcon({ className: 'mk-pin', html: '<svg viewBox="0 0 28 40" aria-hidden="true"><path d="M14 38s-11-9.6-11-18.6a11 11 0 0 1 22 0C25 28.4 14 38 14 38z"/><circle cx="14" cy="19" r="4"/></svg>', iconSize: [28, 40], iconAnchor: [14, 38] });
+    pin = window.L.marker(ll, { icon: icn, draggable: true, keyboard: false }).addTo(map);
+    pin.on('dragend', () => { const p = pin.getLatLng(); setPoint(p.lat, p.lng); });
+  }
+  function setPoint(lat, lng) {
+    profile.lat = Math.round(lat * 1e6) / 1e6;
+    profile.lng = Math.round(lng * 1e6) / 1e6;
+    saveProfile();
+    dv.error = '';
+    placePin();
+    quote();
+  }
+  function locateMe() {
+    if (!navigator.geolocation) { toast(t('dvGeoErr'), 'bad'); return; }
+    navigator.geolocation.getCurrentPosition((p) => {
+      setPoint(p.coords.latitude, p.coords.longitude);
+      map?.setView([profile.lat, profile.lng], 16);
+    }, () => toast(t('dvGeoErr'), 'bad'), { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 });
+  }
+  // сколько стоит доставка в эту точку — считает сервер (по зонам ресторана)
+  let quoteSeq = 0;
+  async function quote() {
+    if (profile.lat == null || !dvReady()) { dv.quote = null; updateDelivery(); return; }
+    const seq = ++quoteSeq;
+    dv.quoting = true;
+    updateDelivery();
+    let q;
+    try {
+      const res = await rpc('delivery_quote', { p_lat: profile.lat, p_lng: profile.lng });
+      q = Array.isArray(res) ? res[0] : res;
+      if (!q || typeof q !== 'object') q = { ok: false, reason: 'bad_point' };
+    } catch { q = { ok: false, reason: 'net' }; }
+    if (seq !== quoteSeq) return;
+    dv.quote = q;
+    dv.quoting = false;
+    if (q.reason === 'off') refreshMenu(true);
+    updateDelivery();
+    renderModeBanner();
+    renderBar();
+  }
+  async function sendDelivery() {
+    if (dv.busy || !lines().length) return;
+    const name = profile.name.trim();
+    const phone = profile.phone.trim().replace(/\s+/g, ' ');
+    const addr = profile.address.trim().replace(/\s+/g, ' ');
+    const bad = addr.length < 5 ? 'dv-addr' : !name ? 'dv-name' : !PHONE_RE.test(phone) ? 'dv-phone' : '';
+    dv.error = dvBlocker() || (bad === 'dv-addr' ? t('dvNeedAddr') : bad === 'dv-name' ? t('bkNeedName') : bad === 'dv-phone' ? t('bkNeedPhone') : '');
+    if (dv.error) { updateDelivery(); if (bad && !dvBlocker()) $(`#${bad}`)?.focus(); return; }
+    dv.busy = true;
+    updateDelivery();
+    try {
+      if (!(await freshCheck())) { dv.error = t('errChanged'); return; }
+      await quote();
+      if (dvBlocker()) { dv.error = dvBlocker(); return; }
+      // один ключ на одну попытку: повторное нажатие и потерянный ответ не создадут вторую доставку
+      const sig = JSON.stringify(['dv', name, phone, addr, profile.lat, profile.lng, dv.pay, note.trim(), lines().map((l) => [l.key, l.n, l.unit, dishNotes[l.key] || '']).sort()]);
+      if (!pendingKey || pendingKey.sig !== sig) {
+        pendingKey = { key: uuid(), sig };
+        store.set('pendingKey', pendingKey);
+      }
+      const rows = await rpc('place_delivery', {
+        p_items: itemsPayload(), p_name: name, p_phone: phone, p_address: addr, p_note: note.trim() || null,
+        p_lat: profile.lat, p_lng: profile.lng, p_pay: dv.pay, p_lang: lang, p_client_key: pendingKey.key,
+      });
+      const o = Array.isArray(rows) ? rows[0] : rows;
+      if (!o?.id || !o.guest_token) throw new Error('bad_reply');
+      profile.name = name;
+      profile.phone = phone;
+      profile.address = addr;
+      saveProfile();
+      dv.busy = false;
+      dv.error = '';
+      placed({ ...o, kind: 'delivery', address: addr, pay_method: dv.pay, table_label: o.table_label || '' }, 'delivery');
+    } catch (e) {
+      dv.error = await orderErr(e, 'delivery');
+    } finally {
+      dv.busy = false;
+      renderBar();
+      updateDelivery();
+    }
+  }
+
+  // ---------- Сканер QR-кода стола ----------
+  let scanState = 'idle';   // idle | starting | live | checking | nocam | denied | bad | invalid | net
+  let scanner = null;       // { stream, timer, detector, badAt }
+  let scanFrom = '';        // с какого экрана открыли сканер
+  // из текста QR достаём код стола: ссылка на сайт с ?t=… (адрес сравниваем мягко — важен код) или сам код
+  function tokenFrom(text) {
+    const s = String(text || '').trim();
+    if (TOKEN_RE.test(s.toLowerCase())) return s.toLowerCase();
+    let u = null;
+    try { u = new URL(s); } catch { return ''; }
+    if (!/^(https?|capacitor|ionic):$/.test(u.protocol)) return '';
+    const v = (u.searchParams.get('t') || new URLSearchParams(u.hash.split('?')[1] || '').get('t') || '').trim().toLowerCase();
+    return TOKEN_RE.test(v) ? v : '';
+  }
+  function renderScan() {
+    if (route.name !== 'scan') return;
+    const el = $('#scr-scan');
+    if (!el.querySelector('#scan-video') || el.dataset.lang !== lang) {
+      el.dataset.lang = lang;
+      el.innerHTML = `${subHead(t('scanTitle'))}
+        <div class="scan-box"><video id="scan-video" playsinline muted autoplay></video><span class="scan-frame" aria-hidden="true"></span></div>
+        <div id="scan-msg" class="scan-msg" aria-live="polite"></div>
+        <p class="scan-alt">${icon('camera', 'sm')}<span>${esc(t('scanAlt'))}</span></p>`;
+      if (scanner) { const v = $('#scan-video'); v.srcObject = scanner.stream; v.play().catch(() => {}); }
+    }
+    updateScan();
+  }
+  function updateScan() {
+    const msg = $('#scan-msg');
+    if (!msg) return;
+    const s = scanState;
+    const text = { nocam: t('scanNoCam'), denied: t('scanDenied'), bad: t('scanBad'), invalid: t('badTable'), net: `${t('loadError')}. ${t('loadErrorHint')}`, checking: t('checkingTable') }[s] || t('scanHint');
+    const bad = ['nocam', 'denied', 'bad', 'invalid', 'net'].includes(s);
+    msg.innerHTML = `<p class="${bad ? 'is-bad' : ''}">${s === 'checking' || s === 'starting' ? '<span class="spinner sm" aria-hidden="true"></span>' : ''}<span>${esc(text)}</span></p>
+      ${!scanner && s !== 'starting' ? `<button type="button" class="btn" data-act="scan-start">${icon('camera', 'sm')}<span>${esc(t('scanStart'))}</span></button>` : ''}`;
+    $('.scan-box')?.classList.toggle('live', !!scanner);
+  }
+  function stopScan() {
+    if (!scanner) return;
+    clearTimeout(scanner.timer);
+    scanner.stream.getTracks().forEach((x) => x.stop());
+    const v = $('#scan-video');
+    if (v) v.srcObject = null;
+    scanner = null;
+  }
+  async function startScan() {
+    stopScan();
+    if (!navigator.mediaDevices?.getUserMedia) { scanState = 'nocam'; updateScan(); return; }
+    scanState = 'starting';
+    updateScan();
+    let stream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio: false });
+    } catch (e) {
+      scanState = /NotAllowed|Security|Permission/i.test(e?.name || '') ? 'denied' : 'nocam';
+      updateScan();
+      return;
+    }
+    if (route.name !== 'scan') { stream.getTracks().forEach((x) => x.stop()); return; }
+    const video = $('#scan-video');
+    video.srcObject = stream;
+    try { await video.play(); } catch { /* iOS запустит после первого кадра */ }
+    let detector = null;
+    try {
+      if ('BarcodeDetector' in window && (await window.BarcodeDetector.getSupportedFormats()).includes('qr_code')) detector = new window.BarcodeDetector({ formats: ['qr_code'] });
+    } catch { detector = null; }
+    if (!detector) loadJsQR().catch(() => {});
+    scanner = { stream, timer: 0, detector, badAt: 0 };
+    scanState = 'live';
+    updateScan();
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    const tick = async () => {
+      const sc = scanner;
+      if (!sc || sc.stream !== stream) return;
+      let text = null;
+      try {
+        if (video.readyState >= 2 && scanState !== 'checking') {
+          if (sc.detector) {
+            const codes = await sc.detector.detect(video);
+            text = codes[0]?.rawValue || null;
+          } else if (window.jsQR) {
+            const k = Math.min(1, 640 / Math.max(video.videoWidth, video.videoHeight || 1));
+            canvas.width = Math.round(video.videoWidth * k);
+            canvas.height = Math.round(video.videoHeight * k);
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            const data = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const r = (window.jsQR.default || window.jsQR)(data.data, canvas.width, canvas.height, { inversionAttempts: 'dontInvert' });
+            text = r?.data || null;
+          }
+        }
+      } catch { text = null; }
+      if (text && scanner === sc) await onScanText(text);
+      if (scanner === sc) sc.timer = setTimeout(tick, 220);
+    };
+    tick();
+  }
+  let jsqrP = null;
+  function loadJsQR() {
+    if (window.jsQR) return Promise.resolve(window.jsQR);
+    if (!jsqrP) jsqrP = loadScript(JSQR.js, JSQR.sri).then(() => window.jsQR).catch((e) => { jsqrP = null; throw e; });
+    return jsqrP;
+  }
+  async function onScanText(text) {
+    const token = tokenFrom(text);
+    if (!token) {
+      if (scanState !== 'bad') { scanState = 'bad'; updateScan(); }
+      return;
+    }
+    scanState = 'checking';
+    updateScan();
+    let info;
+    try { info = await tableInfo(token); } catch { scanState = 'net'; updateScan(); return; }
+    if (!info) { scanState = 'invalid'; updateScan(); return; }
+    setTable(token, info);
+    stopScan();
+    scanState = 'idle';
+    toast(t('scanOk')(info.label), 'good');
+    // пришли в сканер из меню — возвращаемся туда же (без лишнего шага «назад»), иначе меню вместо сканера
+    if (scanFrom === 'menu' && (Number(history.state?.i) || 0) > 0) history.back(); else go('menu', '', true);
+    applyPending();
+    renderAll();
+  }
+
+  // ---------- Экраны и адреса: #home #menu #orders #profile, #booking #delivery #scan #track/<id> ----------
+  const TABS = TAB_LIST.map(([n]) => n);
+  const SUBS = ['booking', 'delivery', 'scan', 'track'];
+  const PARENT = { track: 'orders', delivery: 'menu', scan: 'home', booking: 'home' };
+  let route = { name: '', arg: '' };
+  const scrolls = {};
+  function parseHash() {
+    const h = location.hash.replace(/^#\/?/, '');
+    const i = h.indexOf('/');
+    const name = i < 0 ? h : h.slice(0, i);
+    let arg = i < 0 ? '' : h.slice(i + 1);
+    try { arg = decodeURIComponent(arg); } catch { arg = ''; }
+    return TABS.includes(name) || SUBS.includes(name) ? { name, arg } : null;
+  }
+  const defaultRoute = () => (atTable() ? 'menu' : 'home');
+  function go(name, arg = '', replace = false) {
+    const h = `#${name}${arg ? `/${encodeURIComponent(arg)}` : ''}`;
+    const depth = Number(history.state?.i) || 0;
+    if (replace) history.replaceState({ i: depth }, '', h);
+    else if (location.hash !== h) history.pushState({ i: depth + 1 }, '', h);
+    showRoute();
+  }
+  // «назад»: по истории, если пришли сюда внутри приложения; иначе — на родительский экран
+  function back() {
+    if ((Number(history.state?.i) || 0) > 0) history.back();
+    else go(PARENT[route.name] || 'home', '', true);
+  }
+  function showRoute() {
+    const next = parseHash() || { name: defaultRoute(), arg: '' };
+    const prev = route;
+    const same = prev.name === next.name && prev.arg === next.arg;
+    if (!same) {
+      if (prev.name) scrolls[prev.name] = window.scrollY;
+      if (prev.name === 'scan') { stopScan(); scanState = 'idle'; }
+      if (prev.name === 'booking') clearTimeout(bkTimer);
+      if (prev.name === 'track') justSent = null;
+      if (sheet) closeSheet();
+    }
+    route = next;
+    document.querySelectorAll('.screen').forEach((s) => { s.hidden = s.dataset.screen !== next.name; });
+    document.body.dataset.route = next.name;
+    document.body.classList.toggle('is-sub', SUBS.includes(next.name));
+    if (!same) {
+      if (next.name === 'booking') { if (!bkForm.name) bkForm.name = profile.name; if (!bkForm.phone) bkForm.phone = profile.phone; bkForm.error = ''; bkForm.ask = false; }
+      if (next.name === 'delivery') dv.error = '';
+    }
+    renderTabs();
+    renderRoute();
+    renderBar();
+    renderTableActions();
+    if (!same) {
+      window.scrollTo(0, TABS.includes(next.name) ? scrolls[next.name] || 0 : 0);
+      const el = document.querySelector(`.screen[data-screen="${next.name}"]`);
+      if (el && prev.name && !reduced()) {
+        el.classList.remove('enter'); void el.offsetWidth; el.classList.add('enter');
+        el.addEventListener('animationend', () => el.classList.remove('enter'), { once: true });
+      }
+      if (next.name === 'track') pollOrders();
+      if (next.name === 'booking') { pollBooking(); scheduleBooking(); }
+      if (next.name === 'scan') { scanFrom = prev.name; if (ONLINE) startScan(); }
+      if (next.name === 'menu') onScroll();
+    }
+  }
+  function renderRoute() {
+    const n = route.name;
+    if (n === 'orders') renderOrders();
+    else if (n === 'profile') renderProfile();
+    else if (n === 'track') renderTrack();
+    else if (n === 'booking') renderBooking();
+    else if (n === 'delivery') renderDelivery();
+    else if (n === 'scan') renderScan();
+  }
+  window.addEventListener('popstate', showRoute);
+  window.addEventListener('hashchange', showRoute);
 
   // ---------- События ----------
   document.addEventListener('click', (e) => {
@@ -2557,31 +3469,62 @@
       const a = act.dataset.act;
       const k = act.dataset.key || act.dataset.id;
       if (a === 'inc') {
-        // «+» на карточке меню: фото летит в «Мой заказ» (не из шторки и не из строки списка)
-        const src = !sheet && !act.dataset.key && !reduced() ? act.closest('[data-open]')?.querySelector('.photo') : null;
-        flyHold = !!src;
-        const added = change(k, 1);
-        const held = flyHold;
-        flyHold = false;
-        if (added && held && !flyToBar(src)) bumpBar();
+        // блюдо из меню, а способ ещё не выбран — сначала «в ресторане или доставка»
+        if (!act.dataset.key && needWay()) askHow({ act: 'inc', key: k });
+        else change(k, 1);
       } else if (a === 'dec') change(k, -1);
+      else if (a === 'go') {
+        const to = act.dataset.to;
+        if (to === route.name && TABS.includes(to) && !act.dataset.arg) window.scrollTo({ top: 0, behavior: smooth() });
+        else go(to, act.dataset.arg || '');
+      } else if (a === 'back') back();
       else if (a === 'fav') toggleFav(act.dataset.id, act);
       else if (a === 'swipe-del') removeLine(k, act.closest('.cart-line'));
       else if (a === 'vote') vote(act);
-      else if (a === 'booking') openBooking();
-      else if (a === 'bk-day') { bkForm.day = act.dataset.day; bkForm.time = null; bkForm.error = ''; renderSheet(); }
-      else if (a === 'bk-time') { bkForm.time = act.dataset.at; bkForm.error = ''; renderSheet(); }
-      else if (a === 'bk-people') { bkForm.people = Math.min(20, Math.max(1, bkForm.people + Number(act.dataset.d))); renderSheet(); }
+      else if (a === 'way-here') {
+        if (sheet) closeSheet();
+        if (atTable()) { if (route.name !== 'menu') go('menu'); applyPending(); } else go('scan');
+      } else if (a === 'way-dv') {
+        if (!dvReady()) return;
+        if (atTable()) forgetTable();   // доставка домой — значит, уже не за столом
+        dvMode = true;
+        store.set('mode', 'delivery');
+        const stay = sheet?.type === 'how';
+        if (sheet) closeSheet();
+        applyPending();
+        renderAll();
+        if (!stay) go('delivery');
+        if (profile.lat != null && !dv.quote) quote();
+      } else if (a === 'choose') askHow(null);
+      else if (a === 'scan') go('scan');
+      else if (a === 'scan-start') startScan();
+      else if (a === 'table-exit') { forgetTable(); renderAll(); }
+      else if (a === 'dv-exit') { dvMode = false; store.set('mode', null); renderAll(); }
+      else if (a === 'to-delivery') { closeSheet(); go('delivery'); }
+      else if (a === 'dv-pay') { dv.pay = act.dataset.pay === 'card' ? 'card' : 'cash'; store.set('dvPay', dv.pay); updateDelivery(); }
+      else if (a === 'dv-me') locateMe();
+      else if (a === 'dv-map-retry') initMap();
+      else if (a === 'dv-send') sendDelivery();
+      else if (a === 'close-sheet') closeSheet();
+      else if (a === 'theme') { theme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'; store.set('theme', theme); applyTheme(); renderProfile(); }
+      else if (a === 'search-open') {
+        const row = $('#search-row');
+        row.hidden = !row.hidden || !!query;
+        if (!row.hidden) $('#search').focus();
+      } else if (a === 'bk-day') { bkForm.day = act.dataset.day; bkForm.time = null; bkForm.error = ''; renderBooking(); }
+      else if (a === 'bk-time') { bkForm.time = act.dataset.at; bkForm.error = ''; renderBooking(); }
+      else if (a === 'bk-people') { bkForm.people = Math.min(20, Math.max(1, bkForm.people + Number(act.dataset.d))); renderBooking(); }
       else if (a === 'bk-send') sendBooking();
-      else if (a === 'bk-cancel') { bkForm.ask = true; bkForm.error = ''; renderSheet(); }
-      else if (a === 'bk-cancel-no') { bkForm.ask = false; renderSheet(); }
+      else if (a === 'bk-cancel') { bkForm.ask = true; bkForm.error = ''; renderBooking(); }
+      else if (a === 'bk-cancel-no') { bkForm.ask = false; renderBooking(); }
       else if (a === 'bk-cancel-yes') cancelBooking();
-      else if (a === 'bk-new') { booking = null; store.set('booking', null); bkForm.error = ''; renderHeader(); renderSheet(); }
+      else if (a === 'bk-new') { booking = null; store.set('booking', null); bkForm.error = ''; renderHeader(); renderBooking(); }
       else if (a === 'del') change(k, -(order[k] || 0));
       else if (a === 'pick') openSheet({ type: 'dish', id: act.dataset.id });
       else if (a === 'pick-inc' || a === 'pick-dec') { if (sheet?.pick) { sheet.pick.qty = Math.min(99, Math.max(1, sheet.pick.qty + (a === 'pick-inc' ? 1 : -1))); updatePick(); } }
-      else if (a === 'pick-add') addPicked();
-      else if (a === 'service') openSheet({ type: 'service' });
+      else if (a === 'pick-add') {
+        if (needWay() && sheet?.pick) { const p = { act: 'pick', id: sheet.id, sel: pickedOpts(), qty: sheet.pick.qty }; closeSheet(); askHow(p); } else addPicked();
+      } else if (a === 'service') openSheet({ type: 'service' });
       else if (a === 'call-waiter') openSheet({ type: 'waiter' });
       else if (a === 'req') callStaff('waiter', null, act.dataset.reason || null);
       else if (a === 'call-bill') openBill();
@@ -2593,7 +3536,7 @@
         saveFilters(); renderSheet(); renderMenu(); renderFilterBtn();
       } else if (a === 'f-reset') { filters = {}; saveFilters(); renderSheet(); renderMenu(); renderFilterBtn(); }
       else if (a === 'f-done') closeSheet();
-      else if (a === 'rate') { reviewDraft.rating = Number(act.dataset.n); starsLit = true; renderSheet(); }
+      else if (a === 'rate') { reviewDraft.rating = Number(act.dataset.n); starsLit = true; renderTrack(); }
       else if (a === 'review-send') sendReview(act.dataset.id);
       else if (a === 'repeat') repeatOrder(act.dataset.id);
       else if (a === 'pay') callStaff('bill', act.dataset.method);
@@ -2611,27 +3554,26 @@
         refreshSlots();
         renderBar();
         renderSheet();
+        updateDelivery();
       } else if (a === 'send') {
         sendOrder();
-      } else if (a === 'track') {
-        openSheet({ type: 'track', id: act.dataset.id });
-        pollOrders();
       } else if (a === 'receipt') {
         openReceipt(act.dataset.id);
       } else if (a === 'receipt-print') {
         printReceiptPage();
       } else if (a === 'copy') {
         copyText(act.dataset.v || '', act);
-      } else if (a === 'more') {
-        closeSheet();
       } else if (a === 'retry') {
         state = 'loading';
         renderMenu();
+        renderHome();
         refreshMenu();
       } else if (a === 'show-all') {
         $('#search').value = '';
         query = '';
-        $('#search-clear').hidden = true;
+        filters = {};
+        saveFilters();
+        renderFilterBtn();
         renderMenu();
       }
       return;
@@ -2666,16 +3608,16 @@
     if (open) openSheet({ type: 'dish', id: open.dataset.open });
   });
 
-  // фото не загрузилось — показываем аккуратную заглушку
+  // фото не загрузилось — остаётся узор-заглушка
   document.addEventListener('error', (e) => {
-    const img = e.target;
-    if (img.tagName !== 'IMG') return;
-    const box = img.closest('.photo, .logo');
+    const im = e.target;
+    if (im.tagName !== 'IMG') return;
+    const box = im.closest('.thumb, .art, .tile-art, .feature-art, .mark-logo');
     if (!box) return;
-    img.remove();
-    if (box.classList.contains('logo')) { box.textContent = monogram(M?.restaurant.name); return; }
+    im.remove();
+    if (box.classList.contains('mark-logo')) { box.outerHTML = '<svg class="ic star8" aria-hidden="true"><use href="#i-star8"/></svg>'; return; }
     box.classList.remove('has-img');
-    box.insertAdjacentHTML('afterbegin', icon('dish'));
+    box.removeAttribute('data-zoom');
   }, true);
 
   document.addEventListener('keydown', (e) => {
@@ -2688,16 +3630,21 @@
 
   $('#order-bar').addEventListener('click', () => {
     const o = $('#order-bar').dataset.go || 'order';
-    if (o.startsWith('track:')) { openSheet({ type: 'track', id: o.slice(6) }); pollOrders(); } else openSheet({ type: 'order' });
+    if (o.startsWith('track:')) go('track', o.slice(6)); else openSheet({ type: 'order' });
   });
   document.addEventListener('input', (e) => {
-    if (e.target.id === 'note-input') {
+    const id = e.target.id;
+    if (id === 'note-input' || id === 'dv-note') {
       note = e.target.value.slice(0, 300);
       store.set('note', note);
     }
-    if (e.target.id === 'bk-name') bkForm.name = e.target.value.slice(0, 60);
-    if (e.target.id === 'bk-phone') bkForm.phone = e.target.value.slice(0, 20);
-    if (e.target.id === 'bk-note') bkForm.note = e.target.value.slice(0, 300);
+    if (id === 'bk-name') bkForm.name = e.target.value.slice(0, 60);
+    if (id === 'bk-phone') bkForm.phone = e.target.value.slice(0, 20);
+    if (id === 'bk-note') bkForm.note = e.target.value.slice(0, 300);
+    if (id === 'pf-name' || id === 'dv-name') { profile.name = e.target.value.slice(0, 60); saveProfile(); }
+    if (id === 'pf-phone' || id === 'dv-phone') { profile.phone = e.target.value.slice(0, 20); saveProfile(); }
+    if (id === 'pf-addr' || id === 'dv-addr') { profile.address = e.target.value.slice(0, 300); saveProfile(); }
+    if (id.startsWith('dv-') && dv.error) { dv.error = ''; updateDelivery(); }
     if (e.target.classList.contains('dn-input')) {
       const k = e.target.dataset.key;
       const v = e.target.value.replace(/\s+/g, ' ').slice(0, 120);
@@ -2709,21 +3656,14 @@
   $('#sheet-close').addEventListener('click', closeSheet);
   $('#search').addEventListener('input', (e) => {
     query = norm(e.target.value.trim());
-    $('#search-clear').hidden = !query;
     renderMenu();
   });
   $('#search-clear').addEventListener('click', () => {
     $('#search').value = '';
+    if (!query) { $('#search-row').hidden = true; return; }
     query = '';
-    $('#search-clear').hidden = true;
     renderMenu();
     $('#search').focus();
-  });
-  $('#lang-btn').addEventListener('click', () => openSheet({ type: 'lang' }));
-  $('#theme-btn').addEventListener('click', () => {
-    theme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
-    store.set('theme', theme);
-    applyTheme();
   });
 
   function renderAll() {
@@ -2733,28 +3673,46 @@
     renderMenu();
     renderBar();
     renderSheet();
+    renderRoute();
   }
 
+  // ---------- Запуск ----------
   applyTheme();
+  {
+    const h = parseHash();
+    // пришли по QR-коду стола — сразу меню (с неверным кодом там же будет подсказка)
+    const start = fromQrUrl ? 'menu' : h ? null : defaultRoute();
+    if (start) history.replaceState({ i: 0 }, '', `#${start}`);
+    else if (history.state?.i == null) history.replaceState({ i: 0 }, '', location.hash);
+  }
+  showRoute();
   renderAll();
-  setInterval(() => {   // «Открыто / Закрыто» и завтрак по часам обновляются сами
+  if (tableExpiredNote) setTimeout(() => toast(t('tableExpired')), 600);
+  setInterval(() => {   // «Открыто / Закрыто», завтрак по часам и 4 часа стола обновляются сами
     if (!M) return;
+    if (expireTable()) return;
     renderHeader();
+    if (route.name === 'booking' && !bkForm.busy) renderBooking();
     if (timeSig() !== lastOpenSig) {
-      // акция закончилась или началась — цены в списке гостя тоже другие
+      // акция закончилась или началась — цены в корзине тоже другие
       if (reconcile(new Set(lines().filter((l) => !l.ok).map((l) => l.key)))) { attention = sheet?.type !== 'order'; toast(t('listUpdated')); }
-      renderMenu(); refreshSlots(); renderBar();
+      renderMenu(); refreshSlots(); renderBar(); updateDelivery();
       if (sheet?.type === 'order' || sheet?.type === 'dish') renderSheet();
     }
   }, 60 * 1000);
-  renderFilterBtn();
   if (ONLINE) {
-    refreshMenu();
+    refreshMenu().then(() => { if (mode() === 'delivery' && profile.lat != null) quote(); });
     setTimeout(loadStats, 1200);
     checkTable();
     pollOrders().then(() => schedulePoll());
     setInterval(() => { if (!document.hidden) refreshMenu(); }, 60 * 1000);
-    document.addEventListener('visibilitychange', () => { if (!document.hidden) { refreshMenu(); pollBooking(); } });
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) return;
+      if (expireTable()) return;
+      refreshMenu();
+      pollBooking();
+      pollOrders();
+    });
     pollBooking();
     window.addEventListener('online', () => refreshMenu());
   }

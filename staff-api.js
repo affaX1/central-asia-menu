@@ -99,19 +99,29 @@
       },
 
       // ---------- заказы (видят официант и владелец — проверяет база) ----------
-      // без toIso: все незакрытые + всё созданное с fromIso; с toIso: история за период
+      // без toIso: все незакрытые (и доставки в пути) + всё созданное с fromIso; с toIso: история за период.
+      // Курьер получает только доставку — это решает база (orders_staff_read).
       async orders(fromIso, toIso) {
         return pages((from, to) => {
           let q = sb.from('orders').select('*');
           q = toIso
             ? q.gte('created_at', fromIso).lt('created_at', toIso)
-            : q.or(`created_at.gte.${fromIso},status.in.(new,accepted,cooking,ready)`);
+            : q.or(`created_at.gte.${fromIso},status.in.(new,accepted,cooking,ready,on_the_way)`);
           return q.order('created_at', { ascending: true }).order('id', { ascending: true }).range(from, to);
         });
       },
       // официант или владелец принимает новый заказ; changed=false — его уже принял кто-то другой (или отменили)
       async acceptOrder(id) {
         const { data, error } = await sb.rpc('accept_order', { p_id: id });
+        fail(error); return Array.isArray(data) ? data[0] : data;
+      },
+      // ---------- доставка: курьер забрал → «В пути»; доставил → оплачено, счёт создан ----------
+      async courierTake(id) {
+        const { data, error } = await sb.rpc('courier_take', { p_id: id });
+        fail(error); return Array.isArray(data) ? data[0] : data;
+      },
+      async courierDone(id, method) {
+        const { data, error } = await sb.rpc('courier_done', { p_id: id, p_method: method });
         fail(error); return Array.isArray(data) ? data[0] : data;
       },
       async setOrderStatus(id, status) {

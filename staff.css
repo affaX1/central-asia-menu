@@ -672,3 +672,57 @@ body.signed #a-user .lang-pick select { width: 100%; }
 .shf-info b { display: block; font-size: 18px; font-weight: 800; }
 .shf-info span { color: var(--muted); font-size: 13.5px; font-weight: 600; }
 .shf-info .shf-timer { font-size: 30px; line-height: 1.1; color: var(--ok); font-variant-numeric: tabular-nums; }
+
+/* ---------- доставка своим курьером ---------- */
+.st-on_the_way { background: hsl(205 70% 92%); color: hsl(210 60% 32%); }
+:root[data-theme="dark"] .st-on_the_way { background: hsl(205 30% 24%); color: hsl(200 70% 82%); }
+.dv-badge { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: 13px; font-weight: 800; vertical-align: middle; }
+.dv-badge .ic { width: 15px; height: 15px; }
+.o-card.is-deliv { border-inline-start: 4px solid var(--accent); }
+.dv-info { display: grid; gap: 6px; padding: 10px 12px; border-radius: 14px; background: var(--surface-2); font-size: 14.5px; }
+.dv-info .ic { width: 16px; height: 16px; flex: none; margin-top: 2px; color: var(--muted); }
+.dv-who { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; }
+.dv-who b { font-size: 16px; overflow-wrap: anywhere; }
+.dv-tel { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; color: var(--accent); font-weight: 800; text-decoration: none; }
+.dv-tel .ic { color: currentColor; }
+.dv-addr, .dv-pay, .dv-courier { display: flex; gap: 8px; align-items: flex-start; }
+.dv-addr span { overflow-wrap: anywhere; }
+.dv-addr small, .dv-pay small { color: var(--muted); font-weight: 600; }
+.dv-pay { font-weight: 800; }
+.dv-maps { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 2px; }
+.dv-maps .btn { flex: 1 1 130px; }
+.dv-nopoint { margin: 0; color: var(--warn); font-size: 13.5px; font-weight: 700; }
+
+/* своё окно: выбор варианта (наличными / картой) */
+.ask-choices { display: grid; gap: 8px; margin-top: 14px; }
+.ask-choice { display: flex; align-items: center; gap: 10px; min-height: 50px; padding: 8px 14px; border: 1.5px solid var(--line); border-radius: 14px; background: var(--bg); font-weight: 700; font-size: 16px; cursor: pointer; }
+.ask-choice input { width: 20px; height: 20px; accent-color: var(--accent); flex: none; }
+.ask-choice:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+
+/* курьер */
+.cr-card .o-head { flex-wrap: wrap; }
+.cr-take, .cr-done { min-height: 54px; font-size: 16.5px; font-weight: 800; }
+.cr-hint { margin: 0; color: var(--muted); font-size: 13.5px; font-weight: 600; }
+.cr-list { list-style: none; margin: 0; padding: 0; }
+.cr-list li { display: flex; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px dashed var(--line); }
+.cr-list li:last-child { border-bottom: 0; }
+.cr-list li span { min-width: 0; overflow-wrap: anywhere; }
+.cr-list small { display: block; color: var(--muted); font-weight: 600; }
+.cr-list b { flex: none; text-align: end; }
+
+/* кухня: доставка (классы кухни — не st-*) */
+.k-deliv { display: inline-flex; align-items: center; gap: 6px; }
+.k-deliv .ic { width: 20px; height: 20px; color: var(--accent); }
+.k-dstate { margin-top: 8px; color: var(--muted); font-size: 13.5px; font-weight: 700; }
+.k-dstate.is-ready { color: var(--ok); }
+
+/* владелец: точка ресторана и зоны доставки */
+.dl-map { height: 320px; border-radius: 16px; border: 1px solid var(--line); overflow: hidden; background: var(--surface-2); margin: 6px 0 10px; z-index: 0; position: relative; }
+.dl-map .a-empty { padding: 20px; }
+.dl-point { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
+.dl-point .field { flex: 1 1 140px; margin: 0; }
+.dl-zones { list-style: none; margin: 6px 0 8px; padding: 0; display: grid; gap: 8px; }
+.dl-zone { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-weight: 700; }
+.dl-zone input { width: 96px; min-height: 44px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 12px; background: var(--bg); color: var(--text); font: 700 16px var(--font-body); }
+.dl-zone input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.dl-zone .btn { margin-inline-start: auto; }

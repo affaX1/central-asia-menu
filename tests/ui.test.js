@@ -9,7 +9,26 @@ const root = path.join(__dirname, '..');
 const UI_FILES = ['index.html', 'admin.html', 'waiter.html', 'owner.html', 'print.html', 'icons.svg', 'icon.svg',
   'app.js', 'data.js', 'schedule.js', 'staff-core.js', 'staff-api.js', 'waiter.js', 'owner.js',
   'kitchen.html', 'kitchen.js', 'floor.js', 'owner-reports.js', 'staff-i18n.js', 'staff-tools.js', 'stop-list.js', 'staff-shift.js',
-  'styles.css', 'staff.css', 'supabase/seed.sql'];
+  'courier.html', 'courier.js', 'courier.webmanifest',
+  'styles.css', 'staff.css', 'guest.css', 'supabase/seed.sql'];
+
+test('тексты панелей сотрудников: у каждого ключа 4 языка (RU/EN/MS/UZ) с одинаковым набором', () => {
+  const ctx = { window: {} };
+  vm.runInNewContext(fs.readFileSync(path.join(root, 'staff-i18n.js'), 'utf8'), ctx);
+  const T = ctx.window.STAFF_T;
+  assert.deepStrictEqual([...ctx.window.STAFF_LANGS.map(([c]) => c)], ['ru', 'en', 'ms', 'uz']);
+  for (const [k, v] of Object.entries(T)) {
+    if (k === 'ago' || k === 'dur') continue;
+    for (const l of ['ru', 'en', 'ms', 'uz']) {
+      assert.ok(v[l] !== undefined && v[l] !== '', `staff-i18n ${k}: нет языка ${l}`);
+      // вложенные наборы (статусы, способы оплаты…) — те же ключи, что у русского
+      if (v[l] && typeof v[l] === 'object' && !Array.isArray(v[l])) assert.deepStrictEqual(Object.keys(v[l]).sort(), Object.keys(v.ru).sort(), `staff-i18n ${k}.${l}`);
+      if (Array.isArray(v[l])) assert.strictEqual(v[l].length, v.ru.length, `staff-i18n ${k}.${l}: длина`);
+    }
+  }
+  // доставка: все статусы, включая «в пути»
+  assert.deepStrictEqual(Object.keys(T.dst.ru).sort(), ['accepted', 'cancelled', 'cooking', 'new', 'on_the_way', 'ready', 'served']);
+});
 
 test('в интерфейсе нет эмодзи', () => {
   const emoji = /[\p{Extended_Pictographic}\u{1F1E6}-\u{1F1FF}\u{FE0F}]/u;

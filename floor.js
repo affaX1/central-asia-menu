@@ -54,10 +54,60 @@
   const ACTIVE = ['new', 'accepted', 'cooking', 'ready'];
   const stOf = (s) => (ACTIVE.includes(s) ? 'new' : s);
   const lineTitle = (i) => { const o = optNames(i); return `${tr(i.name) || i.id}${o.length ? ` (${o.join(', ')})` : ''}`; };
+
+  // ---------- доставка своим курьером ----------
+  // У доставки нет стола (table_id пустой, table_label «Доставка»): она не попадает на схему зала,
+  // в счёт стола, «Пересадить» и закрытие счёта — её закрывает курьер (courier_done).
+  // Свои этапы: новая → принята → готовится → готова → в пути → доставлен (served).
+  const isDeliv = (o) => o?.kind === 'delivery';
+  const DELIV_OPEN = ['new', 'accepted', 'cooking', 'ready', 'on_the_way'];
+  const delivSt = (s) => t('dst')[s] || s;
+  const telOf = (p) => String(p || '').replace(/[^\d+]/g, '');
+  const hasPoint = (o) => o?.lat != null && o?.lng != null && Number.isFinite(Number(o.lat)) && Number.isFinite(Number(o.lng));
+  const mapsUrl = (o) => `https://www.google.com/maps/dir/?api=1&destination=${Number(o.lat)},${Number(o.lng)}`;
+  const wazeUrl = (o) => `https://waze.com/ul?ll=${Number(o.lat)},${Number(o.lng)}&navigate=yes`;
+  const kmText = (x) => (x == null || x === '' ? '' : t('km', String(Math.round(Number(x) * 10) / 10).replace('.', S.lang === 'en' ? '.' : ',')));
+  // заголовок карточки: «Доставка №1024» вместо стола
+  const placeTitle = (o) => (isDeliv(o) ? t('deliv_no', o.no) : `${t('table')} ${o.table_label}`);
+  // гость, телефон (звонок), адрес, расстояние, оплата, курьер — одинаково у официанта, владельца и курьера
+  function delivInfoHtml(o, { maps = false } = {}) {
+    const tel = telOf(o.customer_phone);
+    const how = t('pay_how')[o.pay_method] || '';
+    return `<div class="dv-info">
+      <div class="dv-who"><b>${esc(o.customer_name || '')}</b>${tel ? `<a class="dv-tel" href="tel:${esc(tel)}">${icon('phone', 'sm')}${esc(o.customer_phone)}</a>` : ''}</div>
+      ${o.address ? `<div class="dv-addr">${icon('pin', 'sm')}<span>${esc(o.address)}${o.distance_km != null ? ` <small>· ${esc(kmText(o.distance_km))}</small>` : ''}</span></div>` : ''}
+      <div class="dv-pay">${icon('cash', 'sm')}<span>${esc(t('c_to_pay', money(o.total), how))}${Number(o.delivery_fee) ? ` <small>(${esc(t('c_fee', money(o.delivery_fee)))})</small>` : ''}</span></div>
+      ${o.courier_name ? `<div class="dv-courier">${icon('bike', 'sm')}<span>${esc(t('c_courier', o.courier_name))}${o.picked_at ? ` · ${esc(hhmm(o.picked_at))}` : ''}</span></div>` : ''}
+      ${maps ? (hasPoint(o) ? `<div class="dv-maps">
+          <a class="btn small ghost" href="${esc(mapsUrl(o))}" target="_blank" rel="noopener">${icon('nav', 'sm')}${esc(t('c_maps'))}</a>
+          <a class="btn small ghost" href="${esc(wazeUrl(o))}" target="_blank" rel="noopener">${icon('nav', 'sm')}${esc(t('c_waze'))}</a></div>`
+        : `<p class="dv-nopoint">${esc(t('c_no_point'))}</p>`) : ''}
+    </div>`;
+  }
   const sub = (o) => Number(o.subtotal ?? o.total);
   const PAY_KEYS = ['cash', 'card', 'qr', 'other'];
   const payName = (m) => t('pay')[m] || m;
   const uuid = () => (crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-8xxx-xxxxxxxxxxxx'.replace(/x/g, () => (Math.random() * 16 | 0).toString(16)));
+
+  // карточка доставки в списке заказов (официант, владелец): вместо стола — «Доставка №…», гость и адрес.
+  // «Подано» и «Счёт стола» у доставки нет — её закрывает курьер. «Изменить» тоже нет: пересчёт заказа
+  // (edit_order) считает сбор зала и не знает про плату за доставку. extra — свои кнопки страницы.
+  function delivCard(o, { busy = false, extra = '' } = {}) {
+    const isNew = o.status === 'new';
+    return `<article class="o-card is-deliv${isNew ? ' is-new' : ''}">
+      <div class="o-head"><b class="o-table">${icon('bike', 'sm')}${esc(t('deliv_no', o.no))}</b>
+        <span class="st st-${esc(o.status)}">${o.status === 'served' ? icon('check', 'sm') : ''}${esc(delivSt(o.status))}</span></div>
+      <div class="o-meta">${esc(hhmm(o.created_at))} · ${esc(ago(o.created_at))}${o.accepted_by_name && o.status !== 'new' ? ` · ${esc(t('accepted_by', o.accepted_by_name, ''))}` : ''}</div>
+      ${delivInfoHtml(o)}
+      <ul class="o-items">${(o.items || []).map((i) => `<li><span><b>${esc(i.qty)}×</b> ${esc(tr(i.name) || i.id)}${optNames(i).length ? `<em class="o-opt">${esc(optNames(i).join(', '))}</em>` : ''}${noteHtml(i)}</span><span>${money(i.price * i.qty)}</span></li>`).join('')}</ul>
+      ${o.note ? `<div class="o-note"><b>${esc(t('comment'))}:</b> ${esc(trNote(o.note))}</div>` : ''}
+      ${o.status === 'cancelled' ? `<div class="o-meta">${esc(t('order_cancelled'))}</div>` : ''}
+      ${isNew ? `<button type="button" class="btn block serve-btn" data-dv-accept="${esc(o.id)}"${busy ? ' disabled' : ''}>${icon('check')}${esc(t('d_accept'))}</button>` : ''}
+      ${o.status !== 'cancelled' || extra ? `<div class="o-actions">
+        ${o.status !== 'cancelled' ? `<button type="button" class="btn small ghost" data-fl-ticket="${esc(o.id)}">${icon('printer', 'sm')}${esc(t('print_kitchen'))}</button>` : ''}
+        ${extra}</div>` : ''}
+    </article>`;
+  }
 
   // ---------- печать: чек и бумажка на кухню (лента 80 мм) ----------
   function printSlip(title, bodyHtml) {
@@ -109,6 +159,7 @@
     call: { type: 'triangle', notes: [[0, 988], [0.32, 784]], len: 0.34, vol: 0.5 },                      // «динь-дон»: зовут официанта
     bill: { type: 'sine', notes: [[0, 1568], [0.1, 1568], [0.2, 2093]], len: 0.09, vol: 0.38 },           // частый звон: «принесите счёт»
     booking: { type: 'sine', notes: [[0, 523], [0.16, 659], [0.32, 784], [0.5, 1047]], len: 0.3, vol: 0.35 }, // мягкий перелив: новая бронь
+    delivery: { type: 'square', notes: [[0, 587], [0.14, 784], [0.28, 587], [0.42, 784]], len: 0.11, vol: 0.18 }, // «би-бип, би-бип»: новая доставка
   };
   function chime(audio, kind = 'order') {
     if (!audio || audio.state !== 'running') return;
@@ -133,7 +184,7 @@
   function printTicket(o, head = t('p_kitchen')) {
     printSlip(`${head} ${o.no}`, `
       <div class="c muted">${esc(head)}</div>
-      <div class="c big">${esc(t('table'))} ${esc(o.table_label)}</div>
+      <div class="c big">${esc(placeTitle(o))}</div>
       <div class="c">${esc(t('order_no', o.no))} · ${esc(hhmm(o.created_at))}</div>
       <hr><table class="k">${(o.items || []).map((i) => `<tr><td class="n">${esc(i.qty)} ×</td><td>${esc(tr(i.name) || i.id)}${optNames(i).length ? `<div class="opt">${esc(optNames(i).join(', '))}</div>` : ''}${i.note ? `<div class="inote">&gt;&gt; ${esc(trNote(i.note))}</div>` : ''}</td></tr>`).join('')}</table>
       ${o.note ? `<div class="note">${esc(trNote(o.note))}</div>` : ''}
@@ -168,7 +219,11 @@
     const taxBase = subT - discT + (st.tax_on_service === false ? 0 : servT);
     const when = new Date(bill?.paid_at || Date.now());
     const addr = tr(st.address);
-    const waiters = [...new Set(orders.map((o) => o.served_by_name || (o.source === 'staff' ? o.created_by_name : null)).filter(Boolean))];
+    const deliv = orders.some(isDeliv) || (bill && !bill.table_id && Number(bill.delivery_fee) > 0);
+    const feeT = Number(bill ? bill.delivery_fee : draft ? draft.delivery_fee : sum((o) => o.delivery_fee)) || 0;
+    // у доставки вместо официанта — курьер
+    const waiters = deliv ? [...new Set(orders.map((o) => o.courier_name).filter(Boolean))]
+      : [...new Set(orders.map((o) => o.served_by_name || (o.source === 'staff' ? o.created_by_name : null)).filter(Boolean))];
     const pays = bill?.payments?.length ? bill.payments : bill ? [{ method: bill.method, amount: Number(bill.total) + Number(bill.tip || 0) + Number(bill.rounding || 0) }] : [];
     const row = (k, v, cls = '') => `<tr${cls ? ` class="${cls}"` : ''}><td>${esc(k)}</td><td class="s">${esc(v)}</td></tr>`;
     printSlip(bill ? t('p_receipt', bill.no) : t('p_prebill'), `
@@ -180,11 +235,11 @@
       ${bill?.voided_at ? `<div class="stamp">${esc(t('p_voided'))}${bill.void_reason ? `<br>${esc(bill.void_reason)}` : ''}</div>` : ''}
       <hr>
       <table class="kv">
-        ${row(t('table'), table)}
+        ${deliv ? row(t('delivery'), orders.map((o) => o.customer_name).filter(Boolean)[0] || '') : row(t('table'), table)}
         ${row(t('p_orders_l'), `№${orders.map((o) => o.no).join(', №')}`)}
         ${row(t('p_date'), when.toLocaleDateString(S.locale(), { day: '2-digit', month: '2-digit', year: 'numeric' }))}
         ${row(t('p_time'), when.toLocaleTimeString(S.locale(), { hour: '2-digit', minute: '2-digit' }))}
-        ${waiters.length ? row(t('p_waiter'), waiters.join(', ')) : ''}
+        ${waiters.length ? row(deliv ? t('c_title') : t('p_waiter'), waiters.join(', ')) : ''}
         ${bill?.paid_by_name ? row(t('p_cashier'), bill.paid_by_name) : ''}
       </table>
       <hr>
@@ -198,6 +253,7 @@
         ${discT ? row(`${t('disc_line', tt.discount_pct ? `${Number(tt.discount_pct)}%` : '')}${tt.discount_reason ? ` (${tt.discount_reason})` : ''}`, `−${num(discT)}`) : ''}
         ${servT ? row(`${t('sum_service')} ${pct(servT, subT - discT)}`.trim(), num(servT)) : ''}
         ${taxT ? row(`${st.tax_name || t('sum_tax')} ${pct(taxT, taxBase)}`.trim(), num(taxT)) : ''}
+        ${feeT ? row(t('delivery'), num(feeT)) : ''}
       </table>
       <hr class="dbl">
       <table>${row(t('p_total'), cur(tt.total), 'tot')}</table>
@@ -737,6 +793,21 @@
       if (open) openTable(open, true);
     }
 
+    // доставку принимает зал, как заказ стола (accept_order); дальше — кухня и курьер
+    async function acceptDeliv(id) {
+      const o = host.getOrders().find((x) => x.id === id);
+      if (!o || busy.has(id)) return;
+      busy.add(id);
+      host.rerender();
+      try {
+        const r = await host.api.acceptOrder(id);
+        S.toast(r && r.changed === false ? t('d_t_already', o.no) : t('d_t_accepted', o.no), r && r.changed === false);
+        await host.reloadOrders();
+      } catch (ex) { S.toast(S.errText(ex), true); }
+      busy.delete(id);
+      host.rerender();
+    }
+
     async function claim(tableId, on) {
       try {
         await host.api.claimTable(tableId, on);
@@ -1031,6 +1102,8 @@
       if (vd) { voidBill(vd.dataset.flVoid); return true; }
       const sv = e.target.closest('[data-fl-serve]');
       if (sv) { serve(sv.dataset.flServe); return true; }
+      const da = e.target.closest('[data-dv-accept]');
+      if (da) { acceptDeliv(da.dataset.dvAccept); return true; }
       if (e.target.closest('[data-fl-disc-open]') && payState) { payState.discOpen = true; repaintPay(); return true; }
       if (e.target.closest('[data-fl-disc-clear]') && payState) { payState.disc = null; payState.discOpen = false; syncParts(); repaintPay(); return true; }
       const dp = e.target.closest('[data-fl-disc-pct]');
@@ -1093,11 +1166,15 @@
 
     return {
       load, render, handleClick, openTable, editOrder, compose, serve,
+      delivCard: (o, extra = '') => delivCard(o, { busy: busy.has(o.id), extra }),
       openCalls, isMineOrFree, myTables, get bills() { return okBills(); }, get tables() { return tables; },
       newBookings, get bookings() { return bookings; }, get view() { return view; },
       setView(v) { view = v === 'book' ? 'book' : 'map'; },
     };
   }
 
-  window.Floor = { create, printSlip, printTicket, printReceipt, optNames, lineTitle, noteHtml, trNote, ACTIVE, stOf, chime };
+  window.Floor = {
+    create, printSlip, printTicket, printReceipt, optNames, lineTitle, noteHtml, trNote, ACTIVE, stOf, chime,
+    isDeliv, DELIV_OPEN, delivSt, delivInfoHtml, placeTitle, hasPoint, mapsUrl, wazeUrl, telOf, kmText,
+  };
 })();

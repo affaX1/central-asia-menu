@@ -597,6 +597,31 @@
   // =================================================================
   //  РЕСТОРАН
   // =================================================================
+  // ---------- карта для точки ресторана (Leaflet + OpenStreetMap), грузится только в «Ресторане» ----------
+  const LEAFLET = {
+    css: ['https://unpkg.com/leaflet@1.9.4/dist/leaflet.css', 'sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY='],
+    js: ['https://unpkg.com/leaflet@1.9.4/dist/leaflet.js', 'sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo='],
+  };
+  let leafletP = null;
+  function loadLeaflet() {
+    if (window.L?.map) return Promise.resolve(window.L);
+    if (leafletP) return leafletP;
+    leafletP = new Promise((res, rej) => {
+      if (!document.getElementById('leaflet-css')) {
+        const css = document.createElement('link');
+        Object.assign(css, { id: 'leaflet-css', rel: 'stylesheet', href: LEAFLET.css[0], integrity: LEAFLET.css[1], crossOrigin: 'anonymous' });
+        document.head.appendChild(css);
+      }
+      const js = document.createElement('script');
+      Object.assign(js, { src: LEAFLET.js[0], integrity: LEAFLET.js[1], crossOrigin: 'anonymous' });
+      js.onload = () => (window.L?.map ? res(window.L) : rej(new Error('leaflet')));
+      js.onerror = () => { leafletP = null; js.remove(); rej(new Error('leaflet')); };   // в следующий раз попробуем снова
+      document.head.appendChild(js);
+    });
+    return leafletP;
+  }
+  const accentColor = () => getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#B5462E';
+
   function renderRestaurant() {
     const st = S.settings;
     const sched = Array.isArray(st.schedule) && st.schedule.length === 7 ? st.schedule
@@ -686,6 +711,25 @@
           ${langFields('footer', st.footer, { label: 'Подпись внизу меню (необязательно)' })}
         </div></section>
 
+        <section class="panel" id="dl-panel"><div class="panel-head"><h3>Доставка</h3></div><div class="panel-body">
+          <p class="help" style="margin-top:0">Гость ставит точку на карте — меню считает расстояние и цену доставки по вашим зонам. Деньги за заказ и доставку берёт курьер, наличными или картой. Курьера пригласите в разделе «Сотрудники».</p>
+          ${sw('name="delivery_enabled"', !!st.delivery_enabled, 'Доставка включена')}
+          <p class="section-label">Где ресторан</p>
+          <div class="dl-map" id="dl-map"><p class="a-empty">Загружаем карту…</p></div>
+          <p class="help" style="margin-top:0">Нажмите на карту там, где ресторан, — точка встанет туда. Если вы сейчас в ресторане, нажмите «Где я сейчас».</p>
+          <div class="dl-point">
+            <label class="field"><span>Широта</span><input name="delivery_lat" type="text" inputmode="decimal" maxlength="12" autocomplete="off" value="${esc(st.delivery_lat ?? '')}" placeholder="не задана"></label>
+            <label class="field"><span>Долгота</span><input name="delivery_lng" type="text" inputmode="decimal" maxlength="12" autocomplete="off" value="${esc(st.delivery_lng ?? '')}" placeholder="не задана"></label>
+            <button type="button" class="btn small ghost" id="dl-here">${icon('pin', 'sm')}Где я сейчас</button>
+          </div>
+          <p class="section-label">Зоны и цена доставки</p>
+          <p class="help" style="margin-top:0">Расстояние считается по прямой от ресторана. Гость дальше последней зоны доставку заказать не сможет. До 8 зон.</p>
+          <ul class="dl-zones" id="dl-zones"></ul>
+          <button type="button" class="btn small ghost" id="dl-add">${icon('plus', 'sm')}Добавить зону</button>
+          <label class="field" style="margin-top:14px"><span>Минимальная сумма заказа на доставку, ${esc(st.currency || '')}</span><input name="delivery_min" type="number" inputmode="decimal" min="0" max="99999" step="0.01" value="${esc(Number(st.delivery_min) ? st.delivery_min : '')}" placeholder="пусто — без минимума">
+            <span class="hint">Считается по блюдам, без налога и платы за доставку.</span></label>
+        </div></section>
+
         <section class="panel"><div class="panel-head"><h3>Сбор, налог, скидки и округление</h3></div><div class="panel-body">
           <p class="help">Сумма считается на сервере и видна гостю в корзине, на экране заказа и в чеке. Оставьте 0, если не берёте. Новые проценты действуют для новых заказов.</p>
           <div class="form-grid">
@@ -765,6 +809,112 @@
       $('#logo-remove').hidden = true;
     });
 
+    // ---------- доставка: зоны, точка на карте ----------
+    const cur = st.currency || '';
+    let dlZones = (Array.isArray(st.delivery_zones) ? st.delivery_zones : [])
+      .map((z) => ({ km: String(z.km ?? ''), fee: String(z.fee ?? '') }))
+      .sort((a, b) => Number(a.km) - Number(b.km));
+    const latIn = form.querySelector('[name="delivery_lat"]');
+    const lngIn = form.querySelector('[name="delivery_lng"]');
+    const numOf = (v) => { const x = String(v ?? '').trim().replace(',', '.'); return x === '' ? NaN : Number(x); };
+    const pointOf = () => {
+      const la = numOf(latIn.value);
+      const ln = numOf(lngIn.value);
+      return Number.isFinite(la) && Number.isFinite(ln) && Math.abs(la) <= 90 && Math.abs(ln) <= 180 ? [la, ln] : null;
+    };
+    let mapApi = null;   // { draw(pan) } — когда карта загрузилась
+    function paintZones() {
+      const box = $('#dl-zones');
+      box.innerHTML = dlZones.length ? dlZones.map((z, i) => `<li class="dl-zone">
+          <span>до</span><input type="text" inputmode="decimal" maxlength="5" data-z-km="${i}" value="${esc(z.km)}" aria-label="Зона ${i + 1}: до скольких километров">
+          <span>км —</span>${st.currency_before ? `<span>${esc(cur)}</span>` : ''}
+          <input type="text" inputmode="decimal" maxlength="7" data-z-fee="${i}" value="${esc(z.fee)}" aria-label="Зона ${i + 1}: цена доставки">${st.currency_before ? '' : `<span>${esc(cur)}</span>`}
+          <button type="button" class="btn small danger" data-z-del="${i}" aria-label="Убрать зону ${i + 1}">${icon('trash', 'sm')}</button></li>`).join('')
+        : '<li class="help" style="margin:0">Зон пока нет — добавьте хотя бы одну: до скольких километров и сколько стоит доставка.</li>';
+      $('#dl-add').disabled = dlZones.length >= 8;
+    }
+    paintZones();
+    $('#dl-zones').addEventListener('input', (e) => {
+      const k = e.target.dataset.zKm;
+      const fe = e.target.dataset.zFee;
+      if (k !== undefined) dlZones[k].km = e.target.value;
+      if (fe !== undefined) dlZones[fe].fee = e.target.value;
+      mapApi?.draw(false);
+    });
+    $('#dl-zones').addEventListener('click', (e) => {
+      const d = e.target.closest('[data-z-del]');
+      if (!d) return;
+      dlZones.splice(Number(d.dataset.zDel), 1);
+      paintZones();
+      mapApi?.draw(false);
+    });
+    $('#dl-add').addEventListener('click', () => {
+      if (dlZones.length >= 8) return;
+      dlZones.push({ km: '', fee: '' });
+      paintZones();
+      form.querySelector(`[data-z-km="${dlZones.length - 1}"]`)?.focus();
+    });
+    // включить доставку можно только с точкой ресторана и хотя бы одной зоной
+    const zonesOk = () => dlZones.some((z) => numOf(z.km) >= 0.3 && numOf(z.km) <= 60 && numOf(z.fee) >= 0 && numOf(z.fee) <= 1000);
+    const DL_NEED = 'Чтобы включить доставку, поставьте точку ресторана на карте и добавьте хотя бы одну зону с ценой.';
+    form.querySelector('[name="delivery_enabled"]').addEventListener('change', (e) => {
+      if (e.target.checked && (!pointOf() || !zonesOk())) { e.target.checked = false; S.toast(DL_NEED, true); }
+    });
+    [latIn, lngIn].forEach((el) => {
+      el.addEventListener('input', () => mapApi?.draw(false));
+      el.addEventListener('change', () => mapApi?.draw(true));
+    });
+    $('#dl-here').addEventListener('click', () => {
+      if (!navigator.geolocation) { S.toast('Этот браузер не умеет определять место. Поставьте точку на карте.', true); return; }
+      const b = $('#dl-here');
+      b.disabled = true;
+      navigator.geolocation.getCurrentPosition((pos) => {
+        b.disabled = false;
+        latIn.value = pos.coords.latitude.toFixed(6);
+        lngIn.value = pos.coords.longitude.toFixed(6);
+        mapApi?.draw(true, 17);
+        S.toast(pos.coords.accuracy > 100 ? `Точка поставлена, но точность около ${Math.round(pos.coords.accuracy)} м — проверьте её на карте.` : 'Точка поставлена — проверьте её на карте.', pos.coords.accuracy > 100);
+      }, () => {
+        b.disabled = false;
+        S.toast('Не получилось узнать, где вы. Разрешите браузеру доступ к геопозиции или поставьте точку на карте.', true);
+      }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
+    });
+    loadLeaflet().then((L) => {
+      const box = $('#dl-map');
+      if (!box || !form.isConnected) return;
+      box.innerHTML = '';
+      const p0 = pointOf();
+      // пока точки нет — просто показываем Куала-Лумпур, ничего не вписывая за владельца
+      const map = L.map(box, { scrollWheelZoom: false }).setView(p0 || [3.139, 101.6869], p0 ? 14 : 11);
+      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>',
+      }).addTo(map);
+      const layer = L.layerGroup().addTo(map);
+      const color = accentColor();
+      mapApi = {
+        // точка ресторана и круги зон; pan — сдвинуть карту к точке
+        draw(pan, zoom) {
+          layer.clearLayers();
+          const p = pointOf();
+          if (!p) return;
+          const kms = dlZones.map((z) => numOf(z.km)).filter((k) => k >= 0.3 && k <= 60).sort((a, b) => a - b);
+          kms.forEach((k) => L.circle(p, { radius: k * 1000, color, weight: 1.5, opacity: 0.7, fillOpacity: 0.04, dashArray: '6 6', interactive: false }).addTo(layer));
+          L.circleMarker(p, { radius: 9, color: '#fff', weight: 3, fillColor: color, fillOpacity: 1 }).addTo(layer);
+          if (pan) map.setView(p, zoom || Math.max(map.getZoom(), 14));
+        },
+      };
+      map.on('click', (ev) => {
+        latIn.value = ev.latlng.lat.toFixed(6);
+        lngIn.value = ev.latlng.lng.toFixed(6);
+        mapApi.draw(false);
+      });
+      mapApi.draw(false);
+      setTimeout(() => map.invalidateSize(), 60);
+    }).catch(() => {
+      const box = $('#dl-map');
+      if (box) box.innerHTML = `<p class="notice">${icon('alert')}<span>Карта не загрузилась (нет интернета?). Впишите широту и долготу вручную или нажмите «Где я сейчас».</span></p>`;
+    });
+
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       err('');
@@ -787,6 +937,33 @@
       const goalRaw = String(f.get('day_goal') ?? '').trim().replace(/\s/g, '').replace(',', '.');
       const dayGoal = goalRaw === '' ? null : Number(goalRaw);
       if (dayGoal !== null && !(Number.isFinite(dayGoal) && dayGoal > 0 && dayGoal < 10000000)) return err('Цель дня — сумма больше нуля, например 1000. Или оставьте пусто.');
+      // доставка: точка ресторана (обе координаты или ни одной), зоны по км, минимальная сумма
+      const dLatRaw = String(f.get('delivery_lat') || '').trim();
+      const dLngRaw = String(f.get('delivery_lng') || '').trim();
+      let dLat = null;
+      let dLng = null;
+      if (dLatRaw || dLngRaw) {
+        const p = pointOf();
+        if (!p || !dLatRaw || !dLngRaw) return err('Доставка: точка ресторана — широта от −90 до 90 и долгота от −180 до 180. Проще всего нажать на карту.');
+        [dLat, dLng] = p.map((x) => Math.round(x * 1e6) / 1e6);
+      }
+      const dZones = [];
+      for (const [i, z] of dlZones.entries()) {
+        if (!String(z.km).trim() && !String(z.fee).trim()) continue;   // пустую строку просто не сохраняем
+        const km = numOf(z.km);
+        const fee = numOf(z.fee);
+        if (!(km >= 0.3 && km <= 60)) return err(`Доставка, зона ${i + 1}: расстояние — от 0,3 до 60 км.`);
+        if (!(fee >= 0 && fee <= 1000)) return err(`Доставка, зона ${i + 1}: цена — от 0 до 1000 ${cur}.`.trim());
+        dZones.push({ km: Math.round(km * 100) / 100, fee: Math.round(fee * 100) / 100 });
+      }
+      dZones.sort((a, b) => a.km - b.km);
+      if (new Set(dZones.map((z) => z.km)).size !== dZones.length) return err('Доставка: две зоны с одинаковым расстоянием — оставьте одну.');
+      if (dZones.length > 8) return err('Доставка: не больше 8 зон.');
+      const dMinRaw = String(f.get('delivery_min') ?? '').trim().replace(',', '.');
+      const dMin = dMinRaw === '' ? 0 : Number(dMinRaw);
+      if (!(Number.isFinite(dMin) && dMin >= 0 && dMin < 100000)) return err('Доставка: минимальная сумма — от 0, например 30. Или оставьте пусто.');
+      const dOn = !!f.get('delivery_enabled');
+      if (dOn && (dLat === null || !dZones.length)) return err(DL_NEED);
       const receiptInfo = String(f.get('receipt_info') || '').split('\n').map((x) => x.trim()).filter(Boolean).slice(0, 5).join('\n').slice(0, 300);
       const schedule = [];
       for (let i = 0; i < 7; i++) {
@@ -827,6 +1004,7 @@
           cash_rounding: !!f.get('cash_rounding'), waiter_discounts: !!f.get('waiter_discounts'),
           day_goal: dayGoal === null ? null : Math.round(dayGoal * 100) / 100,
           bookings_enabled: !!f.get('bookings_enabled'),
+          delivery_enabled: dOn, delivery_lat: dLat, delivery_lng: dLng, delivery_zones: dZones, delivery_min: Math.round(dMin * 100) / 100,
         };
         const saved = await api.saveSettings(patch);
         if (form.dataset.wifiLoaded === '1') await api.saveWifi(wifiName, wifiPass);
@@ -949,7 +1127,7 @@
         <form id="invite-form" class="form-grid" novalidate>
           <label class="field"><span>Email сотрудника</span><input name="email" type="email" inputmode="email" required autocomplete="off"></label>
           <label class="field"><span>Имя (необязательно)</span><input name="name" type="text" maxlength="60"></label>
-          <label class="field"><span>Роль</span><select name="role"><option value="waiter">Официант — зал: заказы, вызовы, счета</option><option value="cook">Повар — экран кухни</option><option value="manager">Менеджер — зал, скидки, отмена оплаты, закрытие дня, отчёты</option><option value="owner">Владелец — полный доступ</option></select></label>
+          <label class="field"><span>Роль</span><select name="role"><option value="waiter">Официант — зал: заказы, вызовы, счета</option><option value="cook">Повар — экран кухни</option><option value="courier">Курьер — доставка: забирает заказ, отвозит, берёт оплату</option><option value="manager">Менеджер — зал, скидки, отмена оплаты, закрытие дня, отчёты</option><option value="owner">Владелец — полный доступ</option></select></label>
           <div class="field" style="justify-content:flex-end"><button class="btn" type="submit">${icon('mail', 'sm')}Пригласить</button></div>
         </form>
         <p class="help" style="margin:12px 0 0">Как это работает: вы приглашаете email → сотрудник открывает <b>${esc(staffLink)}</b>, выбирает «Меня пригласили — зарегистрироваться» и подтверждает email из письма. Доступ появится сам.</p>
@@ -958,7 +1136,7 @@
 
       ${invites.length ? `<section class="panel"><div class="panel-head"><h3>Ждут регистрации<small>${invites.length}</small></h3></div>
         <ul class="rows">${invites.map((i) => `<li>
-          <div class="grow"><b>${esc(i.email)}</b><small>${esc([i.name, ({ owner: 'владелец', manager: 'менеджер', waiter: 'официант', cook: 'повар' })[i.role] || i.role].filter(Boolean).join(' · '))}</small></div>
+          <div class="grow"><b>${esc(i.email)}</b><small>${esc([i.name, ({ owner: 'владелец', manager: 'менеджер', waiter: 'официант', cook: 'повар', courier: 'курьер' })[i.role] || i.role].filter(Boolean).join(' · '))}</small></div>
           <div class="row-btns"><button type="button" class="btn small danger" data-revoke="${esc(i.email)}">Отменить приглашение</button></div>
         </li>`).join('')}</ul></section>` : ''}
 
@@ -971,6 +1149,7 @@
               <label class="field" style="margin:0"><select data-role="${esc(s.user_id)}" aria-label="Роль"${self ? ' disabled' : ''}>
                 <option value="waiter"${s.role === 'waiter' ? ' selected' : ''}>Официант</option>
                 <option value="cook"${s.role === 'cook' ? ' selected' : ''}>Повар</option>
+                <option value="courier"${s.role === 'courier' ? ' selected' : ''}>Курьер</option>
                 <option value="manager"${s.role === 'manager' ? ' selected' : ''}>Менеджер</option>
                 <option value="owner"${s.role === 'owner' ? ' selected' : ''}>Владелец</option></select></label>
               ${sw(`data-active="${esc(s.user_id)}" aria-label="Доступ: ${esc(s.email)}"`, s.active, 'Доступ', self)}
@@ -1009,6 +1188,10 @@
   const ST = { new: 'Ждёт подачи', served: 'Подан', cancelled: 'Отменён' };
   const ACTIVE = ['new', 'accepted', 'cooking', 'ready'];
   const stOf = (s) => (ACTIVE.includes(s) ? 'new' : s);
+  // доставка своим курьером: свои этапы (принята → готовится → в пути → доставлен), без стола
+  const isDeliv = (o) => window.Floor.isDeliv(o);
+  const isActive = (o) => (isDeliv(o) ? window.Floor.DELIV_OPEN.includes(o.status) && !o.paid_at : ACTIVE.includes(o.status));
+  const placeOf = (o) => (isDeliv(o) ? `доставка, ${o.customer_name || 'гость'}` : `стол ${o.table_label}`);
   const pad = (n) => String(n).padStart(2, '0');
   const localDate = (d = new Date()) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
   const dayStart = (d = new Date()) => { const x = new Date(d); x.setHours(0, 0, 0, 0); return x; };
@@ -1113,7 +1296,7 @@
   }
   function announce(fresh) {
     const o = fresh[fresh.length - 1];
-    bannerMsg = fresh.length > 1 ? `Новых заказов: ${fresh.length}` : `Новый заказ №${o.no} — стол ${o.table_label}`;
+    bannerMsg = fresh.length > 1 ? `Новых заказов: ${fresh.length}` : isDeliv(o) ? `Новая доставка №${o.no}${o.distance_km != null ? ` · ${window.Floor.kmText(o.distance_km)}` : ''}` : `Новый заказ №${o.no} — стол ${o.table_label}`;
     renderBanner();
     ding();
     try {
@@ -1123,7 +1306,8 @@
     } catch { /* без системных уведомлений */ }
   }
   function updateCount() {
-    const n = orders.filter((o) => ACTIVE.includes(o.status)).length;
+    // ждут подачи (столы) + новые доставки, которые ещё никто не принял
+    const n = orders.filter((o) => (isDeliv(o) ? o.status === 'new' : ACTIVE.includes(o.status))).length;
     const el = $('#tab-count');
     if (el) { el.hidden = !n; el.textContent = n; }
     const c = floor ? floor.openCalls().length : 0;
@@ -1156,6 +1340,13 @@
   }
 
   function orderCard(o) {
+    if (isDeliv(o)) {
+      // доставку отменяет владелец или менеджер (пока не оплачена); принять — как заказ стола
+      const b = busyOrders.has(o.id) ? ' disabled' : '';
+      const extra = o.status === 'cancelled' ? `<button type="button" class="btn small ghost" data-order-next="${esc(o.id)}" data-to="new"${b}>Вернуть заказ</button>`
+        : !o.paid_at ? `<button type="button" class="btn small danger" data-order-cancel="${esc(o.id)}"${b}>Отменить</button>` : '';
+      return floor.delivCard(o, extra);
+    }
     const st = stOf(o.status);
     const busy = busyOrders.has(o.id);
     return `<article class="o-card${st === 'new' ? ' is-new' : ''}">
@@ -1185,7 +1376,7 @@
     const today = dayStart().getTime();
     const todays = orders.filter((o) => new Date(o.created_at).getTime() >= today);
     const active = orders
-      .filter((o) => ACTIVE.includes(o.status))
+      .filter(isActive)
       .sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
     const sum = (list) => list.filter((o) => o.status !== 'cancelled').reduce((s, o) => s + Number(o.total), 0);
     const list = ordersView === 'active' ? active : [...history].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
@@ -1196,7 +1387,7 @@
       ${off ? `<p class="notice bad">${icon('alert')}<span>Приём заказов из меню выключен (раздел «Ресторан»). Гости не могут отправить заказ.</span></p>` : ''}
       ${me?.role === 'owner' && !tables.length ? `<p class="notice">${icon('alert')}<span>Столов ещё нет — гости не смогут заказать. Создайте столы и распечатайте QR-коды в разделе «Столы и QR».</span></p>` : ''}
       <div class="a-stats">
-        <div class="a-stat${active.length ? ' hot' : ''}"><b>${active.length}</b><span>ждут подачи</span></div>
+        <div class="a-stat${active.length ? ' hot' : ''}"><b>${active.length}</b><span>${active.some(isDeliv) ? `активные · доставок ${active.filter(isDeliv).length}` : 'ждут подачи'}</span></div>
         <div class="a-stat"><b>${todays.filter((o) => o.status === 'served').length}</b><span>подано сегодня</span></div>
         <div class="a-stat"><b>${todays.filter((o) => o.status === 'cancelled').length}</b><span>отменено сегодня</span></div>
         <div class="a-stat"><b>${money(sum(todays))}</b><span>заказов сегодня: ${todays.filter((o) => o.status !== 'cancelled').length}</span></div>
@@ -1220,7 +1411,7 @@
   async function setOrderStatus(id, status) {
     const o = orders.find((x) => x.id === id) || history.find((x) => x.id === id);
     if (!o || busyOrders.has(id)) return;
-    if (status === 'cancelled' && !await S.ask(`Отменить заказ №${o.no} (стол ${o.table_label})? Гость увидит, что заказ отменён.`, { ok: 'Отменить заказ', cancel: 'Не отменять' })) { render(); return; }
+    if (status === 'cancelled' && !await S.ask(`Отменить заказ №${o.no} (${placeOf(o)})? Гость увидит, что заказ отменён.${isDeliv(o) && o.status === 'on_the_way' ? ` Курьер ${o.courier_name || ''} уже везёт его — позвоните курьеру.` : ''}`, { ok: 'Отменить заказ', cancel: 'Не отменять' })) { render(); return; }
     busyOrders.add(id);
     render();
     try {
@@ -1229,7 +1420,7 @@
       orders = orders.map((x) => (x.id === id ? saved : x));
       history = history.map((x) => (x.id === id ? saved : x));
       if (status !== 'new' && bannerMsg && !orders.some((x) => ACTIVE.includes(x.status))) { bannerMsg = ''; renderBanner(); }
-      S.toast(`Заказ №${o.no}: ${ST[stOf(saved?.status || status)]}`);
+      S.toast(`Заказ №${o.no}: ${isDeliv(o) ? window.Floor.delivSt(saved?.status || status) : ST[stOf(saved?.status || status)]}`);
     } catch (ex) {
       S.toast(S.errText(ex), true);
     } finally {
