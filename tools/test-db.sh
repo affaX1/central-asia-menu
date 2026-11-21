@@ -18,4 +18,9 @@ $P -f supabase/schema.sql 2>&1 | grep -v NOTICE || true
 $P -f supabase/schema.sql 2>&1 | grep -v NOTICE || true
 $P -f supabase/seed.sql
 $P -f supabase/seed.sql
+# китайский для живой базы: снимаем zh и добавляем скриптом — должно вернуться всё
+$P -c "update public.dishes set name = name - 'zh', \"desc\" = \"desc\" - 'zh'; update public.categories set name = name - 'zh'; update public.settings set tagline = tagline - 'zh', footer = footer - 'zh';"
+$P -f supabase/zh-translations.sql
+$P -c "do \$\$ begin if exists (select 1 from public.dishes where not (name ? 'zh')) or exists (select 1 from public.categories where not (name ? 'zh')) or not (select tagline ? 'zh' from public.settings) then raise exception 'zh-translations.sql: не всё переведено'; end if; end \$\$;"
+echo "  ok  китайский язык добавляется в живую базу скриптом"
 $P -o /dev/null -f supabase/tests/roles.sql 2>&1 | sed "s/^psql:[^ ]* NOTICE:  /  /"

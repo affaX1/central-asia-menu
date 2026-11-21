@@ -10,7 +10,7 @@
   const ruPlural = (n, one, few, many) => { const a = Math.abs(n) % 100, b = a % 10; return a > 10 && a < 20 ? many : b === 1 ? one : b >= 2 && b <= 4 ? few : many; };
   const { $, esc, icon, tr, money } = S;
 
-  const LANGS = [['ru', 'Русский'], ['en', 'English'], ['uz', "O'zbekcha"], ['ar', 'العربية'], ['ms', 'Bahasa Melayu']];
+  const LANGS = [['ru', 'Русский'], ['en', 'English'], ['uz', "O'zbekcha"], ['ar', 'العربية'], ['ms', 'Bahasa Melayu'], ['zh', '中文']];
   const TAGS = [['hit', 'Хит'], ['new', 'Новинка'], ['spicy', 'Острое'], ['veg', 'Без мяса']];
   const MEAT = [['beef', 'говядина'], ['lamb', 'баранина'], ['horse', 'конина'], ['chicken', 'курица'], ['fish', 'рыба'], ['seafood', 'морепродукты']];
   const ALLERGENS = [['gluten', 'глютен'], ['milk', 'молоко'], ['eggs', 'яйца'], ['fish', 'рыба'], ['shellfish', 'морепродукты'], ['nuts', 'орехи'], ['soy', 'соя'], ['sesame', 'кунжут']];
@@ -489,6 +489,16 @@
           <label class="field"><span>Телефон</span><input name="phone" type="tel" inputmode="tel" maxlength="30" placeholder="+60 12 345 6789" value="${esc(st.phone || '')}"></label>
         </div></section>
 
+        <section class="panel"><div class="panel-head"><h3>Для гостей: Wi‑Fi и отзывы</h3></div><div class="panel-body">
+          <p class="help">Wi‑Fi видят только гости, которые отсканировали QR на столе. Пустое поле — значок Wi‑Fi не показывается.</p>
+          <div class="form-grid">
+            <label class="field"><span>Название сети Wi‑Fi</span><input name="wifi_name" type="text" maxlength="64" autocomplete="off" placeholder="Например: CentralAsia_Guest" data-wifi></label>
+            <label class="field"><span>Пароль Wi‑Fi</span><input name="wifi_pass" type="text" maxlength="64" autocomplete="off" placeholder="Пусто — сеть без пароля" data-wifi></label>
+          </div>
+          <label class="field"><span>Ссылка на отзыв в Google (необязательно)</span><input name="google_review_url" type="url" inputmode="url" maxlength="500" placeholder="https://g.page/r/…/review" value="${esc(st.google_review_url || '')}">
+            <span class="hint">Google Карты → ваш ресторан → «Попросить отзывы» → скопировать ссылку. Гость с оценкой 4–5 звёзд увидит кнопку «Оставить отзыв в Google».</span></label>
+        </div></section>
+
         <section class="panel"><div class="panel-head"><h3>Цены, язык, заказы</h3></div><div class="panel-body">
           <div class="form-grid">
             <label class="field"><span>Валюта</span><input name="currency" type="text" maxlength="8" required value="${esc(st.currency)}"></label>
@@ -556,6 +566,17 @@
         updNight(i);
       }
     });
+    // Wi‑Fi хранится отдельно от открытых настроек — подгружаем, не перебивая то, что уже вписали
+    api.wifi().then((w) => {
+      if (!form.isConnected) return;
+      for (const [k, v] of [['wifi_name', w?.name], ['wifi_pass', w?.pass]]) {
+        const el = form.querySelector(`[name="${k}"]`);
+        if (el && !el.value) el.value = v || '';
+      }
+      form.dataset.wifiLoaded = '1';
+    }).catch(() => {
+      form.querySelectorAll('[data-wifi]').forEach((el) => { el.disabled = true; el.placeholder = 'Не загрузилось — обновите страницу'; });
+    });
     $('#logo-file').addEventListener('change', async (e) => {
       const file = e.target.files[0];
       if (!file) return;
@@ -588,6 +609,11 @@
       const taxPct = Number(String(f.get('tax_pct') || 0).replace(',', '.'));
       if (!(servicePct >= 0 && servicePct <= 30) || !(taxPct >= 0 && taxPct <= 30)) return err('Сбор и налог — от 0 до 30%.');
       const taxName = String(f.get('tax_name') || '').trim() || 'SST';
+      const googleUrl = String(f.get('google_review_url') || '').trim();
+      if (googleUrl && !/^https:\/\/\S+$/.test(googleUrl)) return err('Ссылка на отзыв в Google должна начинаться с https://');
+      const wifiName = String(f.get('wifi_name') || '').trim().slice(0, 64);
+      const wifiPass = String(f.get('wifi_pass') || '').trim().slice(0, 64);
+      if (wifiPass && !wifiName) return err('Wi‑Fi: впишите название сети или уберите пароль.');
       const receiptInfo = String(f.get('receipt_info') || '').split('\n').map((x) => x.trim()).filter(Boolean).slice(0, 5).join('\n').slice(0, 300);
       const schedule = [];
       for (let i = 0; i < 7; i++) {
@@ -623,9 +649,11 @@
           logo_url: uploaded || (removeLogo ? null : st.logo_url || null),
           service_pct: servicePct, tax_pct: taxPct, tax_name: taxName.slice(0, 20), tax_on_service: !!f.get('tax_on_service'),
           receipt_info: receiptInfo,
+          google_review_url: googleUrl || null,
           cash_rounding: !!f.get('cash_rounding'), waiter_discounts: !!f.get('waiter_discounts'),
         };
         const saved = await api.saveSettings(patch);
+        if (form.dataset.wifiLoaded === '1') await api.saveWifi(wifiName, wifiPass);
         if ((uploaded || removeLogo) && st.logo_url) api.deleteImage(st.logo_url);
         S.settings = saved;
         paintBrand();

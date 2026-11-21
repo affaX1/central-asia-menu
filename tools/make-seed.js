@@ -14,7 +14,7 @@ const R = M.restaurant;
 const q = (s) => (s == null ? 'null' : `'${String(s).replace(/'/g, "''")}'`);
 const j = (o) => `${q(JSON.stringify(o ?? {}))}::jsonb`;
 const arr = (a) => `array[${(a || []).map(q).join(', ')}]::text[]`;
-const tr = (o) => (typeof o === 'string' ? { ru: o, uz: o, en: o, ar: o, ms: o } : o || {});
+const tr = (o) => (typeof o === 'string' ? { ru: o, uz: o, en: o, ar: o, ms: o, zh: o } : o || {});
 
 const out = [];
 out.push('-- Сгенерировано tools/make-seed.js из data.js. Стартовое меню и настройки.');

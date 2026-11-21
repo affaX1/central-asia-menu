@@ -279,6 +279,8 @@
       (d.audit = d.audit || []).push({ id: Date.now(), at: bill.paid_at, who: myName(), entity: 'bill', entity_id: bill.id, label: `счёт №${bill.no} · стол ${bill.table_label}`, action: 'insert', changes: { total: bill.total, method } });
       save(d); return bill;
     },
+    async wifi() { await delay(); owner(); return db().wifi || { name: '', pass: '' }; },
+    async saveWifi(name, pass) { await delay(); owner(); const d = db(); d.wifi = { name: String(name || '').slice(0, 64), pass: String(pass || '').slice(0, 64) }; save(d); },
     async voidBill(id, reason) {
       await delay(); owner(); offline();
       const why = String(reason || '').replace(/\s+/g, ' ').trim().slice(0, 200);
@@ -403,7 +405,16 @@
       const b = JSON.parse(opts.body || '{}');
       window.__rpc = (window.__rpc || []).concat({ name, body: b });
       if (localStorage.getItem('fake:server-error') === '1' && name === 'place_order') return reply(500, { message: 'internal error' });
-      if (name === 'table_info') { const t = d.tables.find((x) => x.token === b.p_token && x.active); return reply(200, t ? [{ label: t.label }] : []); }
+      if (name === 'table_info') { const t = d.tables.find((x) => x.token === b.p_token && x.active); const w = d.wifi || {}; return reply(200, t ? [{ label: t.label, wifi_name: w.name || null, wifi_pass: w.pass || null }] : []); }
+      if (name === 'guest_receipt') {
+        const o = d.orders.find((x) => x.id === b.p_order && x.guest_token === b.p_token);
+        const bl = o && o.bill_id && (d.bills || []).find((x) => x.id === o.bill_id && !x.voided_at);
+        if (!bl) return reply(200, null);
+        const os = d.orders.filter((x) => bl.order_ids.includes(x.id)).sort((x, y) => x.no - y.no);
+        return reply(200, { no: bl.no, paid_at: bl.paid_at, table_label: bl.table_label, order_nos: bl.order_nos, subtotal: bl.subtotal, discount: bl.discount || 0, discount_pct: bl.discount_pct, discount_reason: bl.discount_reason,
+          service: bl.service, tax: bl.tax, total: bl.total, tip: bl.tip || 0, rounding: bl.rounding || 0, payments: bl.payments, method: bl.method, cashier: bl.paid_by_name || null,
+          waiters: [...new Set(os.map((x) => x.served_by_name).filter(Boolean))], items: os.flatMap((x) => x.items) });
+      }
       if (name === 'get_order') {
         const o = d.orders.find((x) => x.id === b.p_id && x.guest_token === b.p_token);
         return reply(200, o ? [{ id: o.id, no: o.no, status: o.status, total: o.total, table_label: o.table_label, items: o.items, note: o.note, created_at: o.created_at, updated_at: o.updated_at, accepted_at: o.accepted_at || null,

@@ -76,6 +76,11 @@
       subtotal: 'Блюда', service: (p) => `Сервисный сбор${p ? ` ${p}%` : ''}`, paid: 'Оплачено',
       required: 'обязательно', optional: 'по желанию', addFor: (s) => `Добавить · ${s}`, chooseOptions: 'Выбрать вариант',
       edited: (x) => `Ресторан изменил заказ в ${x}`,
+      wifi: 'Wi‑Fi', wifiNet: 'Сеть', wifiPass: 'Пароль', wifiNoPass: 'Без пароля', wifiHint: 'Подключитесь в настройках телефона: Wi‑Fi → эта сеть → пароль.', copy: 'Скопировать', copied: 'Скопировано',
+      receipt: 'Чек', receiptTitle: (n) => `Чек №${n}`, receiptSave: 'Сохранить или распечатать', receiptWait: 'Чек появится здесь, когда официант закроет счёт.', receiptBack: 'К заказу',
+      rcDate: 'Дата', rcWaiter: 'Официант', rcCashier: 'Кассир', rcOrders: 'Заказы', rcDiscount: 'Скидка', rcRounding: 'Округление', rcToPay: 'К оплате', rcTip: 'Чаевые', rcPaidTotal: 'Всего оплачено', rcThanks: 'Спасибо, что были у нас!',
+      rcPay: { cash: 'Наличные', card: 'Карта', qr: 'QR', other: 'Другое' },
+      googleAsk: 'Спасибо! Если вам понравилось — расскажите о нас в Google. Это очень помогает ресторану.', googleBtn: 'Оставить отзыв в Google',
     },
     uz: {
       langName: "O'zbekcha", locale: 'uz-Latn-UZ', dir: 'ltr',
@@ -145,6 +150,11 @@
       subtotal: 'Taomlar', service: (p) => `Xizmat haqi${p ? ` ${p}%` : ''}`, paid: "To'langan",
       required: 'majburiy', optional: 'ixtiyoriy', addFor: (s) => `Qo'shish · ${s}`, chooseOptions: 'Variantni tanlash',
       edited: (x) => `Restoran buyurtmani ${x} da o'zgartirdi`,
+      wifi: 'Wi‑Fi', wifiNet: 'Tarmoq', wifiPass: 'Parol', wifiNoPass: 'Parolsiz', wifiHint: "Telefon sozlamalarida ulaning: Wi‑Fi → shu tarmoq → parol.", copy: 'Nusxalash', copied: 'Nusxalandi',
+      receipt: 'Chek', receiptTitle: (n) => `Chek №${n}`, receiptSave: 'Saqlash yoki chop etish', receiptWait: "Ofitsiant hisobni yopganda chek shu yerda chiqadi.", receiptBack: 'Buyurtmaga',
+      rcDate: 'Sana', rcWaiter: 'Ofitsiant', rcCashier: 'Kassir', rcOrders: 'Buyurtmalar', rcDiscount: 'Chegirma', rcRounding: 'Yaxlitlash', rcToPay: "To'lovga", rcTip: 'Choychaqa', rcPaidTotal: "Jami to'landi", rcThanks: 'Kelganingiz uchun rahmat!',
+      rcPay: { cash: 'Naqd', card: 'Karta', qr: 'QR', other: 'Boshqa' },
+      googleAsk: "Rahmat! Yoqqan bo'lsa, Google'da biz haqimizda yozing. Bu restoranga juda yordam beradi.", googleBtn: "Google'da sharh qoldirish",
     },
     en: {
       langName: 'English', locale: 'en-US', dir: 'ltr',
@@ -214,6 +224,11 @@
       subtotal: 'Items', service: (p) => `Service charge${p ? ` ${p}%` : ''}`, paid: 'Paid',
       required: 'required', optional: 'optional', addFor: (s) => `Add · ${s}`, chooseOptions: 'Choose options',
       edited: (x) => `The restaurant updated your order at ${x}`,
+      wifi: 'Wi‑Fi', wifiNet: 'Network', wifiPass: 'Password', wifiNoPass: 'No password', wifiHint: 'Connect in your phone settings: Wi‑Fi → this network → password.', copy: 'Copy', copied: 'Copied',
+      receipt: 'Receipt', receiptTitle: (n) => `Receipt #${n}`, receiptSave: 'Save or print', receiptWait: 'Your receipt will appear here once the waiter closes the bill.', receiptBack: 'Back to order',
+      rcDate: 'Date', rcWaiter: 'Waiter', rcCashier: 'Cashier', rcOrders: 'Orders', rcDiscount: 'Discount', rcRounding: 'Rounding', rcToPay: 'To pay', rcTip: 'Tip', rcPaidTotal: 'Total paid', rcThanks: 'Thank you for visiting us!',
+      rcPay: { cash: 'Cash', card: 'Card', qr: 'QR', other: 'Other' },
+      googleAsk: 'Thank you! If you enjoyed it, please tell others on Google. It really helps the restaurant.', googleBtn: 'Leave a Google review',
     },
     ar: {
       // цифры привычные (0–9), как на ценниках и в часах работы
@@ -284,6 +299,11 @@
       subtotal: 'الأطباق', service: (p) => `رسوم الخدمة${p ? ` ${p}%` : ''}`, paid: 'مدفوع',
       required: 'إلزامي', optional: 'اختياري', addFor: (s) => `إضافة · ${s}`, chooseOptions: 'اختيار الخيارات',
       edited: (x) => `عدّل المطعم طلبك في ${x}`,
+      wifi: 'Wi‑Fi', wifiNet: 'الشبكة', wifiPass: 'كلمة المرور', wifiNoPass: 'بدون كلمة مرور', wifiHint: 'اتصل من إعدادات الهاتف: Wi‑Fi ← هذه الشبكة ← كلمة المرور.', copy: 'نسخ', copied: 'تم النسخ',
+      receipt: 'الإيصال', receiptTitle: (n) => `إيصال رقم ${n}`, receiptSave: 'حفظ أو طباعة', receiptWait: 'سيظهر الإيصال هنا عندما يغلق النادل الحساب.', receiptBack: 'العودة إلى الطلب',
+      rcDate: 'التاريخ', rcWaiter: 'النادل', rcCashier: 'أمين الصندوق', rcOrders: 'الطلبات', rcDiscount: 'خصم', rcRounding: 'التقريب', rcToPay: 'المبلغ المستحق', rcTip: 'إكرامية', rcPaidTotal: 'إجمالي المدفوع', rcThanks: 'شكرًا لزيارتكم!',
+      rcPay: { cash: 'نقدًا', card: 'بطاقة', qr: 'QR', other: 'أخرى' },
+      googleAsk: 'شكرًا لك! إذا أعجبك المكان، شارك رأيك على Google. هذا يساعد المطعم كثيرًا.', googleBtn: 'اكتب تقييمًا على Google',
     },
     ms: {
       langName: 'Bahasa Melayu', locale: 'ms-MY', dir: 'ltr',
@@ -353,6 +373,85 @@
       subtotal: 'Hidangan', service: (p) => `Caj perkhidmatan${p ? ` ${p}%` : ''}`, paid: 'Dibayar',
       required: 'wajib', optional: 'pilihan', addFor: (s) => `Tambah · ${s}`, chooseOptions: 'Pilih pilihan',
       edited: (x) => `Restoran telah mengemas kini pesanan anda pada ${x}`,
+      wifi: 'Wi‑Fi', wifiNet: 'Rangkaian', wifiPass: 'Kata laluan', wifiNoPass: 'Tiada kata laluan', wifiHint: 'Sambung dalam tetapan telefon: Wi‑Fi → rangkaian ini → kata laluan.', copy: 'Salin', copied: 'Disalin',
+      receipt: 'Resit', receiptTitle: (n) => `Resit #${n}`, receiptSave: 'Simpan atau cetak', receiptWait: 'Resit akan muncul di sini selepas pelayan menutup bil.', receiptBack: 'Kembali ke pesanan',
+      rcDate: 'Tarikh', rcWaiter: 'Pelayan', rcCashier: 'Juruwang', rcOrders: 'Pesanan', rcDiscount: 'Diskaun', rcRounding: 'Pembundaran', rcToPay: 'Perlu dibayar', rcTip: 'Tip', rcPaidTotal: 'Jumlah dibayar', rcThanks: 'Terima kasih kerana berkunjung!',
+      rcPay: { cash: 'Tunai', card: 'Kad', qr: 'QR', other: 'Lain-lain' },
+      googleAsk: 'Terima kasih! Jika anda suka, kongsi pengalaman anda di Google. Ia sangat membantu restoran.', googleBtn: 'Tulis ulasan di Google',
+    },
+    zh: {
+      langName: '中文', locale: 'zh-CN', dir: 'ltr',
+      menuWord: '菜单',
+      search: '搜索菜单', clearSearch: '清除搜索',
+      order: '我的订单', total: '合计', clear: '清空列表',
+      nothing: '没有找到', nothingHint: '换个词试试，或查看完整菜单。', showAll: '查看完整菜单',
+      add: '添加', remove: '减少一份', removeItem: '删除',
+      waiter: '请把这个列表给服务员看，即可下单。',
+      orderEmpty: '列表是空的。点“+”添加菜品。',
+      g: '克', ml: '毫升', kcal: '千卡', pcs: () => '个',
+      table: '桌号',
+      ingredients: '配料', allergens: '过敏原',
+      close: '关闭', themeDark: '深色模式', themeLight: '浅色模式', language: '语言',
+      tags: { hit: '人气', new: '新品', spicy: '辣', veg: '素食' },
+      allergenNames: { gluten: '麸质', milk: '牛奶', eggs: '鸡蛋', fish: '鱼', shellfish: '贝类', nuts: '坚果', soy: '大豆', sesame: '芝麻' },
+      soldOut: '已售完', soldOutRow: '暂时售完 — 不计入合计',
+      unavailableNotice: (n) => `暂时没有：${n}。这些菜不计入合计 — 请删除或询问服务员。`,
+      priceNotice: (n) => `价格已变动：${n}。合计已重新计算。`,
+      listUpdated: '菜单已更新 — 请检查您的列表。',
+      open: '营业中', closed: '已打烊', until: (x) => `营业至 ${x}`,
+      opensToday: (x) => `${x} 开门`, opensTomorrow: (x) => `明天 ${x} 开门`,
+      opensOn: (d, x) => `${['星期一', '星期二', '星期三', '星期四', '星期五', '星期六', '星期日'][d]} ${x} 开门`,
+      closedForNow: '暂停营业',
+      hours: '营业时间', daily: '每天', dayOff: '休息', today: '今天',
+      tzNote: (tz) => `时间按餐厅所在时区显示（${tz}）。`,
+      days: ['星期一', '星期二', '星期三', '星期四', '星期五', '星期六', '星期日'],
+      openMap: '在地图中打开', call: '拨打电话',
+      loading: '正在加载菜单…', loadError: '菜单加载失败', loadErrorHint: '请检查网络后重试。', retry: '重试',
+      emptyMenu: '菜单即将上线', emptyMenuHint: '餐厅正在完善菜单，请询问服务员。',
+      offline: '没有网络 — 显示之前加载的菜单。',
+      sendOrder: '提交订单', sending: '正在提交…',
+      noteLabel: '订单备注', notePh: '例如：我有糖尿病，对坚果过敏，全部不要洋葱',
+      noteHint: '用您自己的话写 — 服务员和厨师会马上看到。', dishNote: '这道菜的要求', dishNotePh: '例如：不要洋葱，少放盐', noteDone: '完成',
+      yourTable: '您的桌号',
+      noTable: '要下单，请扫描桌上的二维码。',
+      badTable: '这个二维码无效，或该桌已停用。请询问服务员。',
+      checkingTable: '正在确认桌号…',
+      noServer: '在线点餐尚未开通。请把这个列表给服务员看。',
+      ordersOff: '目前暂停菜单点餐。请呼叫服务员。',
+      closedNoOrders: '餐厅已打烊 — 暂不接受订单。',
+      removeSold: '请先从订单中删除已售完的菜品，然后再提交。',
+      errNetwork: '没有网络 — 订单未提交。请检查网络后再点“提交订单”。',
+      errServer: '服务器没有响应 — 订单未提交。请重试。',
+      errTooMany: '这张桌子的订单太多了。请稍等几分钟或呼叫服务员。',
+      errChanged: '菜单有变动。请检查订单后重新提交。',
+      sentTitle: (n) => `订单 №${n} 已提交`,
+      orderNo: (n) => `订单 №${n}`,
+      sentAt: (x) => `${x} 提交`,
+      statuses: { new: '已提交', accepted: '服务员已接单', cooking: '制作中', ready: '已做好 — 正在上菜', served: '已上菜', cancelled: '已取消' },
+      meatNames: { beef: '牛肉', lamb: '羊肉', horse: '马肉', chicken: '鸡肉', fish: '鱼', seafood: '海鲜' }, halal: '清真', meatLabel: '肉类',
+      statusHint: { new: '订单已收到 — 服务员和厨房已经看到了。', accepted: '服务员已接单。', cooking: '厨师正在制作您的订单。', ready: '订单已做好 — 服务员正在送来。', served: '请慢用！', cancelled: '订单已取消。请与服务员沟通。' },
+      statusStale: '状态刷新失败 — 几秒后会再次检查。',
+      myOrders: '我的订单', orderMore: '继续点菜', note: '备注',
+      servedAt: (a, b) => `供应时间 ${a}–${b}`, fromTime: (a) => `${a} 起`, notNowRow: (a, b) => `供应时间 ${a} 至 ${b}`, nowServing: '现在供应',
+      readyToast: '订单已做好 — 服务员正在送来！', stepAccepted: '已接单', stepCooking: '制作中', stepReady: '已做好',
+      tableBill: '本桌账单', tableBillHint: '本桌所有未付款的订单 — 包括您和朋友的。', tableBillEmpty: '本桌没有未付款的订单。', tableTotal: '本桌合计',
+      reqTitle: '您需要什么？', reqCome: '请过来一下', reqs: { water: '水', napkins: '纸巾', cutlery: '餐具', ice: '冰块', clear: '收拾桌子' }, reqPending: '已呼叫',
+      filter: '筛选', fVeg: '无肉', fSpicy: '辣', fNo: '不含', fReset: '重置', fShow: (n) => `显示（${n}）`, fNote: '配料和过敏原信息由餐厅提供。如有过敏，请向服务员确认。',
+      hits: '人气菜品', pairs: '搭配推荐', upsell: '加到订单里吗？',
+      rateTitle: '您觉得怎么样？', ratePh: '您喜欢什么，或者哪里可以更好？', rateSend: '提交评价', rateThanks: '感谢您的评价！', rateStar: (n) => `${n} 星（满分 5 星）`,
+      repeat: '再点一次', repeatDone: (n) => `已加入列表：${n}`, repeatSome: '部分菜品暂时没有 — 已跳过。',
+      prep: (n) => `约 ${n} 分钟`, photoOf: (a, b) => `${a} / ${b}`,
+      callWaiter: '呼叫服务员', askBill: '买单', waiterComing: '服务员马上来', billComing: '账单马上送来',
+      callSent: '服务员已收到呼叫，马上过来。', billSent: '服务员会把账单送过来。', callErr: '呼叫没有发出。请向服务员招手或重试。',
+      payHow: '您想怎么付款？', payCash: '现金', payCard: '刷卡', payQr: '扫码支付',
+      subtotal: '菜品', service: (p) => `服务费${p ? ` ${p}%` : ''}`, paid: '已付款',
+      required: '必选', optional: '可选', addFor: (s) => `添加 · ${s}`, chooseOptions: '选择规格',
+      edited: (x) => `餐厅在 ${x} 修改了您的订单`,
+      wifi: 'Wi‑Fi', wifiNet: '网络', wifiPass: '密码', wifiNoPass: '无密码', wifiHint: '在手机设置中连接：Wi‑Fi → 这个网络 → 密码。', copy: '复制', copied: '已复制',
+      receipt: '收据', receiptTitle: (n) => `收据 №${n}`, receiptSave: '保存或打印', receiptWait: '服务员结账后，收据会显示在这里。', receiptBack: '返回订单',
+      rcDate: '日期', rcWaiter: '服务员', rcCashier: '收银员', rcOrders: '订单', rcDiscount: '折扣', rcRounding: '四舍五入', rcToPay: '应付', rcTip: '小费', rcPaidTotal: '实付合计', rcThanks: '感谢光临！',
+      rcPay: { cash: '现金', card: '刷卡', qr: '扫码', other: '其他' },
+      googleAsk: '谢谢！如果您喜欢，请在 Google 上分享您的体验。这对餐厅帮助很大。', googleBtn: '在 Google 上评价',
     },
   };
 
@@ -404,6 +503,7 @@
       restaurant: {
         name: st.name, tagline: nonEmpty(st.tagline), logoUrl: st.logo_url || null,
         currency: st.currency, currencyBefore: st.currency_before, timezone: st.timezone, schedule: st.schedule,
+        googleReviewUrl: /^https:\/\//.test(st.google_review_url || '') ? st.google_review_url : null, receiptInfo: st.receipt_info || '',
         address: nonEmpty(st.address), mapUrl: st.map_url || null, phone: st.phone || '', footer: nonEmpty(st.footer),
         ordersEnabled: !!st.orders_enabled, ordersWhenClosed: !!st.orders_when_closed,
         servicePct: Number(st.service_pct) || 0, taxPct: Number(st.tax_pct) || 0, taxName: st.tax_name || 'SST', taxOnService: st.tax_on_service !== false,
@@ -459,6 +559,7 @@
   let tableToken = '';
   let table = '';             // название стола, подтверждённое сервером
   let tableState = 'none';    // none — нет кода | checking | ok | invalid | unknown (нет связи)
+  let wifi = null;            // { name, pass } — приходит вместе со столом (только гостю за столом)
   {
     const p = new URLSearchParams(location.search);
     const fromUrl = (p.get('t') || '').trim().toLowerCase();
@@ -652,6 +753,7 @@
     const st = statusInfo();
     const badges = [];
     if (table && tableState !== 'invalid') badges.push(`<span class="badge">${icon('table', 'sm')}${esc(t('table'))} ${esc(table)}</span>`);
+    if (wifi && tableState !== 'invalid') badges.push(`<button type="button" class="badge" data-sheet="wifi">${icon('wifi', 'sm')}${esc(t('wifi'))}</button>`);
     badges.push(`<button type="button" class="badge ${st.open ? 'ok' : 'off'}" data-sheet="hours" aria-label="${esc(`${st.text}. ${t('hours')}`)}"><span class="dot"></span>${esc(st.text)}${icon('chevron', 'sm chev')}</button>`);
     if (r.halal) {
       badges.push(r.halalNote
@@ -1077,9 +1179,105 @@
       ${chargesHtml({ sub: o.subtotal ?? o.total, service: o.service || 0, tax: o.tax || 0, total: o.total }, false)}
       ${reviewHtml(id, o)}
       <div class="track-actions tr-a" style="--i:5">
+        ${o.paid_at ? `<button type="button" class="btn" data-act="receipt" data-id="${esc(id)}">${icon('list', 'sm')}<span>${esc(t('receipt'))}</span></button>` : ''}
         ${gs !== 'cancelled' ? `<button type="button" class="btn soft" data-act="repeat" data-id="${esc(id)}">${icon('refresh', 'sm')}<span>${esc(t('repeat'))}</span></button>` : ''}
         <button type="button" class="btn ghost" data-act="more"><span>${esc(t('orderMore'))}</span></button>
       </div></div>`;
+  }
+
+  // ---------- Чек в телефоне ----------
+  async function openReceipt(id) {
+    const mine = myOrders.find((x) => x.id === id);
+    if (!mine) return;
+    openSheet({ type: 'receipt', id, data: undefined });
+    let data = null;
+    try { data = await rpc('guest_receipt', { p_order: id, p_token: mine.token }); } catch { data = 'error'; }
+    if (sheet?.type === 'receipt' && sheet.id === id) { sheet.data = data; renderSheet(); }
+  }
+  function receiptHtml() {
+    const back = `<button type="button" class="btn ghost" data-act="track" data-id="${esc(sheet.id)}">${esc(t('receiptBack'))}</button>`;
+    const b = sheet.data;
+    if (b === undefined) return `<h2 class="sheet-title" id="sheet-title">${esc(t('receipt'))}</h2><div class="state"><span class="spinner" aria-hidden="true"></span></div>`;
+    if (b === 'error') return `<h2 class="sheet-title" id="sheet-title">${esc(t('receipt'))}</h2><p class="notice">${icon('alert')}<span>${esc(t('errServer'))}</span></p><div class="track-actions">${back}</div>`;
+    if (!b) return `<h2 class="sheet-title" id="sheet-title">${esc(t('receipt'))}</h2><p class="notice info">${icon('clock')}<span>${esc(t('receiptWait'))}</span></p><div class="track-actions">${back}</div>`;
+    const r = R();
+    const num = (n) => new Intl.NumberFormat(t('locale'), { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(n) || 0);
+    const cur = (n) => (r.currencyBefore ? `${r.currency} ${num(n)}` : `${num(n)} ${r.currency}`);
+    const lines = new Map();
+    for (const i of b.items || []) {
+      const on = (i.opts || []).map((x) => L(x.name)).filter(Boolean);
+      const k = `${i.id}|${on.join(',')}|${i.price}`;
+      const l = lines.get(k) || { name: L(i.name) || i.id, on, price: Number(i.price), qty: 0 };
+      l.qty += Number(i.qty);
+      lines.set(k, l);
+    }
+    const n = (k) => Number(b[k]) || 0;
+    const pctOf = (part, base) => { const p = base > 0 ? Math.round((part / base) * 1000) / 10 : 0; return p ? `${String(p).replace(/\.0$/, '')}%` : ''; };
+    const taxBase = n('subtotal') - n('discount') + (r.taxOnService === false ? 0 : n('service'));
+    const when = new Date(b.paid_at);
+    const pays = (b.payments || []).length ? b.payments : [{ method: b.method, amount: n('total') + n('tip') + n('rounding') }];
+    const row = (k, v, cls = '') => `<div class="rc-row${cls ? ` ${cls}` : ''}"><span>${esc(k)}</span><b dir="ltr">${esc(v)}</b></div>`;
+    const addr = L(r.address);
+    return `<h2 class="sheet-title" id="sheet-title">${esc(t('receiptTitle')(b.no))}</h2>
+      <article class="g-receipt" aria-label="${esc(t('receiptTitle')(b.no))}">
+        <header class="rc-head"><b>${esc(r.name)}</b>${addr ? `<small>${esc(addr)}</small>` : ''}${r.phone ? `<small dir="ltr">${esc(r.phone)}</small>` : ''}${r.receiptInfo ? `<small class="rc-info">${esc(r.receiptInfo)}</small>` : ''}</header>
+        <div class="rc-doc">${esc(t('receiptTitle')(b.no))}</div>
+        <div class="rc-block">
+          ${row(t('table'), b.table_label)}
+          ${row(t('rcOrders'), (b.order_nos || []).map((x) => `№${x}`).join(', '))}
+          ${row(t('rcDate'), `${when.toLocaleDateString(t('locale'), { day: '2-digit', month: '2-digit', year: 'numeric' })} ${when.toLocaleTimeString(t('locale'), { hour: '2-digit', minute: '2-digit' })}`)}
+          ${(b.waiters || []).length ? row(t('rcWaiter'), b.waiters.join(', ')) : ''}
+          ${b.cashier ? row(t('rcCashier'), b.cashier) : ''}
+        </div>
+        <ul class="rc-items">${[...lines.values()].map((l) => `<li><span><b>${esc(l.name)}</b>${l.on.length ? `<em>${esc(l.on.join(', '))}</em>` : ''}<small dir="ltr">${l.qty} × ${esc(num(l.price))}</small></span><b dir="ltr">${esc(num(l.price * l.qty))}</b></li>`).join('')}</ul>
+        <div class="rc-block">
+          ${row(t('subtotal'), num(n('subtotal')))}
+          ${n('discount') ? row(`${t('rcDiscount')}${b.discount_pct ? ` ${Number(b.discount_pct)}%` : ''}`, `−${num(n('discount'))}`) : ''}
+          ${n('service') ? row(t('service')(pctOf(n('service'), n('subtotal') - n('discount')).replace('%', '')), num(n('service'))) : ''}
+          ${n('tax') ? row(`${r.taxName || 'SST'} ${pctOf(n('tax'), taxBase)}`.trim(), num(n('tax'))) : ''}
+        </div>
+        ${row(t('total'), cur(n('total')), 'rc-total')}
+        ${n('rounding') ? `<div class="rc-block">${row(t('rcRounding'), `${n('rounding') > 0 ? '+' : '−'}${num(Math.abs(n('rounding')))}`)}${row(t('rcToPay'), cur(n('total') + n('rounding')))}</div>` : ''}
+        <div class="rc-block">
+          ${n('tip') ? row(t('rcTip'), num(n('tip'))) : ''}
+          ${pays.map((p) => row(`${t('paid')}: ${t('rcPay')[p.method] || p.method}`, cur(p.amount))).join('')}
+          ${pays.length > 1 || n('tip') ? row(t('rcPaidTotal'), cur(n('total') + n('tip') + n('rounding')), 'rc-strong') : ''}
+        </div>
+        <p class="rc-thanks">${esc(t('rcThanks'))}</p>
+      </article>
+      <div class="track-actions rc-actions">
+        <button type="button" class="btn" data-act="receipt-print">${icon('download', 'sm')}<span>${esc(t('receiptSave'))}</span></button>
+        ${back}
+      </div>`;
+  }
+  function printReceiptPage() {
+    const src = document.querySelector('.g-receipt');
+    if (!src) return;
+    // печатаем копию чека отдельно от шторки: на бумаге/в PDF только чек
+    document.getElementById('print-root')?.remove();
+    const root = document.createElement('div');
+    root.id = 'print-root';
+    root.appendChild(src.cloneNode(true));
+    document.body.appendChild(root);
+    document.body.classList.add('print-receipt');
+    const off = () => { document.body.classList.remove('print-receipt'); root.remove(); removeEventListener('afterprint', off); };
+    addEventListener('afterprint', off);
+    try { window.print(); } catch { off(); }
+    setTimeout(off, 60000);
+  }
+  async function copyText(v, btn) {
+    let ok = false;
+    try { await navigator.clipboard.writeText(v); ok = true; } catch {
+      const ta = document.createElement('textarea');
+      ta.value = v; ta.setAttribute('readonly', ''); ta.style.cssText = 'position:fixed;opacity:0;top:0';
+      document.body.appendChild(ta); ta.select();
+      try { ok = document.execCommand('copy'); } catch { ok = false; }
+      ta.remove();
+    }
+    if (ok) {
+      toast(t('copied'), 'good');
+      if (btn) { const was = btn.textContent; btn.textContent = t('copied'); setTimeout(() => { btn.textContent = was; }, 1500); }
+    }
   }
 
   // ---------- Отзыв и «Повторить заказ» ----------
@@ -1088,7 +1286,14 @@
   let reviewBusy = false;
   function reviewHtml(id, o) {
     if (!ONLINE || (!['served', 'ready', 'cooking'].includes(o.status) && !o.paid_at)) return '';
-    if (reviewed[id]) return `<p class="notice ok">${icon('check')}<span>${esc(t('rateThanks'))}</span></p>`;
+    if (reviewed[id]) {
+      const g = R().googleReviewUrl;
+      if (g && reviewed[id] >= 4) {
+        return `<section class="review google-ask"><p>${esc(t('googleAsk'))}</p>
+          <a class="btn block" href="${esc(g)}" target="_blank" rel="noopener">${icon('star', 'sm')}<span>${esc(t('googleBtn'))}</span></a></section>`;
+      }
+      return `<p class="notice ok">${icon('check')}<span>${esc(t('rateThanks'))}</span></p>`;
+    }
     const r = reviewDraft.rating;
     return `<section class="review" aria-labelledby="rv-t"><h4 id="rv-t">${esc(t('rateTitle'))}</h4>
       <div class="stars" role="radiogroup" aria-label="${esc(t('rateTitle'))}">${[1, 2, 3, 4, 5].map((n) => `<button type="button" class="star${n <= r ? ' on' : ''}" data-act="rate" data-n="${n}" role="radio" aria-checked="${n === r}" aria-label="${esc(t('rateStar')(n))}"><svg class="ic" aria-hidden="true"><use href="#i-star"/></svg></button>`).join('')}</div>
@@ -1405,11 +1610,13 @@
       const row = Array.isArray(rows) ? rows[0] : rows;
       if (row?.label) {
         table = row.label;
+        wifi = row.wifi_name ? { name: row.wifi_name, pass: row.wifi_pass || '' } : null;
         tableState = 'ok';
         store.set('table', { token: tableToken, at: Date.now(), label: table });
         pollCalls().then(scheduleCalls);
       } else {
         table = '';
+        wifi = null;
         tableState = 'invalid';
         store.set('table', null);
       }
@@ -1538,6 +1745,17 @@
       return;
     }
 
+    if (sheet.type === 'wifi') {
+      if (!wifi) { body.innerHTML = `<h2 class="sheet-title" id="sheet-title">${esc(t('wifi'))}</h2>`; return; }
+      body.innerHTML = `<h2 class="sheet-title" id="sheet-title">${esc(t('wifi'))}</h2>
+        <div class="wifi-card">
+          <div class="wifi-row"><span>${esc(t('wifiNet'))}</span><b dir="ltr">${esc(wifi.name)}</b><button type="button" class="btn small soft" data-act="copy" data-v="${esc(wifi.name)}">${esc(t('copy'))}</button></div>
+          <div class="wifi-row"><span>${esc(t('wifiPass'))}</span>${wifi.pass ? `<b dir="ltr" class="wifi-pass">${esc(wifi.pass)}</b><button type="button" class="btn small" data-act="copy" data-v="${esc(wifi.pass)}">${esc(t('copy'))}</button>` : `<b>${esc(t('wifiNoPass'))}</b>`}</div>
+        </div>
+        <p class="hint-note">${esc(t('wifiHint'))}</p>`;
+      return;
+    }
+    if (sheet.type === 'receipt') { body.innerHTML = receiptHtml(); return; }
     if (sheet.type === 'track') { body.innerHTML = trackSheetHtml(sheet.id); return; }
     body.innerHTML = orderSheetHtml();
   }
@@ -1763,6 +1981,12 @@
       } else if (a === 'track') {
         openSheet({ type: 'track', id: act.dataset.id });
         pollOrders();
+      } else if (a === 'receipt') {
+        openReceipt(act.dataset.id);
+      } else if (a === 'receipt-print') {
+        printReceiptPage();
+      } else if (a === 'copy') {
+        copyText(act.dataset.v || '', act);
       } else if (a === 'more') {
         closeSheet();
       } else if (a === 'retry') {

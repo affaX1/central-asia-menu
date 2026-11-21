@@ -141,6 +141,14 @@
         const { data, error } = await sb.rpc('close_bill', { p_table: tableId, p_method: method, p_orders: orderIds || null, p_tip: tip || 0, p_payments: payments, p_discount: discount });
         fail(error); return Array.isArray(data) ? data[0] : data;
       },
+      // Wi‑Fi ресторана (читает и меняет только владелец; гость видит через table_info)
+      async wifi() {
+        const { data, error } = await sb.from('wifi').select('name, pass').eq('id', 1).maybeSingle();
+        fail(error); return data || { name: '', pass: '' };
+      },
+      async saveWifi(name, pass) {
+        const { error } = await sb.from('wifi').update({ name: name || '', pass: pass || '' }).eq('id', 1); fail(error);
+      },
       // владелец: отменить оплату (заказы снова ждут оплаты)
       async voidBill(id, reason) {
         const { data, error } = await sb.rpc('void_bill', { p_bill: id, p_reason: reason });

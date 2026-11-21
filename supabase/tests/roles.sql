@@ -662,4 +662,42 @@ select t_ok(exists (select 1 from net.sent where body ->> 'text' like 'Закр�
 set role anon;
 select t_fails($$select * from public.z_reports$$, 'permission denied', 'гость не видит Z-отчёты');
 reset role;
+-- ============ 27. Wi‑Fi, чек гостя, отзыв в Google ============
+set role anon;
+select t_fails($$select * from public.wifi$$, 'permission denied', 'гость не читает Wi‑Fi напрямую');
+select t_ok((select wifi_name is null and wifi_pass is null from public.table_info((select token from tv where label = 'VIP'))), 'пока Wi‑Fi не задан — гостю пусто');
+reset role;
+set role authenticated; set request.jwt.claim.sub = '22222222-2222-2222-2222-222222222222';
+select t_ok(public.t_rows($$update public.wifi set pass = 'hack'$$) = 0, 'официант не меняет Wi‑Fi');
+reset role; reset request.jwt.claim.sub;
+set role authenticated; set request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
+select t_ok(public.t_rows($$update public.wifi set name = 'CentralAsia_Guest', pass = 'plov2026'$$) = 1, 'владелец задаёт Wi‑Fi');
+select t_ok(public.t_rows($$update public.settings set google_review_url = 'https://g.page/r/test/review'$$) = 1, 'владелец ставит ссылку на отзыв в Google');
+select t_fails($$update public.settings set google_review_url = 'javascript:alert(1)'$$, 'check constraint', 'ссылка на отзыв — только https');
+reset role; reset request.jwt.claim.sub;
+set role anon;
+select t_ok((select wifi_name = 'CentralAsia_Guest' and wifi_pass = 'plov2026' from public.table_info((select token from tv where label = 'VIP'))), 'гость за столом видит Wi‑Fi');
+select t_ok(not exists (select 1 from public.table_info('0000000000000000000a')), 'без настоящего QR Wi‑Fi не показать');
+select t_ok((select google_review_url from public.settings) = 'https://g.page/r/test/review', 'гость видит ссылку на отзыв');
+reset role;
+create temp table o27 as select * from public.place_order((select token from tv where label = '2'), '[{"id":"green-tea","qty":2,"price":10}]', null, 'ru', gen_random_uuid());
+grant select on o27 to anon, authenticated;
+set role anon;
+select t_ok(public.guest_receipt((select id from o27), (select guest_token from o27)) is null, 'пока счёт не закрыт — чека нет');
+reset role;
+set role authenticated; set request.jwt.claim.sub = '22222222-2222-2222-2222-222222222222';
+create temp table b27 as select * from public.close_bill((select id from tv where label = '2'), 'cash', array[(select id from o27)]);
+reset role; reset request.jwt.claim.sub;
+grant select on b27 to anon, authenticated;
+set role anon;
+select t_ok((select (r ->> 'no')::bigint = (select no from b27) and (r ->> 'total')::numeric = (select total from b27) and jsonb_array_length(r -> 'items') = 1 and r -> 'waiters' ? 'Азиз'
+  from (select public.guest_receipt((select id from o27), (select guest_token from o27)) as r) x), 'гость открывает чек своего заказа: номер, сумма, блюда, официант');
+select t_ok(public.guest_receipt((select id from o27), gen_random_uuid()) is null, 'чужой чек без секрета заказа не открыть');
+reset role;
+set role authenticated; set request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
+select public.void_bill((select id from b27), 'проверка');
+reset role; reset request.jwt.claim.sub;
+set role anon;
+select t_ok(public.guest_receipt((select id from o27), (select guest_token from o27)) is null, 'после отмены оплаты чек у гостя пропадает');
+reset role;
 \echo ALL DATABASE TESTS PASSED

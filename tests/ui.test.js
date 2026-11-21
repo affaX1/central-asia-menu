@@ -21,12 +21,12 @@ test('в интерфейсе нет эмодзи', () => {
   }
 });
 
-test('у всех 5 языков одинаковый набор текстов', () => {
+test('у всех 6 языков одинаковый набор текстов', () => {
   const src = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
   const block = src.slice(src.indexOf('const T = {'), src.indexOf('// ---------- Источники данных'));
   const T = vm.runInNewContext(`(${block.replace('const T = ', '').replace(/;\s*$/, '')})`);
   const langs = Object.keys(T);
-  assert.deepStrictEqual(langs.sort(), ['ar', 'en', 'ms', 'ru', 'uz']);
+  assert.deepStrictEqual(langs.sort(), ['ar', 'en', 'ms', 'ru', 'uz', 'zh']);
   const keys = (o) => Object.keys(o).sort();
   for (const l of langs) {
     assert.deepStrictEqual(keys(T[l]), keys(T.ru), `язык ${l}: не хватает или лишние ключи`);
@@ -37,7 +37,7 @@ test('у всех 5 языков одинаковый набор текстов'
   }
 });
 
-test('все блюда и категории data.js переведены на 5 языков', () => {
+test('все блюда и категории data.js переведены на 6 языков', () => {
   const ctx = { window: {} };
   vm.runInNewContext(fs.readFileSync(path.join(root, 'data.js'), 'utf8'), ctx);
   const M = ctx.window.MENU;

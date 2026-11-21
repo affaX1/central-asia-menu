@@ -152,7 +152,7 @@ create table if not exists public.settings (
   map_url          text check (map_url is null or map_url ~ '^https://'),
   phone            text not null default '' check (phone ~ '^[+0-9 ()-]{0,30}$'),
   footer           jsonb not null default '{}',
-  default_language text not null default 'en' check (default_language in ('ru', 'uz', 'en', 'ar', 'ms')),
+  default_language text not null default 'en' check (default_language in ('ru', 'uz', 'en', 'ar', 'ms', 'zh')),
   tables_count     int  not null default 10 check (tables_count between 1 and 200),
   orders_enabled   boolean not null default true,   -- принимать заказы из меню
   orders_when_closed boolean not null default false, -- принимать и вне часов работы
@@ -618,9 +618,28 @@ create policy orders_owner_status on public.orders for update to authenticated
   using (public.is_owner()) with check (public.is_owner());
 
 -- ---------- Гость: проверить стол по коду из QR ----------
+-- ---------- Wi‑Fi для гостей ----------
+-- Пароль не лежит в открытых настройках: его видит только гость за столом (через QR), владелец меняет.
+create table if not exists public.wifi (
+  id   int primary key default 1 check (id = 1),
+  name text not null default '' check (char_length(name) <= 64),
+  pass text not null default '' check (char_length(pass) <= 64)
+);
+insert into public.wifi (id) values (1) on conflict (id) do nothing;
+alter table public.wifi enable row level security;
+revoke all on public.wifi from anon, authenticated;
+grant select, update (name, pass) on public.wifi to authenticated;
+drop policy if exists wifi_owner_read on public.wifi;
+create policy wifi_owner_read on public.wifi for select to authenticated using (public.is_owner());
+drop policy if exists wifi_owner_upd on public.wifi;
+create policy wifi_owner_upd on public.wifi for update to authenticated using (public.is_owner()) with check (public.is_owner());
+
+-- гость за столом: номер стола и Wi‑Fi ресторана
+drop function if exists public.table_info(text);
 create or replace function public.table_info(p_token text)
-returns table (label text) language sql stable security definer set search_path = public as $$
-  select t.label from public.tables t
+returns table (label text, wifi_name text, wifi_pass text) language sql stable security definer set search_path = public as $$
+  select t.label, nullif(w.name, ''), nullif(w.pass, '')
+  from public.tables t left join public.wifi w on w.id = 1
   where t.token = lower(btrim(coalesce(p_token, ''))) and t.active;
 $$;
 
@@ -2032,3 +2051,30 @@ grant execute on function public.void_bill(uuid, text) to authenticated;
 grant execute on function public.z_preview() to authenticated;
 grant execute on function public.close_day(numeric, text) to authenticated;
 grant execute on function public.move_orders(uuid, uuid, uuid[]) to authenticated;
+
+-- =====================================================================
+-- Гость: чек в телефоне, ссылка на отзыв в Google (2026-11-21)
+-- =====================================================================
+alter table public.settings add column if not exists google_review_url text
+  check (google_review_url is null or (google_review_url ~ '^https://' and char_length(google_review_url) <= 500));
+
+-- Чек оплаченного заказа: только у того, кто держит секрет этого заказа (guest_token).
+-- В чеке весь счёт стола (все заказы, которые оплатили вместе). Отменённая оплата — чека нет.
+create or replace function public.guest_receipt(p_order uuid, p_token uuid)
+returns jsonb language sql stable security definer set search_path = public as $$
+  select jsonb_build_object(
+    'no', b.no, 'paid_at', b.paid_at, 'table_label', b.table_label, 'order_nos', b.order_nos,
+    'subtotal', b.subtotal, 'discount', b.discount, 'discount_pct', b.discount_pct, 'discount_reason', b.discount_reason,
+    'service', b.service, 'tax', b.tax, 'total', b.total, 'tip', b.tip, 'rounding', b.rounding,
+    'payments', b.payments, 'method', b.method, 'cashier', b.paid_by_name,
+    'waiters', (select coalesce(jsonb_agg(distinct x.served_by_name), '[]'::jsonb) from public.orders x where x.id = any (b.order_ids) and x.served_by_name is not null),
+    'items', (select coalesce(jsonb_agg(i order by x.no), '[]'::jsonb) from public.orders x, jsonb_array_elements(x.items) i where x.id = any (b.order_ids)))
+  from public.orders o join public.bills b on b.id = o.bill_id
+  where o.id = p_order and o.guest_token = p_token and b.voided_at is null;
+$$;
+revoke all on function public.guest_receipt(uuid, uuid) from public;
+grant execute on function public.guest_receipt(uuid, uuid) to anon, authenticated;
+
+-- китайский язык (2026-11-21): язык по умолчанию может быть и zh
+alter table public.settings drop constraint if exists settings_default_language_check;
+alter table public.settings add constraint settings_default_language_check check (default_language in ('ru', 'uz', 'en', 'ar', 'ms', 'zh'));
