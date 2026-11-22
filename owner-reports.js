@@ -644,6 +644,7 @@
       ${n('discount') ? row(`Скидки (счетов ${n('discount_bills')})`, `−${money(n('discount'))}`) : ''}
       ${n('service') ? row('Сервисный сбор', money(n('service'))) : ''}
       ${n('tax') ? row('Налог', money(n('tax'))) : ''}
+      ${n('delivery_fee') ? row('Доставка (плата гостей)', money(n('delivery_fee'))) : ''}
       ${row('Выручка', money(n('total')), 'big')}
       ${n('tip') ? row('Чаевые', money(n('tip'))) : ''}
       ${n('rounding') ? row('Округление наличных', signedMoney(n('rounding'))) : ''}
@@ -664,6 +665,7 @@
       <li><span>Средний чек</span><b>${money(n('bills') ? r2(n('total') / n('bills')) : 0)}</b></li>
       <li><span>Заказов</span><b>${n('orders')}</b></li>
       <li><span>Отменено заказов</span><b>${n('cancelled')}${n('cancelled') ? ` · ${money(n('cancelled_sum'))}` : ''}</b></li>
+      ${n('unconfirmed') ? `<li><span>Не подтверждены (доставки без звонка)</span><b>${n('unconfirmed')} · ${money(n('unconfirmed_sum'))}</b></li>` : ''}
       ${n('confirm_orders') ? `<li><span>Доставки ждут звонка (не в выручке)</span><b>${n('confirm_orders')}</b></li>` : ''}
       <li><span>Отменено оплат</span><b>${n('voided')}${n('voided') ? ` · ${money(n('voided_sum'))}` : ''}</b></li>
       ${cashiers.map(([k, v]) => `<li><span>Кассир: ${esc(k)}</span><b>${money(v)}</b></li>`).join('')}
@@ -735,7 +737,7 @@
       <table class="sums">
         ${row('Счетов', String(z.bills || 0))}${row('Заказов', String(z.orders || 0))}
         ${row('Блюда', num(z.subtotal))}${Number(z.discount) ? row('Скидки', `−${num(z.discount)}`) : ''}
-        ${Number(z.service) ? row('Сервисный сбор', num(z.service)) : ''}${Number(z.tax) ? row(st.tax_name || 'Налог', num(z.tax)) : ''}
+        ${Number(z.service) ? row('Сервисный сбор', num(z.service)) : ''}${Number(z.tax) ? row(st.tax_name || 'Налог', num(z.tax)) : ''}${Number(z.delivery_fee) ? row('Доставка', num(z.delivery_fee)) : ''}
       </table><hr class="dbl">
       <table>${row('ВЫРУЧКА', `${st.currency || ''} ${num(z.total)}`.trim(), 'tot')}</table><hr>
       <table class="sums">
@@ -747,7 +749,7 @@
         ${r.counted_cash != null ? row('В кассе по факту', num(r.counted_cash)) + row(Math.abs(d) < 0.005 ? 'Разница' : d < 0 ? 'Не хватает' : 'Лишние', num(Math.abs(d))) : ''}
       </table><hr>
       <table class="sums">
-        ${row('Отменено заказов', `${z.cancelled || 0} · ${num(z.cancelled_sum)}`)}
+        ${row('Отменено заказов', `${z.cancelled || 0} · ${num(z.cancelled_sum)}`)}${Number(z.unconfirmed) ? row('Не подтверждены', `${z.unconfirmed} · ${num(z.unconfirmed_sum)}`) : ''}
         ${row('Отменено оплат', `${z.voided || 0} · ${num(z.voided_sum)}`)}
         ${Number(z.open_orders) ? row('Не оплачено заказов', `${z.open_orders} · ${num(z.open_sum)}`) : ''}
       </table>

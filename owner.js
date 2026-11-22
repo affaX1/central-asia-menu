@@ -845,9 +845,6 @@
             <div class="field full"><span>Онлайн-заказы</span>
               ${sw('name="orders_enabled"', st.orders_enabled, 'Принимать заказы из меню')}
               ${sw('name="orders_when_closed"', st.orders_when_closed, 'Принимать и когда ресторан закрыт по расписанию')}</div>
-            <div class="field full"><span>Брони</span>
-              ${sw('name="bookings_enabled"', st.bookings_enabled !== false, 'Принимать брони столов')}
-              <span class="hint">Выключите, если брони сейчас не принимаете: гости не смогут отправить новую заявку. Заявки, которые уже пришли, остаются в «Зале».</span></div>
             <label class="field"><span>Цель дня, ${esc(st.currency || '')}</span><input name="day_goal" type="number" inputmode="decimal" min="1" max="9999999" step="1" value="${esc(st.day_goal ?? '')}" placeholder="не задана">
               <span class="hint">Сколько хотите выручить за день. Вверху «Зала» появится полоска: сколько уже оплачено сегодня. Пусто — полоски нет.</span></label>
             <div class="field full"><span>Халяль</span>
@@ -880,7 +877,7 @@
           <p class="help" style="margin-top:0">Новая доставка приходит как «Ожидает подтверждения» и на кухню не идёт, пока официант не позвонит гостю и не нажмёт «Принять заказ». Не дозвонились — «Не дозвонились», заказ отменяется.</p>
           <div class="form-grid">
             <label class="field"><span>Без звонка после N доставок</span><input name="dv_trust_after" type="number" inputmode="numeric" min="0" max="50" step="1" value="${esc(st.dv_trust_after ?? 3)}">
-              <span class="hint">Гостю, который уже получил и оплатил столько доставок на этот номер, не звоним. 0 — звонить всегда.</span></label>
+              <span class="hint">Гостю, который уже получил и оплатил столько доставок на этот номер, не звоним. Работает только при включённой проверке номера по SMS: без неё номер мог набрать кто угодно, поэтому звоним всем. 0 — звонить всегда.</span></label>
             <label class="field"><span>Всегда звонить, если сумма больше, ${esc(st.currency || '')}</span><input name="dv_confirm_over" type="number" inputmode="decimal" min="0" max="99999" step="0.01" value="${esc(st.dv_confirm_over ?? 150)}">
               <span class="hint">Крупный заказ подтверждаем звонком даже у постоянного гостя. Сумма — вместе с доставкой.</span></label>
           </div>
@@ -1172,7 +1169,6 @@
           receipt_lang: ['en', 'ms', 'ru', 'uz'].includes(f.get('receipt_lang')) ? f.get('receipt_lang') : 'en',
           cash_rounding: !!f.get('cash_rounding'), waiter_discounts: !!f.get('waiter_discounts'),
           day_goal: dayGoal === null ? null : Math.round(dayGoal * 100) / 100,
-          bookings_enabled: !!f.get('bookings_enabled'),
           delivery_enabled: dOn, delivery_lat: dLat, delivery_lng: dLng, delivery_zones: dZones, delivery_min: Math.round(dMin * 100) / 100,
           dv_trust_after: dvTrust, dv_confirm_over: Math.round(dvOver * 100) / 100,
           ...(smsSw && smsSw.dataset.known === '1' ? { dv_sms: !smsSw.disabled && smsSw.checked } : {}),
@@ -1219,6 +1215,7 @@
         <li>Зарегистрируйтесь на <b>twilio.com</b> и купите номер с SMS (Phone Numbers → Buy a number).</li>
         <li>В Console → Account Info скопируйте <b>Account SID</b> и <b>Auth Token</b>.</li>
         <li>Вставьте их ниже вместе с номером и нажмите «Сохранить SMS». Затем включите «Проверка номера по SMS» в разделе «Доставка» и сохраните.</li>
+        <li>Обязательно: в Twilio → Messaging → Settings → <b>Geo permissions</b> оставьте включённой только <b>Malaysia</b>. Коды и так уходят только на номера +60, но так никто не сможет отправить дорогие SMS за границу за ваш счёт.</li>
       </ol>
       <form id="sms-form" novalidate>
         <div class="form-grid">
@@ -1604,7 +1601,7 @@
       // доставку отменяет владелец или менеджер (пока не оплачена); принять — как заказ стола
       const b = busyOrders.has(o.id) ? ' disabled' : '';
       // ждёт звонка: только «Позвонить / Принять заказ / Не дозвонились» на самой карточке
-      const extra = isCall(o) ? '' : o.status === 'cancelled' ? `<button type="button" class="btn small ghost" data-order-next="${esc(o.id)}" data-to="new"${b}>Вернуть заказ</button>`
+      const extra = isCall(o) ? '' : o.status === 'cancelled' ? `<button type="button" class="btn small ghost" data-order-next="${esc(o.id)}" data-to="confirm"${b}>Вернуть заказ</button>`
         : !o.paid_at ? `<button type="button" class="btn small danger" data-order-cancel="${esc(o.id)}"${b}>Отменить</button>` : '';
       return floor.delivCard(o, extra);
     }

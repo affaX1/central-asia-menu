@@ -566,6 +566,10 @@ begin
       new.served_at := null; new.served_by := null; new.served_by_name := null;
     end if;
     if new.status = 'cancelled' then new.cancelled_at := now(); else new.cancelled_at := null; new.cancel_reason := null; end if;
+    -- доставка «доставлена» только вместе с оплатой (courier_done); «Подано» или прямой статус её не закрывают
+    if new.kind = 'delivery' and new.status = 'served' and new.paid_at is null then raise exception 'bad_status'; end if;
+    -- отменённую доставку вернули «ждать звонка» — подтверждать заново
+    if new.status = 'confirm' then new.confirmed_at := null; new.confirmed_by_name := null; end if;
   end if;
   return new;
 end $$;
@@ -1006,6 +1010,8 @@ alter table public.bills add column if not exists discount_pct numeric(5, 2);
 alter table public.bills add column if not exists discount_reason text;
 alter table public.bills add column if not exists discount_by_name text;
 alter table public.bills add column if not exists rounding numeric(10, 2) not null default 0;
+-- плата за доставку в счёте (колонка нужна раньше: её читают Z-отчёт и чек гостя ниже)
+alter table public.bills add column if not exists delivery_fee numeric(10, 2) not null default 0 check (delivery_fee >= 0);
 
 -- Закрыть счёт стола: все неоплаченные заказы стола (или выбранные) → один счёт.
 -- p_tip — чаевые; p_payments — раздельная оплата [{ method, amount }], сумма = к оплате + чаевые.
@@ -1150,6 +1156,8 @@ begin
   if not public.is_floor() then raise exception 'forbidden'; end if;
   select * into v_o from public.orders where id = p_id for update;
   if not found then raise exception 'not_found'; end if;
+  -- доставку закрывает курьер вместе с оплатой (courier_done), не «Подано»
+  if v_o.kind = 'delivery' then raise exception 'bad_status'; end if;
   if v_o.status in ('new', 'accepted', 'cooking', 'ready') then
     select coalesce(nullif(st.name, ''), st.email) into v_name from public.staff st where st.user_id = auth.uid();
     return query update public.orders
@@ -2031,13 +2039,17 @@ returns jsonb language sql stable security definer set search_path = public as $
     'total', (select coalesce(sum(total), 0) from ok),
     'tip', (select coalesce(sum(tip), 0) from ok),
     'rounding', (select coalesce(sum(rounding), 0) from ok),
+    'delivery_fee', (select coalesce(sum(delivery_fee), 0) from ok),   -- доставка сверху к блюдам: «Блюда − скидки + сбор + налог + доставка = выручка»
     'by_method', (select coalesce(jsonb_object_agg(m, s), '{}'::jsonb) from (select m, sum(a) as s from pay group by m) x),
     'cash', (select coalesce(sum(a), 0) from pay where m = 'cash'),
     'voided', (select count(*) from b where voided_at is not null),
     'voided_sum', (select coalesce(sum(total), 0) from b where voided_at is not null),
     'orders', (select count(*) from o where status not in ('cancelled', 'confirm')),   -- доставка до звонка — ещё не заказ
-    'cancelled', (select count(*) from o where status = 'cancelled'),
-    'cancelled_sum', (select coalesce(sum(total), 0) from o where status = 'cancelled'),
+    -- отменённые заказы; доставка, которую так и не подтвердили звонком, — отдельно («Не подтверждены»)
+    'cancelled', (select count(*) from o where status = 'cancelled' and not (kind = 'delivery' and cancel_reason is not null and confirmed_at is null)),
+    'cancelled_sum', (select coalesce(sum(total), 0) from o where status = 'cancelled' and not (kind = 'delivery' and cancel_reason is not null and confirmed_at is null)),
+    'unconfirmed', (select count(*) from o where status = 'cancelled' and kind = 'delivery' and cancel_reason is not null and confirmed_at is null),
+    'unconfirmed_sum', (select coalesce(sum(total), 0) from o where status = 'cancelled' and kind = 'delivery' and cancel_reason is not null and confirmed_at is null),
     'open_orders', (select count(*) from public.orders where paid_at is null and status not in ('cancelled', 'confirm') and created_at <= p_to),
     'open_sum', (select coalesce(sum(total), 0) from public.orders where paid_at is null and status not in ('cancelled', 'confirm') and created_at <= p_to),
     'confirm_orders', (select count(*) from public.orders where paid_at is null and status = 'confirm' and created_at <= p_to),
@@ -2130,6 +2142,8 @@ returns jsonb language sql stable security definer set search_path = public as $
     'no', b.no, 'paid_at', b.paid_at, 'table_label', b.table_label, 'order_nos', b.order_nos,
     'subtotal', b.subtotal, 'discount', b.discount, 'discount_pct', b.discount_pct, 'discount_reason', b.discount_reason,
     'service', b.service, 'tax', b.tax, 'total', b.total, 'tip', b.tip, 'rounding', b.rounding,
+    'delivery_fee', b.delivery_fee,
+    'kind', (select case when bool_or(x.kind = 'delivery') then 'delivery' else 'table' end from public.orders x where x.id = any (b.order_ids)),
     'payments', b.payments, 'method', b.method, 'cashier', b.paid_by_name,
     'waiters', (select coalesce(jsonb_agg(distinct x.served_by_name), '[]'::jsonb) from public.orders x where x.id = any (b.order_ids) and x.served_by_name is not null),
     'items', (select coalesce(jsonb_agg(i order by x.no), '[]'::jsonb) from public.orders x, jsonb_array_elements(x.items) i where x.id = any (b.order_ids)))
@@ -2169,7 +2183,10 @@ grant execute on function public.mark_backup() to authenticated;
 -- бронь стола, смены, цель дня, бар-экран
 -- =====================================================================
 alter table public.settings add column if not exists day_goal numeric(10, 2) check (day_goal is null or (day_goal > 0 and day_goal < 10000000));
-alter table public.settings add column if not exists bookings_enabled boolean not null default true;
+-- бронь столов владелец убрал (2026-11-22): по умолчанию выключена, переключателя в панели нет
+alter table public.settings add column if not exists bookings_enabled boolean not null default false;
+alter table public.settings alter column bookings_enabled set default false;
+update public.settings set bookings_enabled = false where bookings_enabled;
 -- где готовят блюда категории: кухня или бар (бар видит только свои напитки)
 alter table public.categories add column if not exists station text not null default 'kitchen';
 alter table public.categories drop constraint if exists categories_station_check;
@@ -2186,8 +2203,9 @@ declare r record; v int;
 begin
   for r in
     select coalesce(n.dish, o.dish) as dish, coalesce(n.qty, 0) - coalesce(o.qty, 0) as delta
-    from (select * from private.order_qty(case when new.status <> 'cancelled' then new.items end)) n
-    full join (select * from private.order_qty(case when tg_op = 'UPDATE' and old.status <> 'cancelled' then old.items end)) o on o.dish = n.dish
+    -- доставка «ждёт звонка» (confirm) порции не держит: списываем, когда её приняли (confirm → new)
+    from (select * from private.order_qty(case when new.status not in ('cancelled', 'confirm') then new.items end)) n
+    full join (select * from private.order_qty(case when tg_op = 'UPDATE' and old.status not in ('cancelled', 'confirm') then old.items end)) o on o.dish = n.dish
   loop
     if r.delta = 0 then continue; end if;
     select stock into v from public.dishes where id = r.dish for update;
@@ -2429,9 +2447,13 @@ revoke all on function public.shift_end() from public, anon;
 grant execute on function public.set_dish_available(text, boolean) to authenticated;
 grant execute on function public.set_dish_stock(text, int) to authenticated;
 grant execute on function public.vote_dishes(uuid, uuid, jsonb) to anon, authenticated;
-grant execute on function public.book_table(text, text, timestamptz, int, text, text, uuid) to anon, authenticated;
-grant execute on function public.my_booking(uuid, uuid) to anon, authenticated;
-grant execute on function public.cancel_booking(uuid, uuid) to anon, authenticated;
+-- бронь гостям не открыта: функции остаются (история броней в зале), но гость (anon) их не вызывает
+revoke all on function public.book_table(text, text, timestamptz, int, text, text, uuid) from anon;
+revoke all on function public.my_booking(uuid, uuid) from anon;
+revoke all on function public.cancel_booking(uuid, uuid) from anon;
+grant execute on function public.book_table(text, text, timestamptz, int, text, text, uuid) to authenticated;
+grant execute on function public.my_booking(uuid, uuid) to authenticated;
+grant execute on function public.cancel_booking(uuid, uuid) to authenticated;
 grant execute on function public.set_booking(uuid, text, uuid) to authenticated;
 grant execute on function public.shift_start() to authenticated;
 grant execute on function public.shift_end() to authenticated;
@@ -2529,7 +2551,7 @@ declare
   v_phone text := regexp_replace(btrim(coalesce(p_phone, '')), '\s+', ' ', 'g');
   v_name text := btrim(coalesce(p_name, '')); v_addr text := btrim(regexp_replace(coalesce(p_address, ''), '\s+', ' ', 'g'));
   v_email text := nullif(lower(btrim(coalesce(p_email, ''))), '');
-  v_e164 text := public.phone_e164(p_phone); v_total numeric(10, 2); v_trusted boolean;
+  v_e164 text := public.phone_e164(p_phone); v_total numeric(10, 2); v_trusted boolean; v_verified boolean; v_status text; v_short text;
 begin
   if p_client_key is null then raise exception 'bad_request'; end if;
   select * into v_old from public.orders o where o.client_key = p_client_key;
@@ -2545,18 +2567,17 @@ begin
   if not (v_q ->> 'ok')::boolean then
     raise exception '%', case v_q ->> 'reason' when 'off' then 'delivery_off' when 'too_far' then 'too_far' else 'bad_point' end;
   end if;
-  if char_length(v_name) not between 1 and 60 or v_phone !~ '^\+?[0-9][0-9 ()-]{5,19}$'
+  if char_length(v_name) not between 1 and 60 or char_length(v_phone) > 20 or v_phone !~ '^\+?[0-9][0-9 ()-]{5,19}$'
      or char_length(v_addr) not between 5 and 300 or coalesce(p_pay, '') not in ('cash', 'card')
      or (v_email is not null and (char_length(v_email) > 120 or v_email !~ '^[^@\s]+@[^@\s]+\.[^@\s]+$')) then
     raise exception 'bad_request';
   end if;
   -- проверка номера по SMS: код подтверждён на этот же номер и ещё действует
-  if v_set.dv_sms and (p_phone_token is null or v_e164 is null or not exists (
+  v_verified := p_phone_token is not null and v_e164 is not null and exists (
        select 1 from private.phone_tokens t
         where t.token_hash = encode(sha256(convert_to(p_phone_token::text, 'UTF8')), 'hex')
-          and t.phone = v_e164 and t.expires_at > now())) then
-    raise exception 'phone_unverified';
-  end if;
+          and t.phone = v_e164 and t.expires_at > now());
+  if v_set.dv_sms and not v_verified then raise exception 'phone_unverified'; end if;
   if p_items is null or jsonb_typeof(p_items) <> 'array' or jsonb_array_length(p_items) = 0 then raise exception 'empty'; end if;
   if jsonb_array_length(p_items) > 50 then raise exception 'bad_items'; end if;
   for v_item in select value from jsonb_array_elements(p_items) loop
@@ -2570,6 +2591,12 @@ begin
   end loop;
   if v_count > 100 then raise exception 'bad_items'; end if;
   if v_sub < v_set.delivery_min then raise exception 'below_min'; end if;
+  -- порций хватает? (доставка «ждёт звонка» их ещё не списывает — проверяем сразу, чтобы гость не ждал зря)
+  select q.dish into v_short from private.order_qty(v_items) q join public.dishes d on d.id = q.dish
+   where d.stock is not null and d.stock < q.qty limit 1;
+  if v_short is not null then raise exception 'sold_out:%', v_short; end if;
+  -- давно ждущие звонка — «не дозвонились» (без cron: убираем при каждом заказе и обновлении списка у персонала)
+  perform private.dv_expire();
   -- защита от спама: с одного номера не больше 3 незавершённых доставок, со всего ресторана — 60 заказов в минуту
   if (select count(*) from public.orders o where o.kind = 'delivery' and o.status not in ('served', 'cancelled')
         and o.created_at > now() - interval '12 hours'
@@ -2581,17 +2608,22 @@ begin
   -- у доставки нет сервисного сбора (он за обслуживание в зале); налог — как в зале
   v_tax := round(v_sub * coalesce(v_set.tax_pct, 0) / 100, 2);
   v_total := v_sub + v_tax + (v_q ->> 'fee')::numeric;
-  -- звонок ресторана: не нужен постоянному гостю (N доставленных и оплаченных заказов), кроме крупных сумм
-  v_trusted := coalesce(v_set.dv_trust_after, 0) > 0 and v_e164 is not null
+  -- звонок ресторана: не нужен постоянному гостю (N доставленных и оплаченных заказов), кроме крупных сумм.
+  -- Постоянным считаем только номер, подтверждённый кодом из SMS: без проверки номер мог набрать кто угодно.
+  v_trusted := v_set.dv_sms and v_verified and coalesce(v_set.dv_trust_after, 0) > 0
     and (select count(*) from public.orders o where o.kind = 'delivery' and o.status = 'served' and o.paid_at is not null
            and public.phone_e164(o.customer_phone) = v_e164) >= v_set.dv_trust_after;
+  v_status := case when v_trusted and v_total <= coalesce(v_set.dv_confirm_over, 0) then 'new' else 'confirm' end;
+  -- ждущих звонка не больше 15 на весь ресторан (иначе фальшивые заказы забьют список)
+  if v_status = 'confirm' and (select count(*) from public.orders o where o.status = 'confirm') >= 15 then
+    raise exception 'too_many';
+  end if;
   return query
     insert into public.orders as o (kind, table_id, table_label, items, subtotal, service, tax, delivery_fee, total, note, lang, client_key,
                                     customer_name, customer_phone, customer_email, address, lat, lng, distance_km, pay_method, status)
     values ('delivery', null, 'Доставка', v_items, v_sub, 0, v_tax, (v_q ->> 'fee')::numeric, v_total,
             left(nullif(btrim(coalesce(p_note, '')), ''), 300), left(nullif(btrim(coalesce(p_lang, '')), ''), 5), p_client_key,
-            v_name, v_phone, v_email, v_addr, p_lat, p_lng, (v_q ->> 'km')::numeric, p_pay,
-            case when v_trusted and v_total <= coalesce(v_set.dv_confirm_over, 0) then 'new' else 'confirm' end)
+            v_name, v_phone, v_email, v_addr, p_lat, p_lng, (v_q ->> 'km')::numeric, p_pay, v_status)
     returning o.id, o.no, o.guest_token, o.total, o.status, o.items, o.created_at, o.subtotal, o.tax, o.delivery_fee, o.distance_km;
 end $$;
 
@@ -2781,8 +2813,10 @@ returns text language sql immutable as $$
   b as (select case when plus then '+' || d
                     when d like '00%' then '+' || substr(d, 3)
                     when d like '60%' then '+' || d
-                    when d like '0%' then '+60' || substr(d, 2) end as e from a)
-  select case when e ~ '^\+[1-9][0-9]{7,14}$' then e end from b;
+                    when d like '0%' then '+60' || substr(d, 2) end as e from a),
+  -- «+60 012…» — местный 0 после кода страны лишний: +60 12…
+  c as (select case when e like '+600%' then '+60' || substr(e, 5) else e end as e from b)
+  select case when e ~ '^\+[1-9][0-9]{7,14}$' then e end from c;
 $$;
 
 -- ---------- SMS (Twilio). Ключи только на сервере: наружу — лишь хвост SID и номер отправителя ----------
@@ -2818,12 +2852,54 @@ alter table private.phone_codes enable row level security;
 alter table private.phone_tokens enable row level security;
 revoke all on private.phone_codes, private.phone_tokens from public, anon, authenticated;
 
+-- SMS уходят синхронно через расширение http (pgsql-http): настоящее тело формы и ответ Twilio сразу.
+-- pg_net для SMS не годится: он шлёт тело как JSON и не говорит, дошло ли сообщение.
+-- Локальные тесты: расширения нет — supabase/tests/stub.sql подкладывает имитацию extensions.http (пишет в extensions.http_outbox).
+do $$ begin
+  begin
+    create schema if not exists extensions;
+    create extension if not exists http with schema extensions;
+  exception when others then
+    raise notice 'http недоступен — SMS выключены (локальные тесты используют имитацию)';
+  end;
+end $$;
+create or replace function private.sms_http_ok()
+returns boolean language sql stable as $$
+  select to_regprocedure('extensions.http(extensions.http_request)') is not null;
+$$;
 create or replace function private.sms_ready()
 returns boolean language sql stable security definer set search_path = public, private as $$
   select coalesce((select nullif(account_sid, '') is not null and nullif(auth_token, '') is not null and nullif(from_number, '') is not null
                      from private.sms where id = 1), false)
-     and to_regprocedure('net.http_post(text,jsonb,jsonb,jsonb,integer)') is not null;
+     and private.sms_http_ok();
 $$;
+-- кодирование для тела формы (application/x-www-form-urlencoded): всё, кроме A–Z a–z 0–9 - . _ ~, — как %XX (UTF-8)
+create or replace function private.url_enc(p text)
+returns text language sql immutable as $$
+  select coalesce(string_agg(case when b between 48 and 57 or b between 65 and 90 or b between 97 and 122 or b in (45, 46, 95, 126)
+                                  then chr(b) else '%' || upper(lpad(to_hex(b), 2, '0')) end, '' order by i), '')
+  from (select i, get_byte(convert_to(coalesce(p, ''), 'UTF8'), i) as b
+          from generate_series(0, octet_length(convert_to(coalesce(p, ''), 'UTF8')) - 1) i) x;
+$$;
+-- отправить одно SMS через Twilio и дождаться ответа: 2xx — ушло, иначе 'sms_failed'
+create or replace function private.sms_send(p_to text, p_text text)
+returns void language plpgsql security definer set search_path = public, private as $$
+declare v private.sms%rowtype; v_status int;
+begin
+  if not private.sms_ready() then raise exception 'sms_off'; end if;
+  select * into v from private.sms where id = 1;
+  begin
+    execute $q$select (extensions.http(row('POST', $1, array[row('Authorization', $2)::extensions.http_header],
+                                           'application/x-www-form-urlencoded', $3)::extensions.http_request)).status$q$
+      into v_status
+      using 'https://api.twilio.com/2010-04-01/Accounts/' || v.account_sid || '/Messages.json',
+            'Basic ' || replace(encode(convert_to(v.account_sid || ':' || v.auth_token, 'UTF8'), 'base64'), E'\n', ''),
+            'To=' || private.url_enc(p_to) || '&From=' || private.url_enc(v.from_number) || '&Body=' || private.url_enc(p_text);
+  exception when others then
+    v_status := null;   -- нет связи / таймаут — как отказ Twilio
+  end;
+  if v_status is null or v_status not between 200 and 299 then raise exception 'sms_failed'; end if;
+end $$;
 -- счётчик неверных попыток живёт в последовательности: она не откатывается вместе с ошибкой «bad_code»
 create or replace function private.pc_seq(p_phone text)
 returns text language sql immutable as $$ select 'pc_' || substr(md5(p_phone), 1, 24) $$;
@@ -2877,21 +2953,23 @@ begin
   return private.sms_info();
 end $$;
 
--- Гость: прислать код на телефон. Не чаще раза в минуту, 5 раз в час на номер, 60 SMS в час на ресторан.
+-- Гость: прислать код на телефон. Только малайзийские номера (+60), не чаще раза в минуту,
+-- 3 раза в час на номер и 30 SMS в час на весь ресторан (защита от накрутки SMS за счёт ресторана).
+-- Twilio не принял сообщение — 'sms_failed', код не сохраняется, можно просить снова.
 create or replace function public.request_phone_code(p_phone text, p_lang text default 'en')
 returns jsonb language plpgsql security definer set search_path = public, private as $$
-declare v_phone text := public.phone_e164(p_phone); v_set public.settings%rowtype; v_sms private.sms%rowtype;
+declare v_phone text := public.phone_e164(p_phone); v_set public.settings%rowtype;
         r private.phone_codes%rowtype; v_code text; v_text text; v_seq text; x text;
 begin
-  if v_phone is null then raise exception 'bad_phone'; end if;
+  if v_phone is null or v_phone !~ '^\+60[1-9][0-9]{7,9}$' then raise exception 'bad_phone'; end if;
   select * into v_set from public.settings where id = 1;
   if not coalesce(v_set.dv_sms, false) or not private.sms_ready() then raise exception 'sms_off'; end if;
   select * into r from private.phone_codes where phone = v_phone for update;
   if found and r.sent_at > now() - interval '60 seconds' then
     raise exception 'too_soon:%', greatest(1, ceil(extract(epoch from (r.sent_at + interval '60 seconds' - now())))::int);
   end if;
-  if found and r.hour_start > now() - interval '1 hour' and r.sends_hour >= 5 then raise exception 'too_many'; end if;
-  if (select coalesce(sum(sends_hour), 0) from private.phone_codes where hour_start > now() - interval '1 hour') >= 60 then
+  if found and r.hour_start > now() - interval '1 hour' and r.sends_hour >= 3 then raise exception 'too_many'; end if;
+  if (select coalesce(sum(sends_hour), 0) from private.phone_codes where hour_start > now() - interval '1 hour') >= 30 then
     raise exception 'too_many';
   end if;
   v_code := lpad((('x' || lpad(substr(md5(gen_random_uuid()::text), 1, 8), 16, '0'))::bit(64)::bigint % 1000000)::text, 6, '0');
@@ -2900,10 +2978,6 @@ begin
   on conflict (phone) do update set code_hash = excluded.code_hash, sent_at = now(), expires_at = excluded.expires_at, attempts = 0,
     sends_hour = case when c.hour_start > now() - interval '1 hour' then c.sends_hour + 1 else 1 end,
     hour_start = case when c.hour_start > now() - interval '1 hour' then c.hour_start else now() end;
-  -- новые попытки для нового кода
-  v_seq := private.pc_seq(v_phone);
-  if to_regclass(format('private.%I', v_seq)) is null then execute format('create sequence private.%I minvalue 0', v_seq); end if;
-  perform setval(format('private.%I', v_seq)::regclass, 0, true);
   v_text := v_set.name || case lower(coalesce(p_lang, 'en'))
     when 'ru' then ': код ' || v_code || '. Никому не сообщайте.'
     when 'uz' then ': kod ' || v_code || '. Hech kimga aytmang.'
@@ -2911,17 +2985,12 @@ begin
     when 'ms' then ': kod anda ' || v_code || '. Jangan kongsi dengan sesiapa.'
     when 'zh' then '：验证码 ' || v_code || '，请勿告诉他人。'
     else ': your code is ' || v_code || '. Do not share it.' end;
-  select * into v_sms from private.sms where id = 1;
-  begin
-    -- pg_net шлёт тело как JSON, поэтому To/From/Body идут параметрами запроса (Twilio их принимает)
-    execute 'select net.http_post(url := $1, body := $2, params := $3, headers := $4, timeout_milliseconds := $5)'
-      using 'https://api.twilio.com/2010-04-01/Accounts/' || v_sms.account_sid || '/Messages.json', '{}'::jsonb,
-            jsonb_build_object('To', v_phone, 'From', v_sms.from_number, 'Body', v_text),
-            jsonb_build_object('Authorization', 'Basic ' || replace(encode(convert_to(v_sms.account_sid || ':' || v_sms.auth_token, 'UTF8'), 'base64'), E'\n', ''),
-                               'Content-Type', 'application/x-www-form-urlencoded'),
-            10000;
-  exception when others then raise exception 'sms_off';
-  end;
+  -- сначала SMS: если Twilio отказал, ошибка откатит и код, и счётчики (последовательность попыток ещё не тронута)
+  perform private.sms_send(v_phone, v_text);
+  -- новые попытки для нового кода
+  v_seq := private.pc_seq(v_phone);
+  if to_regclass(format('private.%I', v_seq)) is null then execute format('create sequence private.%I minvalue 0', v_seq); end if;
+  perform setval(format('private.%I', v_seq)::regclass, 0, true);
   -- уборка: старые коды и истёкшие подтверждения
   if random() < 0.05 then
     for x in select phone from private.phone_codes where sent_at < now() - interval '1 day' loop
@@ -2955,6 +3024,25 @@ begin
   return jsonb_build_object('phone_token', v_tok, 'phone', v_phone);
 end $$;
 
+-- ---------- Доставка ждёт звонка больше 30 минут — «не дозвонились» ----------
+-- Считаем от последнего изменения заказа: возвращённая владельцем доставка («Вернуть заказ») ждёт заново.
+create or replace function private.dv_expire()
+returns int language plpgsql security definer set search_path = public, private as $$
+declare n int;
+begin
+  update public.orders set status = 'cancelled', cancel_reason = 'no_answer'
+   where status = 'confirm' and updated_at < now() - interval '30 minutes';
+  get diagnostics n = row_count;
+  return n;
+end $$;
+-- страницы персонала зовут это при обновлении списка заказов
+create or replace function public.dv_expire()
+returns int language plpgsql security definer set search_path = public, private as $$
+begin
+  if not public.is_staff() then raise exception 'forbidden'; end if;
+  return private.dv_expire();
+end $$;
+
 -- ---------- Зал: позвонили гостю ----------
 -- «Принять заказ»: доставка уходит на кухню (повар получает её как новый заказ)
 create or replace function public.confirm_delivery(p_order uuid)
@@ -2973,7 +3061,7 @@ begin
    where id = p_order returning *;
 end $$;
 
--- «Не дозвонились» / «Гость отказался» / «Другое»: заказ отменён, не готовится, остатки возвращаются
+-- «Не дозвонились» / «Гость отказался» / «Другое»: заказ отменён и не готовится (порции он ещё не держал)
 create or replace function public.reject_delivery(p_order uuid, p_reason text)
 returns setof public.orders language plpgsql security definer set search_path = public, private as $$
 declare v_o public.orders%rowtype;
@@ -2995,6 +3083,9 @@ end $$;
 
 revoke all on function public.phone_e164(text) from public;
 revoke all on function private.sms_ready() from public;
+revoke all on function private.sms_http_ok() from public;
+revoke all on function private.url_enc(text) from public;
+revoke all on function private.sms_send(text, text) from public;
 revoke all on function private.pc_seq(text) from public;
 revoke all on function private.sms_hash(text) from public;
 revoke all on function private.sms_info() from public;
@@ -3004,6 +3095,9 @@ revoke all on function public.sms_status() from public, anon;
 revoke all on function public.request_phone_code(text, text) from public;
 revoke all on function public.verify_phone_code(text, text) from public;
 revoke all on function public.confirm_delivery(uuid) from public, anon;
+revoke all on function private.dv_expire() from public;
+revoke all on function public.dv_expire() from public, anon;
+grant execute on function public.dv_expire() to authenticated;
 revoke all on function public.reject_delivery(uuid, text) from public, anon;
 grant execute on function public.phone_e164(text) to anon, authenticated;
 grant execute on function public.set_sms(text, text, text) to authenticated;

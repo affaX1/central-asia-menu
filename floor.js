@@ -65,7 +65,8 @@
   // телефон для звонка: +60… как на сервере (phone_e164), иначе просто цифры
   const e164 = (p) => {
     const d = String(p || '').replace(/\D/g, '');
-    const e = /^\s*\+/.test(String(p || '')) ? `+${d}` : d.startsWith('00') ? `+${d.slice(2)}` : d.startsWith('60') ? `+${d}` : d.startsWith('0') ? `+60${d.slice(1)}` : '';
+    const e = (/^\s*\+/.test(String(p || '')) ? `+${d}` : d.startsWith('00') ? `+${d.slice(2)}` : d.startsWith('60') ? `+${d}` : d.startsWith('0') ? `+60${d.slice(1)}` : '')
+      .replace(/^\+600/, '+60');   // «+60 012…» — лишний 0 после кода страны (как phone_e164 в базе)
     return /^\+[1-9]\d{7,14}$/.test(e) ? e : '';
   };
   const telOf = (p) => e164(p) || String(p || '').replace(/[^\d+]/g, '');
@@ -838,7 +839,11 @@
         if (r && r.status === 'new') { try { await host.api.acceptOrder(id); } catch { /* примут кнопкой «Принять доставку» */ } }
         S.toast(t('d_t_accepted', o.no));
       } catch (ex) {
-        S.toast(/bad_status|not_found/.test(String(ex?.message || '')) ? t('dv_t_gone', o.no) : S.errText(ex), true);
+        const m = String(ex?.message || '');
+        // порции кончились, пока ждали звонка (списываются только при «Принять заказ»)
+        const sold = m.match(/sold_out:([a-z0-9-]+)/);
+        const dish = sold && (o.items || []).find((i) => i.id === sold[1]);
+        S.toast(sold ? t('dv_t_sold', o.no, dish ? tr(dish.name) || dish.id : sold[1]) : /bad_status|not_found/.test(m) ? t('dv_t_gone', o.no) : S.errText(ex), true);
       }
       try { await host.reloadOrders(); } catch { /* обновится само */ }
       busy.delete(id);

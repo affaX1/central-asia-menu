@@ -22,6 +22,7 @@
         delivery_enabled: false, delivery_lat: null, delivery_lng: null, delivery_zones: [], delivery_min: 0,
         // звонок гостю и проверка номера по SMS (как в базе)
         dv_sms: false, dv_trust_after: 3, dv_confirm_over: 150,
+        bookings_enabled: false,   // бронь владелец убрал (функции брони гостю закрыты)
       },
       tables: [1, 2, 3].map((n) => ({ id: 'tbl-' + n, label: String(n), token: ('a' + n).padEnd(20, '0'), active: true, sort: n })),
       orders: [],
@@ -73,10 +74,24 @@
   // как public.phone_e164: +60… (Малайзия по умолчанию), иначе null
   const e164 = (p) => {
     const d = String(p || '').replace(/\D/g, '');
-    const e = /^\s*\+/.test(String(p || '')) ? `+${d}` : d.startsWith('00') ? `+${d.slice(2)}` : d.startsWith('60') ? `+${d}` : d.startsWith('0') ? `+60${d.slice(1)}` : '';
+    const e = (/^\s*\+/.test(String(p || '')) ? `+${d}` : d.startsWith('00') ? `+${d.slice(2)}` : d.startsWith('60') ? `+${d}` : d.startsWith('0') ? `+60${d.slice(1)}` : '')
+      .replace(/^\+600/, '+60');   // лишний 0 после +60
     return /^\+[1-9]\d{7,14}$/.test(e) ? e : null;
   };
-  // SMS (Twilio) в подделке: ключи только записываются; код всегда 123456 — и пишется в консоль
+  // как private.dv_expire: доставка ждёт звонка дольше 30 минут (с последнего изменения) — «не дозвонились»
+  const dvExpire = (d) => {
+    let n = 0;
+    for (const o of d.orders) {
+      if (o.status === 'confirm' && Date.now() - new Date(o.updated_at || o.created_at).getTime() > 30 * 60000) {
+        Object.assign(o, { status: 'cancelled', cancel_reason: 'no_answer', cancelled_at: new Date().toISOString(), updated_at: new Date().toISOString() }); n += 1;
+      }
+    }
+    return n;
+  };
+  // доставка «ждёт звонка» порции не держит (как orders_stock в базе)
+  const heldItems = (o, status = o.status) => (['cancelled', 'confirm'].includes(status) ? [] : o.items);
+  // SMS (Twilio) в подделке: ключи только записываются; код всегда 123456 — и пишется в консоль.
+  // localStorage 'fake:sms-fail' = '1' — Twilio «не принял» SMS (ошибка sms_failed)
   const FAKE_CODE = '123456';
   const smsReady = (d) => !!(d.sms?.sid && d.sms?.token && d.sms?.from);
   const smsInfo = (d) => ({ configured: smsReady(d), from: d.sms?.from || null, sid_tail: d.sms?.sid ? '…' + d.sms.sid.slice(-4) : null });
@@ -100,11 +115,15 @@
       const k = x.paid_by_name || '—'; cashier[k] = r2((cashier[k] || 0) + Number(x.total));
     });
     const o = (d.orders || []).filter((x) => inP(x.created_at));
-    const open = (d.orders || []).filter((x) => !x.paid_at && x.status !== 'cancelled' && new Date(x.created_at).getTime() <= t);
-    const vd = b.filter((x) => x.voided_at); const cn = o.filter((x) => x.status === 'cancelled');
+    const open = (d.orders || []).filter((x) => !x.paid_at && !['cancelled', 'confirm'].includes(x.status) && new Date(x.created_at).getTime() <= t);
+    const waitCall = (d.orders || []).filter((x) => !x.paid_at && x.status === 'confirm' && new Date(x.created_at).getTime() <= t);
+    // доставка, которую так и не подтвердили звонком, — отдельно («Не подтверждены»)
+    const unconf = (x) => x.status === 'cancelled' && x.kind === 'delivery' && x.cancel_reason && !x.confirmed_at;
+    const vd = b.filter((x) => x.voided_at); const cn = o.filter((x) => x.status === 'cancelled' && !unconf(x)); const un = o.filter(unconf);
     return { from, to, bills: ok.length, subtotal: sum(ok, 'subtotal'), discount: sum(ok, 'discount'), discount_bills: ok.filter((x) => Number(x.discount) > 0).length,
-      service: sum(ok, 'service'), tax: sum(ok, 'tax'), total: sum(ok, 'total'), tip: sum(ok, 'tip'), rounding: sum(ok, 'rounding'), by_method: by, cash: by.cash || 0,
-      voided: vd.length, voided_sum: sum(vd, 'total'), orders: o.length - cn.length, cancelled: cn.length, cancelled_sum: sum(cn, 'total'),
+      service: sum(ok, 'service'), tax: sum(ok, 'tax'), total: sum(ok, 'total'), tip: sum(ok, 'tip'), rounding: sum(ok, 'rounding'), delivery_fee: sum(ok, 'delivery_fee'), by_method: by, cash: by.cash || 0,
+      voided: vd.length, voided_sum: sum(vd, 'total'), orders: o.filter((x) => !['cancelled', 'confirm'].includes(x.status)).length, cancelled: cn.length, cancelled_sum: sum(cn, 'total'),
+      unconfirmed: un.length, unconfirmed_sum: sum(un, 'total'), confirm_orders: waitCall.length,
       open_orders: open.length, open_sum: sum(open, 'total'), by_cashier: cashier };
   };
   // как order_charges в базе
@@ -249,6 +268,7 @@
     async orders(from, to) {
       await delay();
       staffOk(); offline();
+      if (!to) { const d0 = db(); if (dvExpire(d0)) save(d0); }
       const f = new Date(from).getTime();
       const t = to ? new Date(to).getTime() : Infinity;
       return db().orders.filter((o) => {
@@ -277,11 +297,15 @@
       await delay(); mgr();
       if (localStorage.getItem('fake:offline') === '1') throw new TypeError('Failed to fetch');
       const d = db(); const o = d.orders.find((x) => x.id === id);
-      if (!['new', 'accepted', 'cooking', 'ready', 'on_the_way', 'served', 'cancelled'].includes(status)) throw new Error('violates check constraint');
+      if (!['confirm', 'new', 'accepted', 'cooking', 'ready', 'on_the_way', 'served', 'cancelled'].includes(status)) throw new Error('violates check constraint');
       const was = o.status;
-      applyStock(d, was === 'cancelled' ? [] : o.items, status === 'cancelled' ? [] : o.items);
+      if (was !== status && o.paid_at) throw new Error('paid');
+      // как orders_on_update: доставка «доставлена» только вместе с оплатой (courier_done)
+      if (was !== status && o.kind === 'delivery' && status === 'served' && !o.paid_at) throw new Error('bad_status');
+      applyStock(d, heldItems(o, was), heldItems(o, status));
       o.status = status; o.updated_at = new Date().toISOString();
-      if (status === 'cancelled') o.cancelled_at = o.updated_at;
+      if (status === 'cancelled') o.cancelled_at = o.updated_at; else if (was !== status) { o.cancelled_at = null; o.cancel_reason = null; }
+      if (status === 'confirm' && was !== status) { o.confirmed_at = null; o.confirmed_by_name = null; }   // вернули «ждать звонка» — подтверждать заново
       (d.audit = d.audit || []).push({ id: Date.now(), at: o.updated_at, who: myName(), entity: 'order', entity_id: o.id, label: `№${o.no} · стол ${o.table_label}`, action: 'update', changes: { status: [was, status] } });
       save(d); return o;
     },
@@ -321,6 +345,7 @@
       await delay(); floor(); offline();
       const d = db(); const o = d.orders.find((x) => x.id === id);
       if (!o) throw new Error('not_found');
+      if (o.kind === 'delivery') throw new Error('bad_status');   // доставку закрывает курьер с оплатой
       if (['new', 'accepted', 'cooking', 'ready'].includes(o.status)) { o.status = 'served'; o.served_at = new Date().toISOString(); o.updated_at = o.served_at; o.served_by = uid(); o.served_by_name = myName(); save(d); }
       return o;
     },
@@ -333,6 +358,7 @@
         if (o.confirmed_at && o.status !== 'cancelled') return o;
         throw new Error('bad_status');
       }
+      applyStock(d, [], o.items);   // порции списываются только сейчас (может быть sold_out)
       const now = new Date().toISOString();
       Object.assign(o, { status: 'new', confirmed_at: now, confirmed_by_name: myName(), updated_at: now });
       save(d); return o;
@@ -344,7 +370,7 @@
       if (!o || o.kind !== 'delivery') throw new Error('not_found');
       if (o.status === 'cancelled') return o;
       if (o.status !== 'confirm') throw new Error('bad_status');
-      applyStock(d, o.items, []);   // порции возвращаются, как при отмене
+      // порции «ждущая звонка» доставка не держала — возвращать нечего
       const now = new Date().toISOString();
       Object.assign(o, { status: 'cancelled', cancel_reason: reason, cancelled_at: now, updated_at: now });
       save(d); return o;
@@ -397,6 +423,7 @@
         courier_id: null, courier_name: null, picked_at: null, guest_token: crypto.randomUUID(), client_key: crypto.randomUUID(), created_at: now, updated_at: now };
       d.orders.push(o); save(d); return o;
     },
+    async dvExpire() { await delay(); staffOk(); const d = db(); const n = dvExpire(d); save(d); return n; },
     async myTelegram() { await delay(); staffOk(); const d = db(); return { linked: !!(d.staffTg || {})[uid()], bot_username: d.telegram?.token ? 'central_asia_test_bot' : null, bot_ready: !!d.telegram?.token }; },
     async myTelegramStart() { await delay(); staffOk(); const d = db(); if (!d.telegram?.token) throw new Error('no_bot'); d.tgCode = { user: uid(), code: 'ca' + Math.random().toString(16).slice(2, 12), n: 0 }; save(d); return { code: d.tgCode.code, bot_username: 'central_asia_test_bot' }; },
     async myTelegramCheck() { await delay(); staffOk(); const d = db(); if (!d.tgCode) return 'no_code'; d.tgCode.n += 1; if (d.tgCode.n < 2) { save(d); return 'pending'; } d.staffTg = { ...(d.staffTg || {}), [uid()]: '555' }; d.tgCode = null; save(d); return 'linked'; },
@@ -637,7 +664,8 @@
         if (!bl) return reply(200, null);
         const os = d.orders.filter((x) => bl.order_ids.includes(x.id)).sort((x, y) => x.no - y.no);
         return reply(200, { no: bl.no, paid_at: bl.paid_at, table_label: bl.table_label, order_nos: bl.order_nos, subtotal: bl.subtotal, discount: bl.discount || 0, discount_pct: bl.discount_pct, discount_reason: bl.discount_reason,
-          service: bl.service, tax: bl.tax, total: bl.total, tip: bl.tip || 0, rounding: bl.rounding || 0, payments: bl.payments, method: bl.method, cashier: bl.paid_by_name || null,
+          service: bl.service, tax: bl.tax, total: bl.total, tip: bl.tip || 0, rounding: bl.rounding || 0, delivery_fee: Number(bl.delivery_fee || 0),
+          kind: os.some((x) => x.kind === 'delivery') ? 'delivery' : 'table', payments: bl.payments, method: bl.method, cashier: bl.paid_by_name || null,
           waiters: [...new Set(os.map((x) => x.served_by_name).filter(Boolean))], items: os.flatMap((x) => x.items) });
       }
       if (name === 'get_order') {
@@ -650,13 +678,16 @@
       // ---------- гость: код из SMS (как request_phone_code / verify_phone_code). Код в подделке — всегда 123456 ----------
       if (name === 'request_phone_code') {
         const ph = e164(b.p_phone);
-        if (!ph) return fail('bad_phone');
+        // только малайзийские номера (+60)
+        if (!ph || !/^\+60[1-9]\d{7,9}$/.test(ph)) return fail('bad_phone');
         if (!d.settings.dv_sms || !smsReady(d)) return fail('sms_off');
         d.phoneCodes = d.phoneCodes || {};
         const r = d.phoneCodes[ph];
         const now = Date.now();
         if (r && now - r.sent_at < 60000) return fail(`too_soon:${Math.max(1, Math.ceil((r.sent_at + 60000 - now) / 1000))}`);
-        if (r && now - r.hour_start < 3600000 && r.sends_hour >= 5) return fail('too_many');
+        if (r && now - r.hour_start < 3600000 && r.sends_hour >= 3) return fail('too_many');
+        if (Object.values(d.phoneCodes).reduce((s2, x) => s2 + (now - x.hour_start < 3600000 ? x.sends_hour : 0), 0) >= 30) return fail('too_many');
+        if (localStorage.getItem('fake:sms-fail') === '1') return fail('sms_failed');   // Twilio не принял — код не сохраняется
         const inHour = now - (r?.hour_start || 0) < 3600000;
         d.phoneCodes[ph] = { code: FAKE_CODE, sent_at: now, expires_at: now + 600000, attempts: 0, sends_hour: inHour ? r.sends_hour + 1 : 1, hour_start: inHour ? r.hour_start : now };
         save(d);
@@ -709,11 +740,12 @@
         const addr = String(b.p_address || '').replace(/\s+/g, ' ').trim();
         const email = String(b.p_email || '').trim().toLowerCase() || null;
         if (email && (email.length > 120 || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email))) return fail('bad_request');
-        if (nm.length < 1 || nm.length > 60 || !/^\+?[0-9][0-9 ()-]{5,19}$/.test(ph) || addr.length < 5 || addr.length > 300 || !['cash', 'card'].includes(b.p_pay)) return fail('bad_request');
+        if (nm.length < 1 || nm.length > 60 || ph.length > 20 || !/^\+?[0-9][0-9 ()-]{5,19}$/.test(ph) || addr.length < 5 || addr.length > 300 || !['cash', 'card'].includes(b.p_pay)) return fail('bad_request');
         // проверка номера по SMS: ключ из verify_phone_code на этот же номер
         const phE = e164(ph);
         const tk = b.p_phone_token && (d.phoneTokens || {})[b.p_phone_token];
-        if (d.settings.dv_sms && !(tk && phE && tk.phone === phE && tk.expires_at > Date.now())) return fail('phone_unverified');
+        const verified = !!(tk && phE && tk.phone === phE && tk.expires_at > Date.now());
+        if (d.settings.dv_sms && !verified) return fail('phone_unverified');
         if (!Array.isArray(b.p_items) || !b.p_items.length) return fail('empty');
         if (b.p_items.length > 50) return fail('bad_items');
         let sub = 0; let count = 0;
@@ -730,6 +762,11 @@
         if (count > 100) return fail('bad_items');
         sub = r2(sub);
         if (sub < Number(d.settings.delivery_min || 0)) return fail('below_min');
+        // порций хватает? (ждущая звонка доставка их ещё не списывает)
+        const need = items.reduce((m, i) => ({ ...m, [i.id]: (m[i.id] || 0) + i.qty }), {});
+        const short = Object.keys(need).find((id) => { const x = d.dishes.find((y) => y.id === id); return x && x.stock != null && x.stock < need[id]; });
+        if (short) return fail('sold_out:' + short);
+        dvExpire(d);
         const digits = (x) => String(x || '').replace(/\D/g, '');
         const same = (x) => (e164(x) || digits(x)) === (phE || digits(ph));
         if (d.orders.filter((o) => o.kind === 'delivery' && !['served', 'cancelled'].includes(o.status) && Date.now() - new Date(o.created_at) < 12 * 3600000 && same(o.customer_phone)).length >= 3
@@ -740,14 +777,17 @@
         const now = new Date().toISOString();
         // звонок ресторана: не нужен постоянному гостю (N доставленных и оплаченных), кроме сумм больше порога
         const total = r2(sub + tax + q.fee);
-        const trusted = dvTrust(d.settings) > 0 && !!phE
+        // постоянный — только если номер подтверждён кодом из SMS
+        const trusted = !!d.settings.dv_sms && verified && dvTrust(d.settings) > 0
           && d.orders.filter((o) => o.kind === 'delivery' && o.status === 'served' && o.paid_at && e164(o.customer_phone) === phE).length >= dvTrust(d.settings);
         const o = { id: crypto.randomUUID(), no: d.seq, kind: 'delivery', table_id: null, table_label: 'Доставка', items, subtotal: sub, service: 0, tax, delivery_fee: q.fee, total,
           note: String(b.p_note || '').trim().slice(0, 300) || null, lang: String(b.p_lang || '').trim().slice(0, 5) || null,
           status: trusted && total <= dvOver(d.settings) ? 'new' : 'confirm', client_key: b.p_client_key, guest_token: crypto.randomUUID(),
           customer_name: nm, customer_phone: ph, customer_email: email, address: addr, lat: Number(b.p_lat), lng: Number(b.p_lng), distance_km: q.km, pay_method: b.p_pay,
           courier_id: null, courier_name: null, picked_at: null, created_at: now, updated_at: now };
-        try { applyStock(d, [], o.items); } catch (ex) { return fail(ex.message); }
+        // ждущих звонка — не больше 15 на ресторан
+        if (o.status === 'confirm' && d.orders.filter((x) => x.status === 'confirm').length >= 15) return fail('too_many');
+        try { applyStock(d, [], heldItems(o)); } catch (ex) { return fail(ex.message); }
         d.orders.push(o); save(d);
         if (localStorage.getItem('fake:drop-reply') === '1') { localStorage.removeItem('fake:drop-reply'); throw new TypeError('Failed to fetch'); } // заказ сохранён, но ответ «потерялся»
         return reply(200, out(o));
@@ -813,6 +853,8 @@
         }
         save(d); return reply(200, n);
       }
+      // бронь гостю закрыта (revoke execute from anon)
+      if (['book_table', 'my_booking', 'cancel_booking'].includes(name)) return reply(401, { code: '42501', message: `permission denied for function ${name}` });
       if (name === 'book_table') {
         d.bookings = d.bookings || [];
         if (!b.p_client_key) return fail('bad_request');

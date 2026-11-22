@@ -143,6 +143,8 @@
       // без toIso: все незакрытые (и доставки в пути) + всё созданное с fromIso; с toIso: история за период.
       // Курьер получает только доставку — это решает база (orders_staff_read).
       async orders(fromIso, toIso) {
+        // доставки, которые ждут звонка дольше 30 минут, база отменяет как «не дозвонились» (без cron — при обновлении списка)
+        if (!toIso) { try { await sb.rpc('dv_expire'); } catch { /* не страшно: отменится при следующем обновлении */ } }
         return pages((from, to) => {
           let q = sb.from('orders').select('*');
           q = toIso

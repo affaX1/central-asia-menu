@@ -116,7 +116,7 @@
       dvSend: (s) => `Заказать доставку · ${s}`, dvMin: (s) => `Минимальный заказ для доставки — ${s} (без стоимости доставки).`,
       dvOff: 'Доставка сейчас не работает. Можно заказать в ресторане.', dvTooFar: (km) => `До этой точки ${km} км — так далеко мы пока не возим.`,
       dvNeedPoint: 'Отметьте на карте, куда привезти.', dvNeedAddr: 'Напишите адрес: улица, дом, квартира (не короче 5 символов).',
-      dvBadReq: 'Проверьте адрес, имя, телефон и способ оплаты.', dvTooMany: 'С этого номера уже есть несколько доставок в работе. Дождитесь их или позвоните в ресторан.',
+      dvBadReq: 'Проверьте адрес, имя, телефон и способ оплаты.', dvTooMany: 'Сейчас не можем принять ещё одну доставку (с этого номера уже есть заказы в работе или их слишком много). Попробуйте позже или позвоните в ресторан.',
       dvGeoErr: 'Не получилось определить местоположение. Отметьте точку на карте.', dvMapErr: 'Карта не загрузилась. Проверьте интернет и попробуйте ещё раз.',
       dvSaveHint: 'Имя, телефон и адрес сохранятся на этом телефоне — в следующий раз вводить не нужно.',
       cartEmpty: 'Корзина пуста', cartEmptyHint: 'Добавьте блюда из меню — потом вернитесь сюда.', openMenu: 'Открыть меню', toDelivery: 'Оформить доставку',
@@ -131,8 +131,8 @@
       smsCode: 'Код из SMS', smsVerify: 'Подтвердить', smsResend: 'Отправить код ещё раз', smsResendIn: (s) => `Отправить код ещё раз (${s})`,
       smsBad: (n) => `Неверный код, осталось ${n} ${n % 10 === 1 && n % 100 !== 11 ? 'попытка' : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) ? 'попытки' : 'попыток'}`,
       smsExpired: 'Код устарел — отправьте новый.', smsTooMany: 'Слишком много неверных попыток — отправьте новый код.',
-      smsLimit: 'Слишком много SMS на этот номер. Попробуйте через час или позвоните в ресторан.', smsBadPhone: 'Проверьте номер телефона: например +60 12 345 6789.',
-      smsOff: 'SMS сейчас не отправляются. Позвоните в ресторан.', smsChange: 'Изменить номер', smsOk: 'Номер подтверждён',
+      smsLimit: 'Слишком много SMS на этот номер. Попробуйте через час или позвоните в ресторан.', smsBadPhone: 'Проверьте номер: код приходит только на малайзийские номера, например +60 12 345 6789.',
+      smsOff: 'SMS сейчас не отправляются. Позвоните в ресторан.', smsFailed: 'Не удалось отправить SMS. Попробуйте ещё раз или позвоните в ресторан.', smsChange: 'Изменить номер', smsOk: 'Номер подтверждён',
       courier: (x) => `Курьер ${x}`, kmToYou: (x) => `${x} км до вас`,
       ordersEmpty: 'Здесь появятся ваши заказы', ordersHint: 'Заказы с этого телефона — за столом и с доставкой — за последние 3 дня.',
       myData: 'Мои данные', profHint: 'Хранится только на этом телефоне — чтобы не вводить заново.', about: 'О ресторане', favsEmpty: 'Нажмите на сердечко в карточке блюда — оно появится здесь.',
@@ -243,7 +243,7 @@
       dvSend: (s) => `Yetkazib berishga buyurtma · ${s}`, dvMin: (s) => `Yetkazib berish uchun eng kam buyurtma — ${s} (yetkazib berish narxisiz).`,
       dvOff: 'Yetkazib berish hozir ishlamayapti. Restoranda buyurtma berish mumkin.', dvTooFar: (km) => `Bu nuqtagacha ${km} km — hozircha bunchalik uzoqqa olib bormaymiz.`,
       dvNeedPoint: 'Qayerga olib borishni xaritada belgilang.', dvNeedAddr: "Manzilni yozing: ko'cha, uy, xonadon (kamida 5 belgi).",
-      dvBadReq: "Manzil, ism, telefon va to'lov usulini tekshiring.", dvTooMany: "Bu raqamdan bir nechta yetkazib berish jarayonda. Ularni kuting yoki restoranga qo'ng'iroq qiling.",
+      dvBadReq: "Manzil, ism, telefon va to'lov usulini tekshiring.", dvTooMany: "Hozir yana bir yetkazib berishni qabul qila olmaymiz (bu raqamdan buyurtmalar jarayonda yoki ular juda ko'p). Keyinroq urinib ko'ring yoki restoranga qo'ng'iroq qiling.",
       dvGeoErr: "Joylashuvni aniqlab bo'lmadi. Nuqtani xaritada belgilang.", dvMapErr: "Xarita yuklanmadi. Internetni tekshirib, qayta urinib ko'ring.",
       dvSaveHint: 'Ism, telefon va manzil shu telefonda saqlanadi — keyingi safar qayta kiritish shart emas.',
       cartEmpty: "Savat bo'sh", cartEmptyHint: "Menyudan taom qo'shing — so'ng bu yerga qayting.", openMenu: 'Menyuni ochish', toDelivery: 'Yetkazib berishni rasmiylashtirish',
@@ -258,8 +258,8 @@
       smsCode: 'SMS dagi kod', smsVerify: 'Tasdiqlash', smsResend: 'Kodni qayta yuborish', smsResendIn: (s) => `Kodni qayta yuborish (${s})`,
       smsBad: (n) => `Kod noto'g'ri, ${n} ta urinish qoldi`,
       smsExpired: 'Kod eskirgan — yangisini yuboring.', smsTooMany: "Noto'g'ri urinishlar juda ko'p — yangi kod yuboring.",
-      smsLimit: "Bu raqamga juda ko'p SMS yuborildi. Bir soatdan keyin urinib ko'ring yoki restoranga qo'ng'iroq qiling.", smsBadPhone: 'Telefon raqamini tekshiring: masalan +60 12 345 6789.',
-      smsOff: "Hozir SMS yuborilmayapti. Restoranga qo'ng'iroq qiling.", smsChange: "Raqamni o'zgartirish", smsOk: 'Raqam tasdiqlandi',
+      smsLimit: "Bu raqamga juda ko'p SMS yuborildi. Bir soatdan keyin urinib ko'ring yoki restoranga qo'ng'iroq qiling.", smsBadPhone: 'Raqamni tekshiring: kod faqat Malayziya raqamlariga keladi, masalan +60 12 345 6789.',
+      smsOff: "Hozir SMS yuborilmayapti. Restoranga qo'ng'iroq qiling.", smsFailed: "SMS yuborib bo'lmadi. Qayta urinib ko'ring yoki restoranga qo'ng'iroq qiling.", smsChange: "Raqamni o'zgartirish", smsOk: 'Raqam tasdiqlandi',
       courier: (x) => `Kuryer ${x}`, kmToYou: (x) => `sizgacha ${x} km`,
       ordersEmpty: 'Buyurtmalaringiz shu yerda chiqadi', ordersHint: 'Shu telefondan berilgan buyurtmalar — stolda va yetkazib berish — oxirgi 3 kun.',
       myData: "Mening ma'lumotlarim", profHint: 'Faqat shu telefonda saqlanadi — qayta kiritmaslik uchun.', about: 'Restoran haqida', favsEmpty: "Taom kartasidagi yurakchani bosing — u shu yerda paydo bo'ladi.",
@@ -370,7 +370,7 @@
       dvSend: (s) => `Order delivery · ${s}`, dvMin: (s) => `The minimum order for delivery is ${s} (not counting the delivery fee).`,
       dvOff: 'Delivery is not available right now. You can order at the restaurant.', dvTooFar: (km) => `This point is ${km} km away — we don't deliver that far yet.`,
       dvNeedPoint: 'Mark on the map where to deliver.', dvNeedAddr: 'Write the address: street, building, unit (at least 5 characters).',
-      dvBadReq: 'Check the address, name, phone and payment method.', dvTooMany: 'This number already has several deliveries in progress. Please wait for them or call the restaurant.',
+      dvBadReq: 'Check the address, name, phone and payment method.', dvTooMany: 'We cannot take another delivery right now (this number already has orders in progress, or there are too many). Please try later or call the restaurant.',
       dvGeoErr: "Couldn't find your location. Mark the point on the map.", dvMapErr: "The map didn't load. Check your connection and try again.",
       dvSaveHint: "Your name, phone and address are saved on this phone, so you won't need to type them again.",
       cartEmpty: 'Your cart is empty', cartEmptyHint: 'Add dishes from the menu, then come back here.', openMenu: 'Open the menu', toDelivery: 'Check out for delivery',
@@ -385,8 +385,8 @@
       smsCode: 'Code from SMS', smsVerify: 'Confirm', smsResend: 'Send the code again', smsResendIn: (s) => `Send the code again (${s})`,
       smsBad: (n) => `Wrong code, ${n} ${n === 1 ? 'attempt' : 'attempts'} left`,
       smsExpired: 'The code has expired — send a new one.', smsTooMany: 'Too many wrong attempts — send a new code.',
-      smsLimit: 'Too many texts to this number. Try again in an hour or call the restaurant.', smsBadPhone: 'Check the phone number, e.g. +60 12 345 6789.',
-      smsOff: 'Texts cannot be sent right now. Please call the restaurant.', smsChange: 'Change number', smsOk: 'Number confirmed',
+      smsLimit: 'Too many texts to this number. Try again in an hour or call the restaurant.', smsBadPhone: 'Check the number: codes go to Malaysian numbers only, e.g. +60 12 345 6789.',
+      smsOff: 'Texts cannot be sent right now. Please call the restaurant.', smsFailed: 'Could not send the text. Try again or call the restaurant.', smsChange: 'Change number', smsOk: 'Number confirmed',
       courier: (x) => `Courier ${x}`, kmToYou: (x) => `${x} km to you`,
       ordersEmpty: 'Your orders will appear here', ordersHint: 'Orders from this phone — at the table and for delivery — from the last 3 days.',
       myData: 'My details', profHint: "Kept only on this phone, so you don't have to type them again.", about: 'About the restaurant', favsEmpty: 'Tap the heart on a dish and it will appear here.',
@@ -498,7 +498,7 @@
       dvSend: (s) => `اطلب التوصيل · ${s}`, dvMin: (s) => `الحد الأدنى لطلب التوصيل ${s} (من دون رسوم التوصيل).`,
       dvOff: 'التوصيل غير متاح الآن. يمكنك الطلب في المطعم.', dvTooFar: (km) => `هذه النقطة على بعد ${km} كم — لا نوصل إلى هذه المسافة بعد.`,
       dvNeedPoint: 'حدّد على الخريطة مكان التوصيل.', dvNeedAddr: 'اكتب العنوان: الشارع، المبنى، الشقة (5 أحرف على الأقل).',
-      dvBadReq: 'تحقق من العنوان والاسم والهاتف وطريقة الدفع.', dvTooMany: 'لدى هذا الرقم عدة طلبات توصيل قيد التنفيذ. انتظرها أو اتصل بالمطعم.',
+      dvBadReq: 'تحقق من العنوان والاسم والهاتف وطريقة الدفع.', dvTooMany: 'لا يمكننا قبول طلب توصيل آخر الآن (لدى هذا الرقم طلبات قيد التنفيذ أو الطلبات كثيرة). حاول لاحقًا أو اتصل بالمطعم.',
       dvGeoErr: 'تعذّر تحديد موقعك. حدّد النقطة على الخريطة.', dvMapErr: 'لم يتم تحميل الخريطة. تحقق من الإنترنت وحاول مرة أخرى.',
       dvSaveHint: 'سيُحفظ الاسم والهاتف والعنوان على هذا الهاتف فلن تحتاج إلى كتابتها مرة أخرى.',
       cartEmpty: 'السلة فارغة', cartEmptyHint: 'أضف أطباقًا من القائمة ثم عد إلى هنا.', openMenu: 'افتح القائمة', toDelivery: 'إتمام طلب التوصيل',
@@ -513,8 +513,8 @@
       smsCode: 'الرمز من الرسالة', smsVerify: 'تأكيد', smsResend: 'إرسال الرمز مرة أخرى', smsResendIn: (s) => `إرسال الرمز مرة أخرى (${s})`,
       smsBad: (n) => `رمز خاطئ، تبقّى ${n} من المحاولات`,
       smsExpired: 'انتهت صلاحية الرمز — أرسل رمزًا جديدًا.', smsTooMany: 'محاولات خاطئة كثيرة — أرسل رمزًا جديدًا.',
-      smsLimit: 'أُرسلت رسائل كثيرة إلى هذا الرقم. حاول بعد ساعة أو اتصل بالمطعم.', smsBadPhone: 'تحقق من رقم الهاتف، مثلًا +60 12 345 6789.',
-      smsOff: 'لا يمكن إرسال الرسائل الآن. اتصل بالمطعم.', smsChange: 'تغيير الرقم', smsOk: 'تم تأكيد الرقم',
+      smsLimit: 'أُرسلت رسائل كثيرة إلى هذا الرقم. حاول بعد ساعة أو اتصل بالمطعم.', smsBadPhone: 'تحقق من الرقم: يُرسل الرمز إلى الأرقام الماليزية فقط، مثلًا +60 12 345 6789.',
+      smsOff: 'لا يمكن إرسال الرسائل الآن. اتصل بالمطعم.', smsFailed: 'تعذّر إرسال الرسالة. حاول مرة أخرى أو اتصل بالمطعم.', smsChange: 'تغيير الرقم', smsOk: 'تم تأكيد الرقم',
       courier: (x) => `المندوب ${x}`, kmToYou: (x) => `${x} كم إليك`,
       ordersEmpty: 'ستظهر طلباتك هنا', ordersHint: 'الطلبات من هذا الهاتف — على الطاولة ومع التوصيل — خلال آخر 3 أيام.',
       myData: 'بياناتي', profHint: 'تُحفظ على هذا الهاتف فقط حتى لا تكتبها مرة أخرى.', about: 'عن المطعم', favsEmpty: 'اضغط على القلب في بطاقة الطبق وسيظهر هنا.',
@@ -625,7 +625,7 @@
       dvSend: (s) => `Pesan penghantaran · ${s}`, dvMin: (s) => `Pesanan minimum untuk penghantaran ialah ${s} (tidak termasuk caj penghantaran).`,
       dvOff: 'Penghantaran tidak tersedia sekarang. Anda boleh memesan di restoran.', dvTooFar: (km) => `Lokasi ini ${km} km jauhnya — kami belum menghantar sejauh itu.`,
       dvNeedPoint: 'Tandakan di peta lokasi penghantaran.', dvNeedAddr: 'Tulis alamat: jalan, bangunan, unit (sekurang-kurangnya 5 aksara).',
-      dvBadReq: 'Semak alamat, nama, telefon dan cara bayaran.', dvTooMany: 'Nombor ini sudah ada beberapa penghantaran yang sedang berjalan. Tunggu atau hubungi restoran.',
+      dvBadReq: 'Semak alamat, nama, telefon dan cara bayaran.', dvTooMany: 'Kami tidak dapat menerima penghantaran lagi sekarang (nombor ini sudah ada pesanan berjalan atau terlalu banyak pesanan). Cuba lagi nanti atau hubungi restoran.',
       dvGeoErr: 'Lokasi anda tidak dapat dikesan. Tandakan titik di peta.', dvMapErr: 'Peta tidak dimuatkan. Semak internet dan cuba lagi.',
       dvSaveHint: 'Nama, telefon dan alamat disimpan di telefon ini — tidak perlu ditaip semula lain kali.',
       cartEmpty: 'Troli kosong', cartEmptyHint: 'Tambah hidangan dari menu, kemudian kembali ke sini.', openMenu: 'Buka menu', toDelivery: 'Teruskan ke penghantaran',
@@ -640,8 +640,8 @@
       smsCode: 'Kod SMS', smsVerify: 'Sahkan', smsResend: 'Hantar kod sekali lagi', smsResendIn: (s) => `Hantar kod sekali lagi (${s})`,
       smsBad: (n) => `Kod salah, tinggal ${n} cubaan`,
       smsExpired: 'Kod sudah tamat tempoh — hantar kod baharu.', smsTooMany: 'Terlalu banyak cubaan salah — hantar kod baharu.',
-      smsLimit: 'Terlalu banyak SMS ke nombor ini. Cuba lagi selepas sejam atau hubungi restoran.', smsBadPhone: 'Semak nombor telefon, contohnya +60 12 345 6789.',
-      smsOff: 'SMS tidak dapat dihantar sekarang. Sila hubungi restoran.', smsChange: 'Tukar nombor', smsOk: 'Nombor disahkan',
+      smsLimit: 'Terlalu banyak SMS ke nombor ini. Cuba lagi selepas sejam atau hubungi restoran.', smsBadPhone: 'Semak nombor: kod hanya dihantar ke nombor Malaysia, contohnya +60 12 345 6789.',
+      smsOff: 'SMS tidak dapat dihantar sekarang. Sila hubungi restoran.', smsFailed: 'SMS tidak dapat dihantar. Cuba lagi atau hubungi restoran.', smsChange: 'Tukar nombor', smsOk: 'Nombor disahkan',
       courier: (x) => `Penghantar ${x}`, kmToYou: (x) => `${x} km ke lokasi anda`,
       ordersEmpty: 'Pesanan anda akan muncul di sini', ordersHint: 'Pesanan dari telefon ini — di meja dan penghantaran — dalam 3 hari terakhir.',
       myData: 'Maklumat saya', profHint: 'Disimpan hanya di telefon ini supaya tidak perlu ditaip semula.', about: 'Tentang restoran', favsEmpty: 'Ketik ikon hati pada hidangan dan ia akan muncul di sini.',
@@ -752,7 +752,7 @@
       dvSend: (s) => `下外送订单 · ${s}`, dvMin: (s) => `外送最低消费 ${s}（不含外送费）。`,
       dvOff: '目前暂停外送。您可以在餐厅点餐。', dvTooFar: (km) => `该地点距离 ${km} 公里 — 暂时无法送达这么远。`,
       dvNeedPoint: '请在地图上标记送达地点。', dvNeedAddr: '请填写地址：街道、楼号、门牌（至少 5 个字符）。',
-      dvBadReq: '请检查地址、姓名、电话和付款方式。', dvTooMany: '此号码已有多个外送订单正在进行。请等待完成或致电餐厅。',
+      dvBadReq: '请检查地址、姓名、电话和付款方式。', dvTooMany: '目前无法再接外送订单（此号码已有进行中的订单，或订单过多）。请稍后再试或致电餐厅。',
       dvGeoErr: '无法获取您的位置。请在地图上标记。', dvMapErr: '地图加载失败。请检查网络后重试。',
       dvSaveHint: '姓名、电话和地址会保存在这部手机上，下次无需重新填写。',
       cartEmpty: '购物车是空的', cartEmptyHint: '先从菜单添加菜品，再回到这里。', openMenu: '打开菜单', toDelivery: '去结算外送',
@@ -767,8 +767,8 @@
       smsCode: '短信验证码', smsVerify: '确认', smsResend: '重新发送验证码', smsResendIn: (s) => `重新发送验证码（${s}）`,
       smsBad: (n) => `验证码错误，还剩 ${n} 次机会`,
       smsExpired: '验证码已过期 — 请重新发送。', smsTooMany: '错误次数过多 — 请重新发送验证码。',
-      smsLimit: '发送到该号码的短信过多。请一小时后再试或致电餐厅。', smsBadPhone: '请检查手机号，例如 +60 12 345 6789。',
-      smsOff: '目前无法发送短信。请致电餐厅。', smsChange: '更改号码', smsOk: '号码已验证',
+      smsLimit: '发送到该号码的短信过多。请一小时后再试或致电餐厅。', smsBadPhone: '请检查号码：验证码只发送到马来西亚号码，例如 +60 12 345 6789。',
+      smsOff: '目前无法发送短信。请致电餐厅。', smsFailed: '短信发送失败。请重试或致电餐厅。', smsChange: '更改号码', smsOk: '号码已验证',
       courier: (x) => `骑手 ${x}`, kmToYou: (x) => `距您 ${x} 公里`,
       ordersEmpty: '您的订单会显示在这里', ordersHint: '这部手机最近 3 天的订单 — 堂食和外送。',
       myData: '我的信息', profHint: '只保存在这部手机上，免得重复填写。', about: '关于餐厅', favsEmpty: '点击菜品上的爱心，它就会出现在这里。',
@@ -1779,7 +1779,8 @@
   // телефон как на сервере (phone_e164): +60… для Малайзии; не похоже на номер — ''
   const e164 = (p) => {
     const d = String(p || '').replace(/\D/g, '');
-    const e = /^\s*\+/.test(String(p || '')) ? `+${d}` : d.startsWith('00') ? `+${d.slice(2)}` : d.startsWith('60') ? `+${d}` : d.startsWith('0') ? `+60${d.slice(1)}` : '';
+    const e0 = /^\s*\+/.test(String(p || '')) ? `+${d}` : d.startsWith('00') ? `+${d.slice(2)}` : d.startsWith('60') ? `+${d}` : d.startsWith('0') ? `+60${d.slice(1)}` : '';
+    const e = e0.replace(/^\+600/, '+60');   // «+60 012…»: местный 0 после кода страны лишний (как phone_e164 в базе)
     return /^\+[1-9]\d{7,14}$/.test(e) ? e : '';
   };
   const ltr = (x) => `\u2066${x}\u2069`;   // номер внутри арабского текста не переворачивается
@@ -1918,7 +1919,7 @@
         <header class="rc-head"><b>${esc(r.name)}</b>${addr ? `<small>${esc(addr)}</small>` : ''}${r.phone ? `<small dir="ltr">${esc(r.phone)}</small>` : ''}${r.receiptInfo ? `<small class="rc-info">${esc(r.receiptInfo)}</small>` : ''}</header>
         <div class="rc-doc">${esc(t('receiptTitle')(b.no))}</div>
         <div class="rc-block">
-          ${row(t('table'), b.table_label)}
+          ${b.kind === 'delivery' ? row(t('modeDv'), '') : row(t('table'), b.table_label)}
           ${row(t('rcOrders'), (b.order_nos || []).map((x) => `№${x}`).join(', '))}
           ${row(t('rcDate'), `${when.toLocaleDateString(t('locale'), { day: '2-digit', month: '2-digit', year: 'numeric' })} ${when.toLocaleTimeString(t('locale'), { hour: '2-digit', minute: '2-digit' })}`)}
           ${(b.waiters || []).length ? row(t('rcWaiter'), b.waiters.join(', ')) : ''}
@@ -1930,6 +1931,7 @@
           ${n('discount') ? row(`${t('rcDiscount')}${b.discount_pct ? ` ${Number(b.discount_pct)}%` : ''}`, `−${num(n('discount'))}`) : ''}
           ${n('service') ? row(t('service')(pctOf(n('service'), n('subtotal') - n('discount')).replace('%', '')), num(n('service'))) : ''}
           ${n('tax') ? row(`${r.taxName || 'SST'} ${pctOf(n('tax'), taxBase)}`.trim(), num(n('tax'))) : ''}
+          ${n('delivery_fee') ? row(t('dvFee'), num(n('delivery_fee'))) : ''}
         </div>
         ${row(t('total'), cur(n('total')), 'rc-total')}
         ${n('rounding') ? `<div class="rc-block">${row(t('rcRounding'), `${n('rounding') > 0 ? '+' : '−'}${num(Math.abs(n('rounding')))}`)}${row(t('rcToPay'), cur(n('total') + n('rounding')))}</div>` : ''}
@@ -3241,7 +3243,7 @@
         <div id="dv-sum"></div>
         <div class="pay" id="dv-pay" role="radiogroup" aria-label="${esc(t('payHow'))}"></div>
         <p class="hint-note pad">${esc(t('dvSaveHint'))}</p>
-        <p class="hint-note pad dv-call-note">${icon('phone', 'sm')}<span>${esc(t('dvMayCall'))}</span></p>
+        <p class="hint-note pad dv-call-note">${icon('phone', 'sm')}<span>${esc(t(R().dvSms ? 'dvMayCall' : 'dvWillCall'))}</span></p>
         <div id="dv-sms"></div>
         <div class="cta-bar" id="dv-cta"></div>`;
     }
@@ -3426,6 +3428,7 @@
     if (/expired/.test(m)) return t('smsExpired');
     if (/too_many/.test(m)) return t('smsLimit');
     if (/bad_phone/.test(m)) return t('smsBadPhone');
+    if (/sms_failed/.test(m)) return t('smsFailed');
     if (/sms_off/.test(m)) return t('smsOff');
     return t('errServer');
   }
@@ -3493,14 +3496,15 @@
     const name = profile.name.trim();
     const phone = profile.phone.trim().replace(/\s+/g, ' ');
     const addr = profile.address.trim().replace(/\s+/g, ' ');
-    const bad = addr.length < 5 ? 'dv-addr' : !name ? 'dv-name' : !PHONE_RE.test(phone) ? 'dv-phone' : '';
+    const bad = addr.length < 5 ? 'dv-addr' : !name ? 'dv-name' : phone.length > 20 || !PHONE_RE.test(phone) ? 'dv-phone' : '';
     dv.error = dvBlocker() || (bad === 'dv-addr' ? t('dvNeedAddr') : bad === 'dv-name' ? t('bkNeedName') : bad === 'dv-phone' ? t('bkNeedPhone') : '');
     if (dv.error) { updateDelivery(); if (bad && !dvBlocker()) $(`#${bad}`)?.focus(); return; }
     // проверка номера по SMS (если ресторан включил): без ключа номера — сначала код
     const ph = e164(phone);
     let phoneToken = null;
     if (R().dvSms) {
-      if (!ph) { dv.error = t('smsBadPhone'); updateDelivery(); $('#dv-phone')?.focus(); return; }
+      // код приходит только на малайзийские номера (+60) — как request_phone_code в базе
+      if (!ph || !ph.startsWith('+60')) { dv.error = t('smsBadPhone'); updateDelivery(); $('#dv-phone')?.focus(); return; }
       phoneToken = phoneTokens()[ph] || null;
       if (!phoneToken) { openSms(ph); return; }
     }

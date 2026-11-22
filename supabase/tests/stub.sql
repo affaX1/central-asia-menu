@@ -31,7 +31,42 @@ create table net._http_response (id bigint primary key, status_code int, content
 create function net.http_get(url text, params jsonb default '{}', headers jsonb default '{}', timeout_milliseconds int default 5000)
 returns bigint language sql as $$ insert into net.sent (url, body) values (url, null) returning id $$;
 
+-- имитация расширения http (pgsql-http): SMS в Twilio не уходят, а пишутся в extensions.http_outbox.
+-- Ответ — статус из test.http_status (по умолчанию 201; 0 — «нет связи»).
+create schema extensions;
+grant usage on schema extensions to anon, authenticated;
+create domain extensions.http_method as text;
+create type extensions.http_header as (field varchar, value varchar);
+create type extensions.http_request as (method extensions.http_method, uri varchar, headers extensions.http_header[], content_type varchar, content varchar);
+create type extensions.http_response as (status integer, content_type varchar, headers extensions.http_header[], content varchar);
+create table extensions.http_outbox (id bigserial primary key, method text, uri text, auth text, content_type text, content text, at timestamptz default now());
+create function extensions.http(r extensions.http_request) returns extensions.http_response language plpgsql as $$
+declare v_status int := coalesce(nullif(current_setting('test.http_status', true), ''), '201')::int;
+begin
+  insert into extensions.http_outbox (method, uri, auth, content_type, content)
+  values (r.method, r.uri, (select h.value from unnest(r.headers) h where h.field = 'Authorization' limit 1), r.content_type, r.content);
+  if v_status = 0 then raise exception 'Timeout was reached'; end if;
+  return row(v_status, 'application/json', array[]::extensions.http_header[], '{}')::extensions.http_response;
+end $$;
+
 -- помощники тестов
+-- значение поля из тела формы (a=1&b=%D0%BA…) — раскодированное
+create function public.t_form(p text, k text) returns text language plpgsql as $$
+declare part text; v text; res bytea := ''::bytea; i int := 1; c text;
+begin
+  foreach part in array string_to_array(coalesce(p, ''), '&') loop
+    if split_part(part, '=', 1) = k then v := substr(part, length(k) + 2); exit; end if;
+  end loop;
+  if v is null then return null; end if;
+  v := replace(v, '+', ' ');
+  while i <= length(v) loop
+    c := substr(v, i, 1);
+    if c = '%' then res := res || decode(substr(v, i + 1, 2), 'hex'); i := i + 3;
+    else res := res || convert_to(c, 'UTF8'); i := i + 1; end if;
+  end loop;
+  return convert_from(res, 'UTF8');
+end $$;
+grant execute on function public.t_form(text, text) to anon, authenticated;
 create function public.t_ok(ok boolean, msg text) returns void language plpgsql as $$
 begin
   if ok is not true then raise exception 'FAIL: %', msg; end if;
