@@ -1677,7 +1677,8 @@
   function dvBlocker() {
     if (!ONLINE) return t('noServer');
     if (!dvReady() || !R().ordersEnabled) return t('dvOff');
-    if (!R().ordersWhenClosed && !SCH.status(R().schedule, R().timezone).open) return `${t('closedNoOrders')} ${statusInfo().text}.`;
+    // доставка только в часы работы — настройка «принимать вне часов» её не касается
+    if (!SCH.status(R().schedule, R().timezone).open) return `${t('closedNoOrders')} ${statusInfo().text}.`;
     if (lines().some((l) => !l.ok)) return t('removeSold');
     if (profile.lat == null) return t('dvNeedPoint');
     const q = dv.quote;

@@ -2546,7 +2546,8 @@ begin
   end if;
   select * into v_set from public.settings s where s.id = 1;
   if not v_set.orders_enabled then raise exception 'orders_off'; end if;
-  if not v_set.orders_when_closed and not public.restaurant_open() then raise exception 'closed'; end if;
+  -- доставка только в часы работы, даже если «принимать вне часов» включено (ночью её некому готовить)
+  if not public.restaurant_open() then raise exception 'closed'; end if;
   v_q := public.delivery_quote(p_lat, p_lng);
   if not (v_q ->> 'ok')::boolean then
     raise exception '%', case v_q ->> 'reason' when 'off' then 'delivery_off' when 'too_far' then 'too_far' else 'bad_point' end;

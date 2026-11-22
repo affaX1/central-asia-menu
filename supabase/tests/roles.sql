@@ -1311,4 +1311,12 @@ select t_ok((public.verify_receipt((select id from v39), (select verify_key from
 reset role; reset request.jwt.claim.sub;
 select t_fails($$update public.bills set verify_key = 'ABCDEFGHJKLM' where id = (select id from v39)$$, 'verify_key_fixed', 'код проверки нельзя поменять даже из базы');
 select t_ok(not exists (select 1 from public.audit_log where entity = 'bill' and changes ? 'verify_key'), 'код проверки не попадает в журнал изменений');
+-- ============ 40. Доставка только в часы работы ============
+create temp table s40 as select schedule, orders_when_closed, delivery_enabled from public.settings where id = 1;
+update public.settings set orders_when_closed = true, delivery_enabled = true,
+  schedule = '[{"closed":true,"open":"10:00","close":"22:00"},{"closed":true,"open":"10:00","close":"22:00"},{"closed":true,"open":"10:00","close":"22:00"},{"closed":true,"open":"10:00","close":"22:00"},{"closed":true,"open":"10:00","close":"22:00"},{"closed":true,"open":"10:00","close":"22:00"},{"closed":true,"open":"10:00","close":"22:00"}]';
+set role anon;
+select t_fails($$select * from public.place_delivery('[{"id":"green-tea","qty":5,"price":10}]', 'А', '+60123456779', 'Jalan Test 1', null, 3.157, 101.6869, 'cash', 'ru', gen_random_uuid())$$, 'closed', 'ресторан закрыт — доставку не принять, даже с «принимать вне часов»');
+reset role;
+update public.settings s set schedule = x.schedule, orders_when_closed = x.orders_when_closed, delivery_enabled = x.delivery_enabled from s40 x where s.id = 1;
 \echo ALL DATABASE TESTS PASSED

@@ -752,7 +752,7 @@
         const old = d.orders.find((x) => x.client_key === b.p_client_key);
         if (old) return reply(200, out(old));
         if (!d.settings.orders_enabled) return fail('orders_off');
-        if (!d.settings.orders_when_closed && !window.MenuSchedule.status(d.settings.schedule, d.settings.timezone).open) return fail('closed');
+        if (!window.MenuSchedule.status(d.settings.schedule, d.settings.timezone).open) return fail('closed'); // delivery only in opening hours
         const q = dvQuote(b.p_lat, b.p_lng);
         if (!q.ok) return fail(q.reason === 'off' ? 'delivery_off' : q.reason === 'too_far' ? 'too_far' : 'bad_point');
         const nm = String(b.p_name || '').trim();
