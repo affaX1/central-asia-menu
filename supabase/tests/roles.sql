@@ -872,11 +872,15 @@ select t_ok((select (q ->> 'ok')::boolean and (q ->> 'fee')::numeric = 5 and (q 
 select t_ok((select (q ->> 'fee')::numeric = 10 from (select public.delivery_quote(3.184, 101.6869) q) x), 'гость в 5 км: доставка RM 10');
 select t_ok((select q ->> 'reason' = 'too_far' from (select public.delivery_quote(3.25, 101.6869) q) x), 'дальше 7 км — не возим');
 create temp table d36 as select * from public.place_delivery('[{"id":"green-tea","qty":2,"price":10}]', 'Алишер', '+60 12-345 6789',
-  'Jalan Test 1, Kuala Lumpur', 'Позвонить у двери', 3.157, 101.6869, 'cash', 'ru', gen_random_uuid());
+  'Jalan Test 1, Kuala Lumpur', 'Позвонить у двери', 3.157, 101.6869, 'cash', 'ru', gen_random_uuid(), ' Guest@Mail.com ');
 select t_ok((select delivery_fee = 5 and total = subtotal + tax + 5 and status = 'new' from d36), 'гость заказал доставку: доставка сверху к сумме');
+reset role;
+select t_ok((select o.customer_email = 'guest@mail.com' from public.orders o join d36 using (id)), 'почта гостя сохранена в заказе');
+set role anon;
 select t_fails($$select * from public.place_delivery('[{"id":"green-tea","qty":1,"price":10}]', 'А', '+60123456789', 'Jalan Far 1', null, 3.25, 101.6869, 'cash', 'ru', gen_random_uuid())$$, 'too_far', 'слишком далеко — заказ не принят');
 select t_fails($$select * from public.place_delivery('[{"id":"green-tea","qty":1,"price":10}]', 'А', 'abc', 'Jalan Test 1', null, 3.157, 101.6869, 'cash', 'ru', gen_random_uuid())$$, 'bad_request', 'неверный телефон');
 select t_fails($$select * from public.place_delivery('[{"id":"green-tea","qty":1,"price":10}]', 'А', '+60123456789', 'Jalan Test 1', null, 3.157, 101.6869, 'bitcoin', 'ru', gen_random_uuid())$$, 'bad_request', 'неизвестный способ оплаты');
+select t_fails($$select * from public.place_delivery('[{"id":"green-tea","qty":1,"price":10}]', 'А', '+60123456789', 'Jalan Test 1', null, 3.157, 101.6869, 'cash', 'ru', gen_random_uuid(), 'not-an-email')$$, 'bad_request', 'неверная почта');
 reset role;
 grant select on d36 to anon, authenticated;
 update public.settings set delivery_min = 1000;

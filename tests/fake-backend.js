@@ -580,6 +580,8 @@
         const nm = String(b.p_name || '').trim();
         const ph = String(b.p_phone || '').trim().replace(/\s+/g, ' ');
         const addr = String(b.p_address || '').replace(/\s+/g, ' ').trim();
+        const email = String(b.p_email || '').trim().toLowerCase() || null;
+        if (email && (email.length > 120 || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email))) return fail('bad_request');
         if (nm.length < 1 || nm.length > 60 || !/^\+?[0-9][0-9 ()-]{5,19}$/.test(ph) || addr.length < 5 || addr.length > 300 || !['cash', 'card'].includes(b.p_pay)) return fail('bad_request');
         if (!Array.isArray(b.p_items) || !b.p_items.length) return fail('empty');
         if (b.p_items.length > 50) return fail('bad_items');
@@ -606,7 +608,7 @@
         const now = new Date().toISOString();
         const o = { id: crypto.randomUUID(), no: d.seq, kind: 'delivery', table_id: null, table_label: 'Доставка', items, subtotal: sub, service: 0, tax, delivery_fee: q.fee, total: r2(sub + tax + q.fee),
           note: String(b.p_note || '').trim().slice(0, 300) || null, lang: String(b.p_lang || '').trim().slice(0, 5) || null, status: 'new', client_key: b.p_client_key, guest_token: crypto.randomUUID(),
-          customer_name: nm, customer_phone: ph, address: addr, lat: Number(b.p_lat), lng: Number(b.p_lng), distance_km: q.km, pay_method: b.p_pay,
+          customer_name: nm, customer_phone: ph, customer_email: email, address: addr, lat: Number(b.p_lat), lng: Number(b.p_lng), distance_km: q.km, pay_method: b.p_pay,
           courier_id: null, courier_name: null, picked_at: null, created_at: now, updated_at: now };
         try { applyStock(d, [], o.items); } catch (ex) { return fail(ex.message); }
         d.orders.push(o); save(d);

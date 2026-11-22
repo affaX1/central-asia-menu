@@ -2454,6 +2454,8 @@ alter table public.settings add constraint settings_zones_check check (public.va
 alter table public.orders add column if not exists customer_name text check (customer_name is null or char_length(customer_name) <= 60);
 alter table public.orders add column if not exists customer_phone text check (customer_phone is null or char_length(customer_phone) <= 20);
 alter table public.orders add column if not exists address text check (address is null or char_length(address) <= 300);
+-- почта гостя для доставки (приложение спрашивает её до заказа; сайт может не присылать)
+alter table public.orders add column if not exists customer_email text check (customer_email is null or char_length(customer_email) <= 120);
 alter table public.orders add column if not exists lat numeric(9, 6);
 alter table public.orders add column if not exists lng numeric(9, 6);
 alter table public.orders add column if not exists distance_km numeric(6, 2);
@@ -2493,8 +2495,10 @@ end $$;
 
 -- гость: заказать доставку (как place_order, но без стола)
 drop function if exists public.place_delivery(jsonb, text, text, text, text, numeric, numeric, text, text, uuid);
+drop function if exists public.place_delivery(jsonb, text, text, text, text, numeric, numeric, text, text, uuid, text);
 create or replace function public.place_delivery(
-  p_items jsonb, p_name text, p_phone text, p_address text, p_note text, p_lat numeric, p_lng numeric, p_pay text, p_lang text, p_client_key uuid)
+  p_items jsonb, p_name text, p_phone text, p_address text, p_note text, p_lat numeric, p_lng numeric, p_pay text, p_lang text, p_client_key uuid,
+  p_email text default null)
 returns table (id uuid, no bigint, guest_token uuid, total numeric, status text, items jsonb, created_at timestamptz,
                subtotal numeric, tax numeric, delivery_fee numeric, distance_km numeric)
 language plpgsql security definer set search_path = public as $$
@@ -2503,6 +2507,7 @@ declare
   v_items jsonb := '[]'::jsonb; v_sub numeric(10, 2) := 0; v_tax numeric(10, 2); v_count int := 0; v_keys text[] := '{}';
   v_phone text := regexp_replace(btrim(coalesce(p_phone, '')), '\s+', ' ', 'g');
   v_name text := btrim(coalesce(p_name, '')); v_addr text := btrim(regexp_replace(coalesce(p_address, ''), '\s+', ' ', 'g'));
+  v_email text := nullif(lower(btrim(coalesce(p_email, ''))), '');
 begin
   if p_client_key is null then raise exception 'bad_request'; end if;
   select * into v_old from public.orders o where o.client_key = p_client_key;
@@ -2519,7 +2524,8 @@ begin
     raise exception '%', case v_q ->> 'reason' when 'off' then 'delivery_off' when 'too_far' then 'too_far' else 'bad_point' end;
   end if;
   if char_length(v_name) not between 1 and 60 or v_phone !~ '^\+?[0-9][0-9 ()-]{5,19}$'
-     or char_length(v_addr) not between 5 and 300 or coalesce(p_pay, '') not in ('cash', 'card') then
+     or char_length(v_addr) not between 5 and 300 or coalesce(p_pay, '') not in ('cash', 'card')
+     or (v_email is not null and (char_length(v_email) > 120 or v_email !~ '^[^@\s]+@[^@\s]+\.[^@\s]+$')) then
     raise exception 'bad_request';
   end if;
   if p_items is null or jsonb_typeof(p_items) <> 'array' or jsonb_array_length(p_items) = 0 then raise exception 'empty'; end if;
@@ -2546,10 +2552,10 @@ begin
   v_tax := round(v_sub * coalesce(v_set.tax_pct, 0) / 100, 2);
   return query
     insert into public.orders as o (kind, table_id, table_label, items, subtotal, service, tax, delivery_fee, total, note, lang, client_key,
-                                    customer_name, customer_phone, address, lat, lng, distance_km, pay_method)
+                                    customer_name, customer_phone, customer_email, address, lat, lng, distance_km, pay_method)
     values ('delivery', null, 'Доставка', v_items, v_sub, 0, v_tax, (v_q ->> 'fee')::numeric, v_sub + v_tax + (v_q ->> 'fee')::numeric,
             left(nullif(btrim(coalesce(p_note, '')), ''), 300), left(nullif(btrim(coalesce(p_lang, '')), ''), 5), p_client_key,
-            v_name, v_phone, v_addr, p_lat, p_lng, (v_q ->> 'km')::numeric, p_pay)
+            v_name, v_phone, v_email, v_addr, p_lat, p_lng, (v_q ->> 'km')::numeric, p_pay)
     returning o.id, o.no, o.guest_token, o.total, o.status, o.items, o.created_at, o.subtotal, o.tax, o.delivery_fee, o.distance_km;
 end $$;
 
@@ -2639,12 +2645,12 @@ drop trigger if exists tg_delivery on public.orders;
 create trigger tg_delivery after insert on public.orders for each row execute function public.tg_on_delivery();
 
 revoke all on function public.delivery_quote(numeric, numeric) from public;
-revoke all on function public.place_delivery(jsonb, text, text, text, text, numeric, numeric, text, text, uuid) from public;
+revoke all on function public.place_delivery(jsonb, text, text, text, text, numeric, numeric, text, text, uuid, text) from public;
 revoke all on function public.get_order(uuid, uuid) from public;
 revoke all on function public.courier_take(uuid) from public, anon;
 revoke all on function public.courier_done(uuid, text) from public, anon;
 grant execute on function public.delivery_quote(numeric, numeric) to anon, authenticated;
-grant execute on function public.place_delivery(jsonb, text, text, text, text, numeric, numeric, text, text, uuid) to anon, authenticated;
+grant execute on function public.place_delivery(jsonb, text, text, text, text, numeric, numeric, text, text, uuid, text) to anon, authenticated;
 grant execute on function public.get_order(uuid, uuid) to anon, authenticated;
 grant execute on function public.is_courier() to authenticated;
 grant execute on function public.courier_take(uuid) to authenticated;

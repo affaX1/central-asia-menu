@@ -74,7 +74,7 @@
     const tel = telOf(o.customer_phone);
     const how = t('pay_how')[o.pay_method] || '';
     return `<div class="dv-info">
-      <div class="dv-who"><b>${esc(o.customer_name || '')}</b>${tel ? `<a class="dv-tel" href="tel:${esc(tel)}">${icon('phone', 'sm')}${esc(o.customer_phone)}</a>` : ''}</div>
+      <div class="dv-who"><b>${esc(o.customer_name || '')}</b>${tel ? `<a class="dv-tel" href="tel:${esc(tel)}">${icon('phone', 'sm')}${esc(o.customer_phone)}</a>` : ''}${o.customer_email ? `<a class="dv-tel" href="mailto:${esc(o.customer_email)}">${esc(o.customer_email)}</a>` : ''}</div>
       ${o.address ? `<div class="dv-addr">${icon('pin', 'sm')}<span>${esc(o.address)}${o.distance_km != null ? ` <small>· ${esc(kmText(o.distance_km))}</small>` : ''}</span></div>` : ''}
       <div class="dv-pay">${icon('cash', 'sm')}<span>${esc(t('c_to_pay', money(o.total), how))}${Number(o.delivery_fee) ? ` <small>(${esc(t('c_fee', money(o.delivery_fee)))})</small>` : ''}</span></div>
       ${o.courier_name ? `<div class="dv-courier">${icon('bike', 'sm')}<span>${esc(t('c_courier', o.courier_name))}${o.picked_at ? ` · ${esc(hhmm(o.picked_at))}` : ''}</span></div>` : ''}
