@@ -726,6 +726,8 @@
   const BASE = window.MENU;                 // data.js — если сервер не подключён
   const SCH = window.MenuSchedule;
   const B = window.MENU_BACKEND || {};
+  // Бронь стола гостям не предлагаем (владелец, 2026-11-22): только заказ за столом по QR и доставка.
+  const BOOKING = false;
   const ONLINE = !!(B.url && B.key);        // подключена база Supabase (config.js)
   const LANGS = BASE.languages.filter((l) => T[l]);
 
@@ -1122,14 +1124,14 @@
     return `<button type="button" class="way main" data-act="${act}"><span class="way-ico">${icon(ic)}</span>
       <span class="way-txt"><b>${esc(title)}</b><span>${esc(sub)}</span></span><span class="way-go" aria-hidden="true">${icon('arrow', 'flip')}</span></button>`;
   }
-  // способы поесть: «Я в ресторане» (QR), доставка (или «скоро»), бронь стола
+  // способы заказать: за столом (QR) и доставка (или «скоро»); бронь — только если BOOKING
   function waysHtml(inSheet) {
     if (!ONLINE || !M) return '';
     const here = atTable() && !inSheet
       ? wayMain('way-here', 'check', t('wayHere'), t('wayHereAt')(table || '…'))
       : wayMain('way-here', 'qr', t('wayHere'), t('wayHereSub'));
     const dvOn = dvReady();
-    const bk = !inSheet && (R().bookingsEnabled || !!booking);
+    const bk = BOOKING && !inSheet && (R().bookingsEnabled || !!booking);
     const dv = `<button type="button" class="way${dvOn ? '' : ' off'}${bk ? '' : ' wide'}" data-act="way-dv"${dvOn ? '' : ' disabled'}>
         <span class="way-ico">${icon('moto')}</span><b>${esc(t('wayDelivery'))}</b><span>${esc(dvOn ? t('wayDeliverySub') : t('waySoon'))}</span></button>`;
     const bkTile = bk ? `<button type="button" class="way" data-act="go" data-to="booking">
@@ -3030,7 +3032,7 @@
     const r = R();
     const chev = icon('chevron', 'sm chev');
     const dark = document.documentElement.dataset.theme === 'dark';
-    const bk = booking ? bookingCardHtml(true)
+    const bk = !BOOKING ? '' : booking ? bookingCardHtml(true)
       : ONLINE && r.bookingsEnabled ? `<div class="rows"><button type="button" class="row-link" data-act="go" data-to="booking">${icon('calendar')}<span class="grow">${esc(t('bkBtn'))}</span>${chev}</button></div>` : '';
     const wifiRow = atTable() && wifi ? `<div class="rows"><button type="button" class="row-link" data-sheet="wifi">${icon('wifi')}<span class="grow">${esc(t('wifi'))}</span><span class="val" dir="ltr">${esc(wifi.name)}</span>${chev}</button></div>` : '';
     const favList = favs.map((id) => byId[id]).filter(Boolean);
@@ -3389,7 +3391,7 @@
 
   // ---------- Экраны и адреса: #home #menu #orders #profile, #booking #delivery #scan #track/<id> ----------
   const TABS = TAB_LIST.map(([n]) => n);
-  const SUBS = ['booking', 'delivery', 'scan', 'track'];
+  const SUBS = BOOKING ? ['booking', 'delivery', 'scan', 'track'] : ['delivery', 'scan', 'track'];
   const PARENT = { track: 'orders', delivery: 'menu', scan: 'home', booking: 'home' };
   let route = { name: '', arg: '' };
   const scrolls = {};
