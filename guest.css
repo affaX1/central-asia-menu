@@ -189,6 +189,13 @@ body[data-route="track"] .app, body[data-route="scan"] .app { padding-bottom: ca
 .way.off .way-ico { background: var(--bg2); color: var(--faint); }
 .way.off b { color: var(--muted); }
 
+/* рекламный ролик под способами: 16:9, без звука и кнопок */
+.promo {
+  position: relative; margin: 18px var(--pad) 0; aspect-ratio: 16 / 9; overflow: hidden; border-radius: 24px;
+  background: var(--bg2); isolation: isolate;
+}
+.promo video { display: block; width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
+
 /* ряд плиток «Сегодня советуем» / «Хиты» / «Мои любимые» */
 .tiles {
   display: flex; gap: 12px; padding: 2px var(--pad) 6px; overflow-x: auto; scroll-snap-type: x proximity;

@@ -58,7 +58,7 @@
   // ---------- переключение разделов ----------
   // менеджер (старший смены): зал, заказы, отчёты, закрытие дня. Меню, столы, настройки, сотрудники и журнал — только владелец.
   const MANAGER_TABS = ['floor', 'orders', 'stop', 'reports', 'day'];
-  const allowedTabs = () => (me?.role === 'owner' ? ['floor', 'orders', 'stop', 'menu', 'tables', 'reports', 'day', 'audit', 'restaurant', 'staff'] : MANAGER_TABS);
+  const allowedTabs = () => (me?.role === 'owner' ? ['floor', 'orders', 'stop', 'menu', 'tables', 'reports', 'day', 'audit', 'promos', 'restaurant', 'staff'] : MANAGER_TABS);
   function applyRole() {
     const mgr = me?.role !== 'owner';
     document.querySelectorAll('.a-tab').forEach((a) => { a.hidden = !allowedTabs().includes(a.dataset.tab); });
@@ -87,6 +87,7 @@
     else if (tab === 'menu') renderMenu();
     else if (tab === 'tables') renderTables();
     else if (tab === 'restaurant') renderRestaurant();
+    else if (tab === 'promos') renderPromos();
     else renderStaff();
   }
 
@@ -579,6 +580,153 @@
       cats = sorted;
       render();
     } catch (ex) { S.toast(S.errText(ex), true); await loadMenu(); render(); }
+  }
+
+  // =================================================================
+  //  РЕКЛАМА — ролики 15–20 секунд на главной приложения гостя (только владелец; права — в базе)
+  // =================================================================
+  const PROMO_MAX = 52428800;            // 50 МБ, как в хранилище promo-videos
+  const PROMO_TYPES = ['video/mp4', 'video/quicktime', 'video/webm'];
+  let promos = null;                     // null — ещё не загружены
+  let promoBusy = '';                    // идёт загрузка: текст для владельца
+  const promoSorted = () => [...(promos || [])].sort((a, b) => a.sort - b.sort || String(b.created_at).localeCompare(String(a.created_at)));
+  const secs = (n) => `${String(Math.round(Number(n) * 10) / 10).replace('.', ',')} с`;
+  const mb = (n) => `${String(Math.ceil(n / 104857.6) / 10).replace('.', ',')} МБ`;
+  async function loadPromos() { promos = await api.promos(); }
+
+  function renderPromos() {
+    const main = $('#a-main');
+    if (promos === null) {
+      main.innerHTML = '<p class="a-empty">Загрузка…</p>';
+      loadPromos().then(() => { if (tab === 'promos') renderPromos(); })
+        .catch((ex) => { if (tab === 'promos') main.innerHTML = `<p class="notice bad">${icon('alert')}<span>Не получилось загрузить ролики: ${esc(S.errText(ex))}</span></p>`; });
+      return;
+    }
+    const list = promoSorted();
+    main.innerHTML = `
+      <div class="toolbar">
+        <span class="btn small file-btn"${promoBusy ? ' aria-disabled="true"' : ''}>${icon('upload', 'sm')}Загрузить видео
+          <input type="file" id="promo-file" accept="video/mp4,video/quicktime,video/webm" aria-label="Загрузить видео"${promoBusy ? ' disabled' : ''}></span>
+        ${promoBusy ? `<span class="promo-busy" role="status">${esc(promoBusy)}</span>` : ''}
+      </div>
+      <p class="help">Видео 15–20 секунд, до 50 МБ. Показывается гостям на главной в приложении.</p>
+      ${list.length ? `<section class="panel"><ul class="rows promo-rows">${list.map((p, i) => `
+        <li class="${p.active ? '' : 'is-off'}">
+          <div class="promo-prev"><video src="${esc(p.video_url)}"${p.poster_url ? ` poster="${esc(p.poster_url)}"` : ''} muted playsinline loop autoplay preload="metadata" aria-hidden="true"></video></div>
+          <div class="grow promo-info">
+            <small>${esc([p.duration_s != null ? secs(p.duration_s) : '', p.active ? 'гости видят' : 'скрыто от гостей'].filter(Boolean).join(' · '))}</small>
+            <div class="promo-titles">
+              <label class="field"><span>Подпись по-русски</span><input type="text" maxlength="80" data-promo-title="ru" data-id="${esc(p.id)}" value="${esc(p.title?.ru || '')}" placeholder="Необязательно"></label>
+              <label class="field"><span>English</span><input type="text" maxlength="80" data-promo-title="en" data-id="${esc(p.id)}" value="${esc(p.title?.en || '')}" placeholder="Optional"></label>
+            </div>
+            <div class="row-btns promo-btns">
+            ${sw(`data-promo-active="${esc(p.id)}" aria-label="Показывать ролик ${i + 1}"`, p.active, 'Показывать')}
+            <button type="button" class="btn small ghost" data-promo-move="-1" data-id="${esc(p.id)}" aria-label="Выше"${i === 0 ? ' disabled' : ''}>${icon('arrow-up', 'sm')}</button>
+            <button type="button" class="btn small ghost" data-promo-move="1" data-id="${esc(p.id)}" aria-label="Ниже"${i === list.length - 1 ? ' disabled' : ''}>${icon('arrow-down', 'sm')}</button>
+            <button type="button" class="btn small danger" data-promo-del="${esc(p.id)}">${icon('trash', 'sm')}Удалить</button>
+            </div>
+          </div>
+        </li>`).join('')}</ul></section>` : '<div class="a-empty">Пока нет видео. Загрузите ролик 15–20 секунд — гости увидят его на главной.</div>'}`;
+  }
+
+  // длительность и размер кадра — в браузере, до загрузки (скрытый <video>)
+  function readVideo(url) {
+    return new Promise((resolve) => {
+      const v = document.createElement('video');
+      v.muted = true; v.playsInline = true; v.preload = 'auto';
+      const timer = setTimeout(() => resolve(null), 20000);
+      v.addEventListener('loadedmetadata', () => { clearTimeout(timer); resolve(v); }, { once: true });
+      v.addEventListener('error', () => { clearTimeout(timer); resolve(null); }, { once: true });
+      v.src = url;
+    });
+  }
+  // обложка: кадр около 1-й секунды → jpeg; не вышло — null (ролик загрузится без обложки)
+  function grabPoster(v) {
+    return new Promise((resolve) => {
+      const timer = setTimeout(() => resolve(null), 8000);
+      const draw = () => {
+        clearTimeout(timer);
+        try {
+          const w = v.videoWidth; const h = v.videoHeight;
+          if (!w || !h) { resolve(null); return; }
+          const k = Math.min(1, 1280 / Math.max(w, h));
+          const c = document.createElement('canvas');
+          c.width = Math.round(w * k); c.height = Math.round(h * k);
+          c.getContext('2d').drawImage(v, 0, 0, c.width, c.height);
+          c.toBlob((b) => resolve(b && b.size ? b : null), 'image/jpeg', 0.82);
+        } catch { resolve(null); }
+      };
+      v.addEventListener('seeked', draw, { once: true });
+      v.addEventListener('error', () => { clearTimeout(timer); resolve(null); }, { once: true });
+      try { v.currentTime = Math.min(1, (v.duration || 2) / 2); } catch { clearTimeout(timer); resolve(null); }
+    });
+  }
+
+  async function uploadPromo(file) {
+    if (!file || promoBusy) return;
+    const okType = PROMO_TYPES.includes(file.type) || /\.(mp4|m4v|mov|webm)$/i.test(file.name || '');
+    if (!okType) { S.toast('Это не видео MP4, MOV или WebM. Выберите другой файл.', true); return; }
+    if (file.size > PROMO_MAX) { S.toast(`Файл весит ${mb(file.size)} — это больше 50 МБ. Сожмите ролик (например, сохраните в 1080p) и попробуйте снова.`, true); return; }
+    const url = URL.createObjectURL(file);
+    let v = null;
+    try {
+      promoBusy = 'Проверяем видео…'; renderPromos();
+      v = await readVideo(url);
+      const d = v ? v.duration : NaN;
+      if (!Number.isFinite(d) || d <= 0) {
+        S.toast('Не получилось прочитать видео в этом браузере. Сохраните ролик как MP4 (H.264) и попробуйте снова.', true);
+        return;
+      }
+      if (d > 30) { S.toast(`Ролик идёт ${secs(d)} — это дольше 30 секунд. Обрежьте его до 15–20 секунд.`, true); return; }
+      if (d < 1) { S.toast('Ролик короче секунды — так гости ничего не увидят.', true); return; }
+      if (d < 10) {
+        promoBusy = ''; renderPromos();
+        if (!await S.ask(`Ролик идёт всего ${secs(d)}. Лучше 15–20 секунд, иначе гости не успеют его рассмотреть. Всё равно загрузить?`, { ok: 'Загрузить', cancel: 'Не загружать' })) return;
+      }
+      promoBusy = 'Готовим обложку…'; renderPromos();
+      const poster = await grabPoster(v);
+      promoBusy = `Загружаем видео (${mb(file.size)})… Не закрывайте страницу.`; renderPromos();
+      const videoUrl = await api.uploadPromoVideo(file);
+      let posterUrl = null;
+      if (poster) { try { posterUrl = await api.uploadPromoPoster(poster); } catch { posterUrl = null; } }
+      const sort = (promos || []).reduce((m, p) => Math.max(m, Number(p.sort) || 0), -1) + 1;
+      const row = await api.savePromo({ video_url: videoUrl, poster_url: posterUrl, title: {}, active: true, sort, duration_s: Math.round(d * 100) / 100 });
+      promos = [...(promos || []), row];
+      S.toast('Видео загружено. Гости увидят его на главной.');
+    } catch (ex) {
+      S.toast(/exceeded|too large|413/i.test(ex.message || '') ? 'Файл слишком большой для хранилища (больше 50 МБ).' : `Видео не загрузилось: ${S.errText(ex)}`, true);
+    } finally {
+      URL.revokeObjectURL(url);
+      if (v) { v.removeAttribute('src'); v.load(); }
+      promoBusy = '';
+      if (tab === 'promos') renderPromos();
+    }
+  }
+
+  async function promoAction(fn, okText) {
+    try { await fn(); if (okText) S.toast(okText); } catch (ex) { S.toast(S.errText(ex), true); }
+    try { await loadPromos(); } catch { /* покажем то, что есть */ }
+    if (tab === 'promos') renderPromos();
+  }
+  function movePromo(id, dir) {
+    const list = promoSorted();
+    const i = list.findIndex((p) => p.id === id);
+    const j = i + dir;
+    if (i < 0 || j < 0 || j >= list.length) return;
+    [list[i], list[j]] = [list[j], list[i]];
+    const changed = list.map((p, k) => ({ p, k })).filter(({ p, k }) => p.sort !== k);
+    promoAction(() => Promise.all(changed.map(({ p, k }) => api.savePromo({ id: p.id, sort: k }))));
+  }
+  function savePromoTitle(input) {
+    const p = (promos || []).find((x) => x.id === input.dataset.id);
+    if (!p) return;
+    const val = input.value.trim().slice(0, 80);
+    const title = { ...(p.title || {}) };
+    if (val) title[input.dataset.promoTitle] = val; else delete title[input.dataset.promoTitle];
+    if (JSON.stringify(title) === JSON.stringify(p.title || {})) return;
+    // без перерисовки: владелец может уже печатать в соседнем поле
+    api.savePromo({ id: p.id, title }).then((row) => { Object.assign(p, row); S.toast('Подпись сохранена'); })
+      .catch((ex) => S.toast(S.errText(ex), true));
   }
 
   async function quickPatch(id, patch, okText) {
@@ -1597,6 +1745,15 @@
     } else if (t.dataset.role) {
       const s = staff.find((x) => x.user_id === t.dataset.role);
       staffAction(() => api.setStaff(s.user_id, t.value, s.name, s.active), 'Роль изменена');
+    } else if (t.id === 'promo-file') {
+      const file = t.files?.[0];
+      t.value = '';
+      uploadPromo(file);
+    } else if (t.dataset.promoTitle) {
+      savePromoTitle(t);
+    } else if (t.dataset.promoActive) {
+      const id = t.dataset.promoActive;
+      promoAction(() => api.savePromo({ id, active: t.checked }), t.checked ? 'Ролик снова показывается гостям' : 'Ролик скрыт от гостей');
     } else if (t.dataset.active) {
       const s = staff.find((x) => x.user_id === t.dataset.active);
       staffAction(() => api.setStaff(s.user_id, s.role, s.name, t.checked), t.checked ? 'Доступ включён' : 'Доступ отключён');
@@ -1647,6 +1804,13 @@
       return;
     }
     if (e.target.closest('[data-print]')) { printAll(); return; }
+    const pm = e.target.closest('[data-promo-move]');
+    if (pm) { movePromo(pm.dataset.id, Number(pm.dataset.promoMove)); return; }
+    const pd = e.target.closest('[data-promo-del]');
+    if (pd) {
+      if (await S.ask('Удалить этот ролик? Гости перестанут его видеть, файл удалится насовсем.', { ok: 'Удалить' })) promoAction(() => api.deletePromo(pd.dataset.promoDel), 'Ролик удалён');
+      return;
+    }
     const tp = e.target.closest('[data-tbl-png]');
     if (tp) { downloadPng(tables.find((x) => x.id === tp.dataset.tblPng)); return; }
     const te = e.target.closest('[data-tbl-edit]');

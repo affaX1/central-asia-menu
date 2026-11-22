@@ -8,6 +8,15 @@
   'use strict';
 
   const BUCKET = 'menu-photos';
+  const PROMO_BUCKET = 'promo-videos';
+  const uuid = () => (crypto.randomUUID ? crypto.randomUUID()
+    : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => { const r = Math.random() * 16 | 0; return (c === 'x' ? r : (r & 3) | 8).toString(16); }));
+  // расширение файла ролика: из имени, иначе по типу
+  const videoExt = (file) => {
+    const m = String(file?.name || '').toLowerCase().match(/\.(mp4|mov|webm|m4v)$/);
+    if (m) return m[1] === 'm4v' ? 'mp4' : m[1];
+    return ({ 'video/quicktime': 'mov', 'video/webm': 'webm' })[file?.type] || 'mp4';
+  };
   const fail = (error) => { if (error) throw new Error(error.message || String(error)); };
   // Supabase отдаёт не больше 1000 строк за запрос — забираем по страницам, чтобы отчёты за месяц не теряли заказы
   async function pages(make, max = 20000) {
@@ -26,9 +35,14 @@
     const sb = window.supabase.createClient(B.url, B.key, {
       auth: { persistSession: true, autoRefreshToken: true, storageKey: 'menu-staff-auth' },
     });
-    const pathOf = (url) => {
-      const m = String(url || '').match(new RegExp(`/object/public/${BUCKET}/(.+)$`));
+    const pathOf = (url, bucket = BUCKET) => {
+      const m = String(url || '').match(new RegExp(`/object/public/${bucket}/(.+)$`));
       return m ? decodeURIComponent(m[1]) : null;
+    };
+    const promoUpload = async (path, body, contentType) => {
+      const { error } = await sb.storage.from(PROMO_BUCKET).upload(path, body, { contentType, cacheControl: '31536000', upsert: false });
+      fail(error);
+      return sb.storage.from(PROMO_BUCKET).getPublicUrl(path).data.publicUrl;
     };
 
     return {
@@ -96,6 +110,33 @@
         const path = pathOf(url);
         if (!path) return;
         await sb.storage.from(BUCKET).remove([path]); // ошибку не показываем: старый файл просто останется
+      },
+
+      // ---------- рекламные ролики на главной (меняет только владелец; гость видит включённые) ----------
+      async promos() {
+        const { data, error } = await sb.from('promos').select('*').order('sort').order('created_at', { ascending: false });
+        fail(error); return data || [];
+      },
+      // без id — новый ролик; с id — правка (подпись, показ, порядок)
+      async savePromo(row) {
+        const q = row.id ? sb.from('promos').update(row).eq('id', row.id) : sb.from('promos').insert(row);
+        const { data, error } = await q.select().single();
+        fail(error); return data;
+      },
+      // удаляет строку, потом файлы ролика и обложки, если они лежат в нашем хранилище
+      async deletePromo(id) {
+        const { data: row } = await sb.from('promos').select('video_url, poster_url').eq('id', id).maybeSingle();
+        const { error } = await sb.from('promos').delete().eq('id', id);
+        fail(error);
+        const paths = [row?.video_url, row?.poster_url].map((u) => pathOf(u, PROMO_BUCKET)).filter(Boolean);
+        if (paths.length) await sb.storage.from(PROMO_BUCKET).remove(paths); // ошибку не показываем: файл просто останется
+      },
+      async uploadPromoVideo(file) {
+        return promoUpload(`promos/${uuid()}.${videoExt(file)}`, file, file.type || 'video/mp4');
+      },
+      // обложка (кадр ролика), jpeg
+      async uploadPromoPoster(blob) {
+        return promoUpload(`promos/${uuid()}.jpg`, blob, 'image/jpeg');
       },
 
       // ---------- заказы (видят официант и владелец — проверяет база) ----------

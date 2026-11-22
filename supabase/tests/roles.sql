@@ -920,4 +920,40 @@ set role anon;
 select t_ok((select public.delivery_quote(3.157, 101.6869) ->> 'reason') = 'off', 'доставка выключена — гость видит «нет доставки»');
 select t_fails($$select * from public.place_delivery('[{"id":"green-tea","qty":1,"price":10}]', 'А', '+60123456781', 'Jalan Test 1', null, 3.157, 101.6869, 'cash', 'ru', gen_random_uuid())$$, 'delivery_off', 'выключенная доставка не принимает заказы');
 reset role;
+-- ============ 37. Рекламные ролики на главной ============
+set role authenticated; set request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
+insert into public.promos (video_url, poster_url, title, sort, duration_s) values
+  ('https://example.supabase.co/storage/v1/object/public/promo-videos/promos/a.mp4', 'https://example.supabase.co/storage/v1/object/public/promo-videos/promos/a.jpg', '{"ru":"Плов дня","en":"Plov of the day"}', 0, 17.5),
+  ('https://example.supabase.co/storage/v1/object/public/promo-videos/promos/b.mp4', null, '{}', 1, 15);
+insert into public.promos (video_url, active, sort) values ('https://example.supabase.co/storage/v1/object/public/promo-videos/promos/off.mp4', false, 2);
+select t_ok((select count(*) from public.promos) = 3, 'владелец добавил три ролика и видит все, включая выключенный');
+select t_ok(public.t_rows($$update public.promos set sort = 5, title = '{"ru":"Новое"}' where duration_s = 15$$) = 1, 'владелец меняет порядок и подпись');
+select t_fails($$insert into public.promos (video_url, duration_s) values ('https://x.example/long.mp4', 45)$$, 'check', 'ролик на 45 секунд не сохранить');
+select t_fails($$insert into public.promos (video_url) values ('http://x.example/a.mp4')$$, 'check', 'ссылка http:// не сохраняется');
+select t_fails($$insert into public.promos (video_url, poster_url) values ('https://x.example/a.mp4', 'javascript:alert(1)')$$, 'check', 'обложка только https://');
+insert into storage.objects (bucket_id, name) values ('promo-videos', 'promos/a.mp4');
+select t_ok(true, 'владелец загружает ролик в хранилище');
+select t_ok((select label from public.audit_log where entity = 'promo' order by id desc limit 1) is not null, 'ролики пишутся в журнал изменений');
+reset role; reset request.jwt.claim.sub;
+select t_ok((select public and file_size_limit = 52428800 and 'video/mp4' = any (allowed_mime_types) from storage.buckets where id = 'promo-videos'), 'хранилище promo-videos: публичное, до 50 МБ, mp4');
+set role anon;
+select t_ok((select count(*) from public.promos) = 2, 'гость видит только включённые ролики');
+select t_ok(not exists (select 1 from public.promos where not active), 'гость не видит выключенный ролик');
+select t_fails($$insert into public.promos (video_url) values ('https://evil.example/a.mp4')$$, 'row-level security|permission denied', 'гость не добавляет ролики');
+select t_fails($$update public.promos set active = false$$, 'permission denied', 'гость не выключает ролики');
+select t_fails($$insert into storage.objects (bucket_id, name) values ('promo-videos', 'promos/evil.mp4')$$, 'row-level security', 'гость не загружает видео');
+reset role;
+set role authenticated; set request.jwt.claim.sub = '22222222-2222-2222-2222-222222222222';
+select t_fails($$insert into public.promos (video_url) values ('https://evil.example/a.mp4')$$, 'row-level security', 'официант не добавляет ролики');
+select t_ok(public.t_rows($$delete from public.promos$$) = 0, 'официант не удаляет ролики');
+select t_ok((select count(*) from public.promos) = 2, 'официант видит только включённые');
+select t_fails($$insert into storage.objects (bucket_id, name) values ('promo-videos', 'promos/evil.mp4')$$, 'row-level security', 'официант не загружает видео');
+reset role; reset request.jwt.claim.sub;
+set role authenticated; set request.jwt.claim.sub = '66666666-6666-6666-6666-666666666666';
+select t_fails($$insert into public.promos (video_url) values ('https://x.example/a.mp4')$$, 'row-level security', 'менеджер не добавляет ролики');
+reset role; reset request.jwt.claim.sub;
+set role authenticated; set request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
+select t_ok(public.t_rows($$update public.promos set active = false where sort = 0$$) = 1, 'владелец выключает ролик');
+select t_ok(public.t_rows($$delete from public.promos$$) = 3, 'владелец удаляет ролики');
+reset role; reset request.jwt.claim.sub;
 \echo ALL DATABASE TESTS PASSED

@@ -726,3 +726,19 @@ body.signed #a-user .lang-pick select { width: 100%; }
 .dl-zone input { width: 96px; min-height: 44px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 12px; background: var(--bg); color: var(--text); font: 700 16px var(--font-body); }
 .dl-zone input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
 .dl-zone .btn { margin-inline-start: auto; }
+
+/* Реклама: ролики на главной гостя */
+.promo-busy { color: var(--muted); font-size: 13.5px; font-weight: 700; }
+.file-btn[aria-disabled="true"] { opacity: .55; pointer-events: none; }
+.promo-rows > li { align-items: flex-start; padding-block: 14px; }
+.promo-prev { flex: none; width: 168px; aspect-ratio: 16 / 9; overflow: hidden; border-radius: 12px; background: var(--surface-2); }
+.promo-prev video { display: block; width: 100%; height: 100%; object-fit: cover; }
+.promo-rows li.is-off .promo-prev { opacity: .5; }
+.promo-titles { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 8px; margin-top: 6px; }
+.promo-titles .field { margin: 0; }
+.row-btns.promo-btns { justify-content: flex-start; margin-top: 10px; }
+@media (max-width: 600px) {
+  .promo-prev { width: 100%; }
+  .promo-rows .grow { flex-basis: 100%; }
+  .promo-rows .row-btns { width: auto; padding-inline-start: 0; }
+}

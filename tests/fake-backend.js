@@ -42,8 +42,17 @@
       bills: [],
       audit: [],
       telegram: {},
+      promos: demoPromos(),
     };
   }
+  // ролик для проверки главной (только в этой подделке — никогда в seed.sql и data.js)
+  const FAKE_VIDEO = 'https://flutter.github.io/assets-for-api-docs/assets/videos/butterfly.mp4';
+  function demoPromos() {
+    return [{ id: 'promo-demo', video_url: FAKE_VIDEO, poster_url: null, title: { ru: 'Пробный ролик', en: 'Test clip' }, active: true, sort: 0, duration_s: 7.5, created_at: '2026-11-22T00:00:00Z' }];
+  }
+  // как promos в базе: https-ссылка до 500 символов, 1–30 секунд
+  const httpsOk = (u) => /^https:\/\//.test(u) && u.length <= 500;
+  const promoSort = (a, b) => (a.sort - b.sort) || String(b.created_at).localeCompare(String(a.created_at));
   const db = () => { try { return JSON.parse(localStorage.getItem(KEY)) || seed(); } catch { return seed(); } };
   const save = (d) => localStorage.setItem(KEY, JSON.stringify(d));
   if (!localStorage.getItem(KEY)) save(seed());
@@ -179,6 +188,30 @@
     async deleteDish(id) { await delay(); owner(); const d = db(); d.dishes = d.dishes.filter((x) => x.id !== id); save(d); },
     async uploadImage(blob) { await delay(); owner(); return new Promise((res) => { const fr = new FileReader(); fr.onload = () => res(fr.result); fr.readAsDataURL(blob); }); },
     async deleteImage() {},
+    // ---------- рекламные ролики (как promos в базе: меняет только владелец) ----------
+    async promos() { await delay(); owner(); const d = db(); return [...(d.promos ?? demoPromos())].sort(promoSort); },
+    async savePromo(row) {
+      await delay(); offline(); owner();
+      const d = db();
+      d.promos = d.promos ?? demoPromos();
+      const old = row.id ? d.promos.find((x) => x.id === row.id) : null;
+      if (row.id && !old) throw new Error('not_found');
+      const next = { ...(old || { id: crypto.randomUUID(), poster_url: null, title: {}, active: true, sort: 0, duration_s: null, created_at: new Date().toISOString() }), ...row };
+      if (!httpsOk(String(next.video_url || ''))) throw new Error('new row violates check constraint "promos_video_url_check"');
+      // обложка: https, а в подделке ещё и data:image (настоящего хранилища тут нет)
+      if (next.poster_url != null && !httpsOk(next.poster_url) && !/^data:image\//.test(next.poster_url)) throw new Error('new row violates check constraint "promos_poster_url_check"');
+      if (next.duration_s != null && !(next.duration_s >= 1 && next.duration_s <= 30)) throw new Error('new row violates check constraint "promos_duration_s_check"');
+      if (old) Object.assign(old, next); else d.promos.push(next);
+      save(d); return next;
+    },
+    async deletePromo(id) { await delay(); offline(); owner(); const d = db(); d.promos = (d.promos ?? demoPromos()).filter((x) => x.id !== id); save(d); },
+    // файла в подделке нет: ролик = пробное видео (уникальная ссылка), обложка = data:-картинка
+    async uploadPromoVideo(file) {
+      await delay(); offline(); owner();
+      if (file.size > 52428800) throw new Error('The object exceeded the maximum allowed size');
+      return `${FAKE_VIDEO}#${crypto.randomUUID()}`;
+    },
+    async uploadPromoPoster(blob) { await delay(); owner(); return new Promise((res) => { const fr = new FileReader(); fr.onload = () => res(fr.result); fr.readAsDataURL(blob); }); },
     async orders(from, to) {
       await delay();
       staffOk(); offline();
@@ -750,7 +783,9 @@
     const shownCats = new Set(d.categories.filter((c) => !c.hidden).map((c) => c.id));
     const data = table === 'settings' ? [d.settings]
       : table === 'categories' ? d.categories.filter((c) => !c.hidden)
-        : table === 'dishes' ? d.dishes.filter((x) => !x.hidden && shownCats.has(x.category_id)) : null;
+        : table === 'dishes' ? d.dishes.filter((x) => !x.hidden && shownCats.has(x.category_id))
+          : table === 'promos' ? (d.promos ?? demoPromos()).filter((x) => x.active).sort(promoSort)
+            .map(({ id, video_url, poster_url, title, sort, duration_s }) => ({ id, video_url, poster_url, title, sort, duration_s })) : null;
     return new Response(JSON.stringify(data ?? { message: 'not found' }), { status: data ? 200 : 404, headers: { 'Content-Type': 'application/json' } });
   };
 })();

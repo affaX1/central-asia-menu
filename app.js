@@ -1171,9 +1171,64 @@
         <div class="hero-pills">${openPill()}${halalPill()}</div>
       </section>
       ${ways ? `<div class="h2"><h2>${esc(t('howEat'))}</h2></div>${ways}` : ''}
+      ${promos.length ? '<div class="promo" id="home-promo"></div>' : ''}
       ${recHtml}
       ${links ? `<div class="info-list">${links}</div>` : ''}
       ${L(r.footer) ? `<p class="home-foot">${esc(L(r.footer))}</p>` : ''}`);
+    mountPromo();
+  }
+
+  // ---------- Рекламные ролики на главной (владелец загружает в панели «Реклама») ----------
+  // Без звука и кнопок; один ролик — по кругу, несколько — по очереди. Видео живёт отдельно от HTML главной,
+  // чтобы перерисовка (часы работы, язык) не начинала его заново. Ошибки — молча: просто нет ролика.
+  let promos = [];
+  let promoAt = 0;
+  let promoVid = null;
+  async function loadPromos() {
+    if (!ONLINE) return;
+    try {
+      const list = await rest('promos?select=id,video_url,poster_url,title,sort,duration_s&active=eq.true&order=sort.asc,created_at.desc');
+      const next = (Array.isArray(list) ? list : []).filter((p) => /^https:\/\//.test(p?.video_url || ''));
+      if (JSON.stringify(next) === JSON.stringify(promos)) return;
+      promos = next;
+      promoAt = 0;
+      if (promoVid) { promoVid.removeAttribute('src'); promoVid.load(); promoVid = null; }
+      renderHome();
+    } catch { /* без роликов */ }
+  }
+  function promoSrc(v) {
+    const p = promos[promoAt];
+    if (!p) return;
+    v.loop = promos.length === 1;
+    if (p.poster_url) v.poster = p.poster_url; else v.removeAttribute('poster');
+    v.src = p.video_url;
+    const slot = v.parentNode;
+    if (slot) { const nm = L(p.title); if (nm) slot.setAttribute('aria-label', nm); else slot.removeAttribute('aria-label'); }
+    if (!reduced()) v.play().catch(() => {});
+  }
+  function mountPromo() {
+    const slot = $('#home-promo');
+    if (!slot || !promos.length) return;
+    if (!promoVid) {
+      const v = document.createElement('video');
+      v.muted = true; v.defaultMuted = true; v.playsInline = true; v.autoplay = !reduced();
+      v.preload = reduced() ? 'auto' : 'metadata';
+      v.setAttribute('muted', ''); v.setAttribute('playsinline', ''); v.setAttribute('disablepictureinpicture', ''); v.setAttribute('aria-hidden', 'true');
+      v.addEventListener('ended', () => { if (promos.length > 1) { promoAt = (promoAt + 1) % promos.length; promoSrc(v); } });
+      // ролик не открылся — убираем его из очереди (без бесконечных повторов)
+      v.addEventListener('error', () => {
+        promos.splice(promoAt, 1);
+        if (!promos.length) { promoVid = null; v.parentNode?.remove(); return; }
+        promoAt %= promos.length;
+        promoSrc(v);
+      });
+      promoVid = v;
+      slot.appendChild(v);
+      promoSrc(v);
+      return;
+    }
+    if (promoVid.parentNode !== slot) slot.appendChild(promoVid);
+    if (promoVid.paused && !reduced()) promoVid.play().catch(() => {});
   }
 
   // ---------- Карточки ----------
@@ -3705,6 +3760,7 @@
   if (ONLINE) {
     refreshMenu().then(() => { if (mode() === 'delivery' && profile.lat != null) quote(); });
     setTimeout(loadStats, 1200);
+    setTimeout(loadPromos, 400);
     checkTable();
     pollOrders().then(() => schedulePoll());
     setInterval(() => { if (!document.hidden) refreshMenu(); }, 60 * 1000);
@@ -3712,6 +3768,7 @@
       if (document.hidden) return;
       if (expireTable()) return;
       refreshMenu();
+      loadPromos();
       pollBooking();
       pollOrders();
     });

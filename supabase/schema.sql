@@ -1380,6 +1380,7 @@ begin
     when 'staff' then coalesce(nullif(v_row ->> 'name', ''), v_row ->> 'email')
     when 'order' then '№' || (v_row ->> 'no') || ' · стол ' || (v_row ->> 'table_label')
     when 'bill' then 'счёт №' || (v_row ->> 'no') || ' · стол ' || (v_row ->> 'table_label')
+    when 'promo' then coalesce(nullif(v_row -> 'title' ->> 'ru', ''), nullif(v_row -> 'title' ->> 'en', ''), 'видео')
     else null end;
   insert into public.audit_log (user_id, who, entity, entity_id, label, action, changes)
   values (auth.uid(), public.staff_name(), v_ent,
@@ -2655,3 +2656,55 @@ grant execute on function public.get_order(uuid, uuid) to anon, authenticated;
 grant execute on function public.is_courier() to authenticated;
 grant execute on function public.courier_take(uuid) to authenticated;
 grant execute on function public.courier_done(uuid, text) to authenticated;
+
+-- =====================================================================
+-- Рекламные ролики на главной (15–20 с). Видит гость (только включённые), меняет только владелец.
+-- Приложение читает: /rest/v1/promos?select=id,video_url,poster_url,title,sort,duration_s&active=eq.true&order=sort.asc,created_at.desc
+-- =====================================================================
+create table if not exists public.promos (
+  id         uuid primary key default gen_random_uuid(),
+  video_url  text not null check (video_url ~ '^https://' and length(video_url) <= 500),
+  poster_url text check (poster_url is null or (poster_url ~ '^https://' and length(poster_url) <= 500)),
+  title      jsonb not null default '{}' check (jsonb_typeof(title) = 'object'),  -- { "ru": "…", "en": "…" }
+  active     boolean not null default true,
+  sort       int not null default 0,
+  duration_s numeric(5, 2) check (duration_s is null or duration_s between 1 and 30),
+  created_at timestamptz not null default now()
+);
+create index if not exists promos_sort_idx on public.promos (sort, created_at desc);
+alter table public.promos enable row level security;
+revoke all on public.promos from anon, authenticated;
+grant select on public.promos to anon, authenticated;
+grant insert, update, delete on public.promos to authenticated;  -- политики: только владелец
+drop policy if exists promos_read on public.promos;
+create policy promos_read on public.promos for select to anon, authenticated using (active);
+drop policy if exists promos_owner_read on public.promos;
+create policy promos_owner_read on public.promos for select to authenticated using (public.is_owner());
+drop policy if exists promos_owner_ins on public.promos;
+create policy promos_owner_ins on public.promos for insert to authenticated with check (public.is_owner());
+drop policy if exists promos_owner_upd on public.promos;
+create policy promos_owner_upd on public.promos for update to authenticated
+  using (public.is_owner()) with check (public.is_owner());
+drop policy if exists promos_owner_del on public.promos;
+create policy promos_owner_del on public.promos for delete to authenticated using (public.is_owner());
+
+drop trigger if exists audit_promos on public.promos;
+create trigger audit_promos after insert or update or delete on public.promos for each row execute function public.audit_row('promo');
+
+-- Файлы роликов и обложек: публичная ссылка, загружает и удаляет только владелец
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('promo-videos', 'promo-videos', true, 52428800, array['video/mp4', 'video/quicktime', 'video/webm', 'image/jpeg'])
+on conflict (id) do update set public = true, file_size_limit = excluded.file_size_limit,
+  allowed_mime_types = excluded.allowed_mime_types;
+drop policy if exists promo_videos_owner_read on storage.objects;
+create policy promo_videos_owner_read on storage.objects for select to authenticated
+  using (bucket_id = 'promo-videos' and public.is_owner());
+drop policy if exists promo_videos_owner_ins on storage.objects;
+create policy promo_videos_owner_ins on storage.objects for insert to authenticated
+  with check (bucket_id = 'promo-videos' and public.is_owner());
+drop policy if exists promo_videos_owner_upd on storage.objects;
+create policy promo_videos_owner_upd on storage.objects for update to authenticated
+  using (bucket_id = 'promo-videos' and public.is_owner()) with check (bucket_id = 'promo-videos' and public.is_owner());
+drop policy if exists promo_videos_owner_del on storage.objects;
+create policy promo_videos_owner_del on storage.objects for delete to authenticated
+  using (bucket_id = 'promo-videos' and public.is_owner());
