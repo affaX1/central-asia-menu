@@ -77,6 +77,8 @@
     if (/\bself\b/.test(m)) return 'Себя отключить, понизить или удалить нельзя.';
     if (/bad_email/.test(m)) return 'Проверьте email.';
     if (/bad_timezone/.test(m)) return 'Неизвестный часовой пояс.';
+    // SMS (Twilio) — только у владельца, панель по-русски
+    if (/sms_not_configured/.test(m)) return 'Сначала сохраните ключи SMS (Twilio) ниже — без них проверку номера по SMS не включить.';
     if (/forbidden|row-level security|permission denied/i.test(m)) return t('no_rights');
     if (/foreign key|violates foreign/i.test(m)) return 'Нельзя удалить категорию, пока в ней есть блюда.';
     if (/duplicate key/i.test(m)) return 'Такой код уже занят.';

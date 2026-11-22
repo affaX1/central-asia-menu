@@ -121,9 +121,18 @@
       dvSaveHint: 'Имя, телефон и адрес сохранятся на этом телефоне — в следующий раз вводить не нужно.',
       cartEmpty: 'Корзина пуста', cartEmptyHint: 'Добавьте блюда из меню — потом вернитесь сюда.', openMenu: 'Открыть меню', toDelivery: 'Оформить доставку',
       trDv: (n) => `Доставка · заказ № ${n}`, trTable: (x, n) => `Стол ${x} · заказ № ${n}`,
-      dvSt: { new: 'Ждём подтверждения', accepted: 'Ресторан принял заказ', cooking: 'Готовим ваш заказ', ready: 'Заказ готов', on_the_way: 'Курьер уже в пути', served: 'Доставлено', cancelled: 'Заказ отменён' },
-      dvHint: { new: 'Ресторан видит заказ и скоро подтвердит его.', accepted: 'Скоро начнём готовить.', cooking: 'Повар готовит ваш заказ.', ready: 'Заказ готов — ждём курьера.', on_the_way: 'Курьер везёт ваш заказ.', served: 'Приятного аппетита!', cancelled: 'Если это ошибка — позвоните в ресторан.' },
+      dvSt: { confirm: 'Ждём звонка ресторана', new: 'Ждём подтверждения', accepted: 'Ресторан принял заказ', cooking: 'Готовим ваш заказ', ready: 'Заказ готов', on_the_way: 'Курьер уже в пути', served: 'Доставлено', cancelled: 'Заказ отменён' },
+      dvHint: { confirm: 'Ресторан позвонит, чтобы подтвердить заказ. Готовить начнут после подтверждения.', new: 'Ресторан видит заказ и скоро подтвердит его.', accepted: 'Скоро начнём готовить.', cooking: 'Повар готовит ваш заказ.', ready: 'Заказ готов — ждём курьера.', on_the_way: 'Курьер везёт ваш заказ.', served: 'Приятного аппетита!', cancelled: 'Если это ошибка — позвоните в ресторан.' },
       stWait: 'Ждём подтверждения', stAccepted: 'Ресторан принял', stCooking: 'Готовим', stReady: 'Готово — ждём курьера', stWay: 'В пути', stDone: 'Доставлено',
+      dvCallHint: (p) => `Ресторан позвонит на ${p}, чтобы подтвердить заказ. Готовить начнут после подтверждения.`, stCalled: 'Заказ подтверждён',
+      dvNoAnswer: 'Не дозвонились — заказ отменён', dvNoAnswerHint: 'Ресторан не смог до вас дозвониться. Закажите ещё раз или позвоните в ресторан.',
+      dvWillCall: 'Ресторан позвонит, чтобы подтвердить заказ.', dvMayCall: 'Ресторан может позвонить, чтобы подтвердить заказ.',
+      smsTitle: 'Подтвердите номер', smsWhy: 'Пришлём код в SMS — так ресторан знает, что номер ваш.', smsSent: (p) => `Код отправлен на ${p}`, smsSending: 'Отправляем код…',
+      smsCode: 'Код из SMS', smsVerify: 'Подтвердить', smsResend: 'Отправить код ещё раз', smsResendIn: (s) => `Отправить код ещё раз (${s})`,
+      smsBad: (n) => `Неверный код, осталось ${n} ${n % 10 === 1 && n % 100 !== 11 ? 'попытка' : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) ? 'попытки' : 'попыток'}`,
+      smsExpired: 'Код устарел — отправьте новый.', smsTooMany: 'Слишком много неверных попыток — отправьте новый код.',
+      smsLimit: 'Слишком много SMS на этот номер. Попробуйте через час или позвоните в ресторан.', smsBadPhone: 'Проверьте номер телефона: например +60 12 345 6789.',
+      smsOff: 'SMS сейчас не отправляются. Позвоните в ресторан.', smsChange: 'Изменить номер', smsOk: 'Номер подтверждён',
       courier: (x) => `Курьер ${x}`, kmToYou: (x) => `${x} км до вас`,
       ordersEmpty: 'Здесь появятся ваши заказы', ordersHint: 'Заказы с этого телефона — за столом и с доставкой — за последние 3 дня.',
       myData: 'Мои данные', profHint: 'Хранится только на этом телефоне — чтобы не вводить заново.', about: 'О ресторане', favsEmpty: 'Нажмите на сердечко в карточке блюда — оно появится здесь.',
@@ -239,9 +248,18 @@
       dvSaveHint: 'Ism, telefon va manzil shu telefonda saqlanadi — keyingi safar qayta kiritish shart emas.',
       cartEmpty: "Savat bo'sh", cartEmptyHint: "Menyudan taom qo'shing — so'ng bu yerga qayting.", openMenu: 'Menyuni ochish', toDelivery: 'Yetkazib berishni rasmiylashtirish',
       trDv: (n) => `Yetkazib berish · buyurtma № ${n}`, trTable: (x, n) => `Stol ${x} · buyurtma № ${n}`,
-      dvSt: { new: 'Tasdiq kutilmoqda', accepted: 'Restoran buyurtmani qabul qildi', cooking: 'Buyurtmangiz tayyorlanmoqda', ready: 'Buyurtma tayyor', on_the_way: "Kuryer yo'lda", served: 'Yetkazildi', cancelled: 'Buyurtma bekor qilindi' },
-      dvHint: { new: "Restoran buyurtmani ko'rdi va tez orada tasdiqlaydi.", accepted: 'Tez orada tayyorlashni boshlaymiz.', cooking: 'Oshpaz buyurtmangizni tayyorlamoqda.', ready: 'Buyurtma tayyor — kuryerni kutyapmiz.', on_the_way: 'Kuryer buyurtmangizni olib kelmoqda.', served: 'Yoqimli ishtaha!', cancelled: "Agar bu xato bo'lsa — restoranga qo'ng'iroq qiling." },
+      dvSt: { confirm: "Restoran qo'ng'irog'ini kutyapmiz", new: 'Tasdiq kutilmoqda', accepted: 'Restoran buyurtmani qabul qildi', cooking: 'Buyurtmangiz tayyorlanmoqda', ready: 'Buyurtma tayyor', on_the_way: "Kuryer yo'lda", served: 'Yetkazildi', cancelled: 'Buyurtma bekor qilindi' },
+      dvHint: { confirm: "Restoran buyurtmani tasdiqlash uchun qo'ng'iroq qiladi. Tasdiqlangandan keyin tayyorlashni boshlaymiz.", new: "Restoran buyurtmani ko'rdi va tez orada tasdiqlaydi.", accepted: 'Tez orada tayyorlashni boshlaymiz.', cooking: 'Oshpaz buyurtmangizni tayyorlamoqda.', ready: 'Buyurtma tayyor — kuryerni kutyapmiz.', on_the_way: 'Kuryer buyurtmangizni olib kelmoqda.', served: 'Yoqimli ishtaha!', cancelled: "Agar bu xato bo'lsa — restoranga qo'ng'iroq qiling." },
       stWait: 'Tasdiq kutilmoqda', stAccepted: 'Restoran qabul qildi', stCooking: 'Tayyorlanmoqda', stReady: 'Tayyor — kuryer kutilmoqda', stWay: "Yo'lda", stDone: 'Yetkazildi',
+      dvCallHint: (p) => `Restoran buyurtmani tasdiqlash uchun ${p} raqamiga qo'ng'iroq qiladi. Tasdiqlangandan keyin tayyorlashni boshlaymiz.`, stCalled: 'Buyurtma tasdiqlandi',
+      dvNoAnswer: "Qo'ng'iroqqa javob bo'lmadi — buyurtma bekor qilindi", dvNoAnswerHint: "Restoran sizga qo'ng'iroq qila olmadi. Qaytadan buyurtma bering yoki restoranga qo'ng'iroq qiling.",
+      dvWillCall: "Restoran buyurtmani tasdiqlash uchun qo'ng'iroq qiladi.", dvMayCall: "Restoran buyurtmani tasdiqlash uchun qo'ng'iroq qilishi mumkin.",
+      smsTitle: 'Raqamni tasdiqlang', smsWhy: 'SMS orqali kod yuboramiz — shunda restoran raqam sizniki ekanini biladi.', smsSent: (p) => `Kod ${p} raqamiga yuborildi`, smsSending: 'Kod yuborilmoqda…',
+      smsCode: 'SMS dagi kod', smsVerify: 'Tasdiqlash', smsResend: 'Kodni qayta yuborish', smsResendIn: (s) => `Kodni qayta yuborish (${s})`,
+      smsBad: (n) => `Kod noto'g'ri, ${n} ta urinish qoldi`,
+      smsExpired: 'Kod eskirgan — yangisini yuboring.', smsTooMany: "Noto'g'ri urinishlar juda ko'p — yangi kod yuboring.",
+      smsLimit: "Bu raqamga juda ko'p SMS yuborildi. Bir soatdan keyin urinib ko'ring yoki restoranga qo'ng'iroq qiling.", smsBadPhone: 'Telefon raqamini tekshiring: masalan +60 12 345 6789.',
+      smsOff: "Hozir SMS yuborilmayapti. Restoranga qo'ng'iroq qiling.", smsChange: "Raqamni o'zgartirish", smsOk: 'Raqam tasdiqlandi',
       courier: (x) => `Kuryer ${x}`, kmToYou: (x) => `sizgacha ${x} km`,
       ordersEmpty: 'Buyurtmalaringiz shu yerda chiqadi', ordersHint: 'Shu telefondan berilgan buyurtmalar — stolda va yetkazib berish — oxirgi 3 kun.',
       myData: "Mening ma'lumotlarim", profHint: 'Faqat shu telefonda saqlanadi — qayta kiritmaslik uchun.', about: 'Restoran haqida', favsEmpty: "Taom kartasidagi yurakchani bosing — u shu yerda paydo bo'ladi.",
@@ -357,9 +375,18 @@
       dvSaveHint: "Your name, phone and address are saved on this phone, so you won't need to type them again.",
       cartEmpty: 'Your cart is empty', cartEmptyHint: 'Add dishes from the menu, then come back here.', openMenu: 'Open the menu', toDelivery: 'Check out for delivery',
       trDv: (n) => `Delivery · order No. ${n}`, trTable: (x, n) => `Table ${x} · order No. ${n}`,
-      dvSt: { new: 'Waiting for confirmation', accepted: 'The restaurant accepted your order', cooking: "We're cooking your order", ready: 'Your order is ready', on_the_way: 'The courier is on the way', served: 'Delivered', cancelled: 'Order cancelled' },
-      dvHint: { new: 'The restaurant has your order and will confirm it shortly.', accepted: "We'll start cooking soon.", cooking: 'The chef is preparing your order.', ready: 'Your order is ready — waiting for the courier.', on_the_way: 'The courier is bringing your order.', served: 'Enjoy your meal!', cancelled: 'If this is a mistake, please call the restaurant.' },
+      dvSt: { confirm: 'Waiting for the restaurant to call', new: 'Waiting for confirmation', accepted: 'The restaurant accepted your order', cooking: "We're cooking your order", ready: 'Your order is ready', on_the_way: 'The courier is on the way', served: 'Delivered', cancelled: 'Order cancelled' },
+      dvHint: { confirm: 'The restaurant will call you to confirm the order. Cooking starts after confirmation.', new: 'The restaurant has your order and will confirm it shortly.', accepted: "We'll start cooking soon.", cooking: 'The chef is preparing your order.', ready: 'Your order is ready — waiting for the courier.', on_the_way: 'The courier is bringing your order.', served: 'Enjoy your meal!', cancelled: 'If this is a mistake, please call the restaurant.' },
       stWait: 'Waiting for confirmation', stAccepted: 'Restaurant accepted', stCooking: 'Cooking', stReady: 'Ready — waiting for the courier', stWay: 'On the way', stDone: 'Delivered',
+      dvCallHint: (p) => `The restaurant will call ${p} to confirm the order. Cooking starts after confirmation.`, stCalled: 'Order confirmed',
+      dvNoAnswer: "Couldn't reach you — order cancelled", dvNoAnswerHint: "The restaurant couldn't reach you by phone. Please order again or call the restaurant.",
+      dvWillCall: 'The restaurant will call to confirm your order.', dvMayCall: 'The restaurant may call to confirm your order.',
+      smsTitle: 'Confirm your number', smsWhy: "We'll text you a code so the restaurant knows the number is yours.", smsSent: (p) => `Code sent to ${p}`, smsSending: 'Sending the code…',
+      smsCode: 'Code from SMS', smsVerify: 'Confirm', smsResend: 'Send the code again', smsResendIn: (s) => `Send the code again (${s})`,
+      smsBad: (n) => `Wrong code, ${n} ${n === 1 ? 'attempt' : 'attempts'} left`,
+      smsExpired: 'The code has expired — send a new one.', smsTooMany: 'Too many wrong attempts — send a new code.',
+      smsLimit: 'Too many texts to this number. Try again in an hour or call the restaurant.', smsBadPhone: 'Check the phone number, e.g. +60 12 345 6789.',
+      smsOff: 'Texts cannot be sent right now. Please call the restaurant.', smsChange: 'Change number', smsOk: 'Number confirmed',
       courier: (x) => `Courier ${x}`, kmToYou: (x) => `${x} km to you`,
       ordersEmpty: 'Your orders will appear here', ordersHint: 'Orders from this phone — at the table and for delivery — from the last 3 days.',
       myData: 'My details', profHint: "Kept only on this phone, so you don't have to type them again.", about: 'About the restaurant', favsEmpty: 'Tap the heart on a dish and it will appear here.',
@@ -476,9 +503,18 @@
       dvSaveHint: 'سيُحفظ الاسم والهاتف والعنوان على هذا الهاتف فلن تحتاج إلى كتابتها مرة أخرى.',
       cartEmpty: 'السلة فارغة', cartEmptyHint: 'أضف أطباقًا من القائمة ثم عد إلى هنا.', openMenu: 'افتح القائمة', toDelivery: 'إتمام طلب التوصيل',
       trDv: (n) => `توصيل · طلب رقم ${n}`, trTable: (x, n) => `الطاولة ${x} · طلب رقم ${n}`,
-      dvSt: { new: 'بانتظار التأكيد', accepted: 'قبل المطعم طلبك', cooking: 'نحضّر طلبك', ready: 'طلبك جاهز', on_the_way: 'المندوب في الطريق', served: 'تم التوصيل', cancelled: 'أُلغي الطلب' },
-      dvHint: { new: 'استلم المطعم طلبك وسيؤكده قريبًا.', accepted: 'سنبدأ التحضير قريبًا.', cooking: 'الطاهي يحضّر طلبك.', ready: 'طلبك جاهز — بانتظار المندوب.', on_the_way: 'المندوب في طريقه إليك بطلبك.', served: 'بالهناء والشفاء!', cancelled: 'إذا كان هذا خطأ فاتصل بالمطعم.' },
+      dvSt: { confirm: 'بانتظار اتصال المطعم', new: 'بانتظار التأكيد', accepted: 'قبل المطعم طلبك', cooking: 'نحضّر طلبك', ready: 'طلبك جاهز', on_the_way: 'المندوب في الطريق', served: 'تم التوصيل', cancelled: 'أُلغي الطلب' },
+      dvHint: { confirm: 'سيتصل بك المطعم لتأكيد الطلب. يبدأ التحضير بعد التأكيد.', new: 'استلم المطعم طلبك وسيؤكده قريبًا.', accepted: 'سنبدأ التحضير قريبًا.', cooking: 'الطاهي يحضّر طلبك.', ready: 'طلبك جاهز — بانتظار المندوب.', on_the_way: 'المندوب في طريقه إليك بطلبك.', served: 'بالهناء والشفاء!', cancelled: 'إذا كان هذا خطأ فاتصل بالمطعم.' },
       stWait: 'بانتظار التأكيد', stAccepted: 'قبل المطعم', stCooking: 'نحضّر', stReady: 'جاهز — بانتظار المندوب', stWay: 'في الطريق', stDone: 'تم التوصيل',
+      dvCallHint: (p) => `سيتصل المطعم بالرقم ${p} لتأكيد الطلب. يبدأ التحضير بعد التأكيد.`, stCalled: 'تم تأكيد الطلب',
+      dvNoAnswer: 'تعذّر الاتصال بك — أُلغي الطلب', dvNoAnswerHint: 'لم يتمكن المطعم من الاتصال بك. اطلب مرة أخرى أو اتصل بالمطعم.',
+      dvWillCall: 'سيتصل المطعم لتأكيد طلبك.', dvMayCall: 'قد يتصل المطعم لتأكيد طلبك.',
+      smsTitle: 'أكّد رقمك', smsWhy: 'سنرسل لك رمزًا في رسالة نصية ليعرف المطعم أن الرقم لك.', smsSent: (p) => `أُرسل الرمز إلى ${p}`, smsSending: 'جارٍ إرسال الرمز…',
+      smsCode: 'الرمز من الرسالة', smsVerify: 'تأكيد', smsResend: 'إرسال الرمز مرة أخرى', smsResendIn: (s) => `إرسال الرمز مرة أخرى (${s})`,
+      smsBad: (n) => `رمز خاطئ، تبقّى ${n} من المحاولات`,
+      smsExpired: 'انتهت صلاحية الرمز — أرسل رمزًا جديدًا.', smsTooMany: 'محاولات خاطئة كثيرة — أرسل رمزًا جديدًا.',
+      smsLimit: 'أُرسلت رسائل كثيرة إلى هذا الرقم. حاول بعد ساعة أو اتصل بالمطعم.', smsBadPhone: 'تحقق من رقم الهاتف، مثلًا +60 12 345 6789.',
+      smsOff: 'لا يمكن إرسال الرسائل الآن. اتصل بالمطعم.', smsChange: 'تغيير الرقم', smsOk: 'تم تأكيد الرقم',
       courier: (x) => `المندوب ${x}`, kmToYou: (x) => `${x} كم إليك`,
       ordersEmpty: 'ستظهر طلباتك هنا', ordersHint: 'الطلبات من هذا الهاتف — على الطاولة ومع التوصيل — خلال آخر 3 أيام.',
       myData: 'بياناتي', profHint: 'تُحفظ على هذا الهاتف فقط حتى لا تكتبها مرة أخرى.', about: 'عن المطعم', favsEmpty: 'اضغط على القلب في بطاقة الطبق وسيظهر هنا.',
@@ -594,9 +630,18 @@
       dvSaveHint: 'Nama, telefon dan alamat disimpan di telefon ini — tidak perlu ditaip semula lain kali.',
       cartEmpty: 'Troli kosong', cartEmptyHint: 'Tambah hidangan dari menu, kemudian kembali ke sini.', openMenu: 'Buka menu', toDelivery: 'Teruskan ke penghantaran',
       trDv: (n) => `Penghantaran · pesanan No. ${n}`, trTable: (x, n) => `Meja ${x} · pesanan No. ${n}`,
-      dvSt: { new: 'Menunggu pengesahan', accepted: 'Restoran menerima pesanan', cooking: 'Pesanan anda sedang dimasak', ready: 'Pesanan sudah siap', on_the_way: 'Penghantar dalam perjalanan', served: 'Telah dihantar', cancelled: 'Pesanan dibatalkan' },
-      dvHint: { new: 'Restoran telah menerima pesanan dan akan mengesahkannya sebentar lagi.', accepted: 'Kami akan mula memasak sebentar lagi.', cooking: 'Tukang masak sedang menyediakan pesanan anda.', ready: 'Pesanan siap — menunggu penghantar.', on_the_way: 'Penghantar sedang membawa pesanan anda.', served: 'Selamat menjamu selera!', cancelled: 'Jika ini satu kesilapan, sila hubungi restoran.' },
+      dvSt: { confirm: 'Menunggu panggilan restoran', new: 'Menunggu pengesahan', accepted: 'Restoran menerima pesanan', cooking: 'Pesanan anda sedang dimasak', ready: 'Pesanan sudah siap', on_the_way: 'Penghantar dalam perjalanan', served: 'Telah dihantar', cancelled: 'Pesanan dibatalkan' },
+      dvHint: { confirm: 'Restoran akan menelefon anda untuk mengesahkan pesanan. Masakan bermula selepas pengesahan.', new: 'Restoran telah menerima pesanan dan akan mengesahkannya sebentar lagi.', accepted: 'Kami akan mula memasak sebentar lagi.', cooking: 'Tukang masak sedang menyediakan pesanan anda.', ready: 'Pesanan siap — menunggu penghantar.', on_the_way: 'Penghantar sedang membawa pesanan anda.', served: 'Selamat menjamu selera!', cancelled: 'Jika ini satu kesilapan, sila hubungi restoran.' },
       stWait: 'Menunggu pengesahan', stAccepted: 'Restoran menerima', stCooking: 'Sedang dimasak', stReady: 'Siap — menunggu penghantar', stWay: 'Dalam perjalanan', stDone: 'Telah dihantar',
+      dvCallHint: (p) => `Restoran akan menelefon ${p} untuk mengesahkan pesanan. Masakan bermula selepas pengesahan.`, stCalled: 'Pesanan disahkan',
+      dvNoAnswer: 'Tidak dapat dihubungi — pesanan dibatalkan', dvNoAnswerHint: 'Restoran tidak dapat menghubungi anda. Sila pesan semula atau hubungi restoran.',
+      dvWillCall: 'Restoran akan menelefon untuk mengesahkan pesanan anda.', dvMayCall: 'Restoran mungkin menelefon untuk mengesahkan pesanan anda.',
+      smsTitle: 'Sahkan nombor anda', smsWhy: 'Kami hantar kod melalui SMS supaya restoran tahu nombor ini milik anda.', smsSent: (p) => `Kod dihantar ke ${p}`, smsSending: 'Menghantar kod…',
+      smsCode: 'Kod SMS', smsVerify: 'Sahkan', smsResend: 'Hantar kod sekali lagi', smsResendIn: (s) => `Hantar kod sekali lagi (${s})`,
+      smsBad: (n) => `Kod salah, tinggal ${n} cubaan`,
+      smsExpired: 'Kod sudah tamat tempoh — hantar kod baharu.', smsTooMany: 'Terlalu banyak cubaan salah — hantar kod baharu.',
+      smsLimit: 'Terlalu banyak SMS ke nombor ini. Cuba lagi selepas sejam atau hubungi restoran.', smsBadPhone: 'Semak nombor telefon, contohnya +60 12 345 6789.',
+      smsOff: 'SMS tidak dapat dihantar sekarang. Sila hubungi restoran.', smsChange: 'Tukar nombor', smsOk: 'Nombor disahkan',
       courier: (x) => `Penghantar ${x}`, kmToYou: (x) => `${x} km ke lokasi anda`,
       ordersEmpty: 'Pesanan anda akan muncul di sini', ordersHint: 'Pesanan dari telefon ini — di meja dan penghantaran — dalam 3 hari terakhir.',
       myData: 'Maklumat saya', profHint: 'Disimpan hanya di telefon ini supaya tidak perlu ditaip semula.', about: 'Tentang restoran', favsEmpty: 'Ketik ikon hati pada hidangan dan ia akan muncul di sini.',
@@ -712,9 +757,18 @@
       dvSaveHint: '姓名、电话和地址会保存在这部手机上，下次无需重新填写。',
       cartEmpty: '购物车是空的', cartEmptyHint: '先从菜单添加菜品，再回到这里。', openMenu: '打开菜单', toDelivery: '去结算外送',
       trDv: (n) => `外送 · 订单 ${n} 号`, trTable: (x, n) => `${x} 号桌 · 订单 ${n} 号`,
-      dvSt: { new: '等待确认', accepted: '餐厅已接单', cooking: '正在为您制作', ready: '订单已做好', on_the_way: '骑手正在路上', served: '已送达', cancelled: '订单已取消' },
-      dvHint: { new: '餐厅已收到订单，很快会确认。', accepted: '我们很快开始制作。', cooking: '厨师正在制作您的订单。', ready: '订单已做好 — 正在等骑手。', on_the_way: '骑手正在给您送餐。', served: '祝您用餐愉快！', cancelled: '如有误，请致电餐厅。' },
+      dvSt: { confirm: '等待餐厅来电', new: '等待确认', accepted: '餐厅已接单', cooking: '正在为您制作', ready: '订单已做好', on_the_way: '骑手正在路上', served: '已送达', cancelled: '订单已取消' },
+      dvHint: { confirm: '餐厅会致电确认订单，确认后开始制作。', new: '餐厅已收到订单，很快会确认。', accepted: '我们很快开始制作。', cooking: '厨师正在制作您的订单。', ready: '订单已做好 — 正在等骑手。', on_the_way: '骑手正在给您送餐。', served: '祝您用餐愉快！', cancelled: '如有误，请致电餐厅。' },
       stWait: '等待确认', stAccepted: '餐厅已接单', stCooking: '制作中', stReady: '已做好 — 等待骑手', stWay: '配送中', stDone: '已送达',
+      dvCallHint: (p) => `餐厅会致电 ${p} 确认订单，确认后开始制作。`, stCalled: '订单已确认',
+      dvNoAnswer: '未能联系到您 — 订单已取消', dvNoAnswerHint: '餐厅没能打通您的电话。请重新下单或致电餐厅。',
+      dvWillCall: '餐厅会致电确认您的订单。', dvMayCall: '餐厅可能会致电确认您的订单。',
+      smsTitle: '验证手机号', smsWhy: '我们会发送短信验证码，让餐厅确认号码是您的。', smsSent: (p) => `验证码已发送至 ${p}`, smsSending: '正在发送验证码…',
+      smsCode: '短信验证码', smsVerify: '确认', smsResend: '重新发送验证码', smsResendIn: (s) => `重新发送验证码（${s}）`,
+      smsBad: (n) => `验证码错误，还剩 ${n} 次机会`,
+      smsExpired: '验证码已过期 — 请重新发送。', smsTooMany: '错误次数过多 — 请重新发送验证码。',
+      smsLimit: '发送到该号码的短信过多。请一小时后再试或致电餐厅。', smsBadPhone: '请检查手机号，例如 +60 12 345 6789。',
+      smsOff: '目前无法发送短信。请致电餐厅。', smsChange: '更改号码', smsOk: '号码已验证',
       courier: (x) => `骑手 ${x}`, kmToYou: (x) => `距您 ${x} 公里`,
       ordersEmpty: '您的订单会显示在这里', ordersHint: '这部手机最近 3 天的订单 — 堂食和外送。',
       myData: '我的信息', profHint: '只保存在这部手机上，免得重复填写。', about: '关于餐厅', favsEmpty: '点击菜品上的爱心，它就会出现在这里。',
@@ -754,7 +808,7 @@
         servicePct: 0, taxPct: 0, taxName: 'SST', taxOnService: true,
         halal: !!r.halal, halalNote: nonEmpty(r.halalNote),
         defaultLanguage: b.defaultLanguage, bookingsEnabled: false,
-        deliveryEnabled: false, deliveryLat: null, deliveryLng: null, deliveryZones: [], deliveryMin: 0,
+        deliveryEnabled: false, deliveryLat: null, deliveryLng: null, deliveryZones: [], deliveryMin: 0, dvSms: false,
       },
       categories: b.categories.map((c) => ({ id: c.id, name: c.name, from: c.from || null, to: c.to || null })),
       dishes: b.dishes.filter((d) => !d.hidden).map((d) => ({
@@ -787,7 +841,7 @@
           const lat = st.delivery_lat == null ? null : Number(st.delivery_lat);
           const lng = st.delivery_lng == null ? null : Number(st.delivery_lng);
           const ok = !!st.delivery_enabled && Number.isFinite(lat) && Number.isFinite(lng) && lat !== null && lng !== null && zones.length > 0;
-          return { deliveryEnabled: ok, deliveryLat: lat, deliveryLng: lng, deliveryZones: zones, deliveryMin: Number(st.delivery_min) || 0 };
+          return { deliveryEnabled: ok, deliveryLat: lat, deliveryLng: lng, deliveryZones: zones, deliveryMin: Number(st.delivery_min) || 0, dvSms: !!st.dv_sms };
         })(),
       },
       categories: shown.map((c) => ({ id: c.id, name: c.name, from: c.avail_from || null, to: c.avail_to || null })),
@@ -1720,30 +1774,42 @@
   };
   // в ресторане всё просто: заказ отправлен → подан (или отменён). Без «принят / готовится / готово» (правило владельца).
   const guestStatus = (s) => (['served', 'cancelled'].includes(s) ? s : 'new');
-  // доставка: свои этапы — ждём подтверждения → приняли → готовим → в пути → доставлено
-  const DV_STATUSES = ['new', 'accepted', 'cooking', 'ready', 'on_the_way', 'served', 'cancelled'];
+  // доставка: свои этапы — (ждём звонка ресторана) → ждём подтверждения → приняли → готовим → в пути → доставлено
+  const DV_STATUSES = ['confirm', 'new', 'accepted', 'cooking', 'ready', 'on_the_way', 'served', 'cancelled'];
+  // телефон как на сервере (phone_e164): +60… для Малайзии; не похоже на номер — ''
+  const e164 = (p) => {
+    const d = String(p || '').replace(/\D/g, '');
+    const e = /^\s*\+/.test(String(p || '')) ? `+${d}` : d.startsWith('00') ? `+${d.slice(2)}` : d.startsWith('60') ? `+${d}` : d.startsWith('0') ? `+60${d.slice(1)}` : '';
+    return /^\+[1-9]\d{7,14}$/.test(e) ? e : '';
+  };
+  const ltr = (x) => `\u2066${x}\u2069`;   // номер внутри арабского текста не переворачивается
+  // доставку отменили, потому что не дозвонились
+  const noAnswer = (o) => o?.status === 'cancelled' && o.cancel_reason === 'no_answer';
   const dvStatus = (s) => (DV_STATUSES.includes(s) ? s : 'new');
   function statusText(o, kind) {
     if (!o) return '';
     if (kind !== 'delivery') return t('statuses')[guestStatus(o.status)];
     const s = dvStatus(o.status);
-    return s === 'cancelled' ? t('statuses').cancelled
-      : s === 'new' ? t('stWait') : s === 'ready' ? t('stReady') : s === 'on_the_way' ? t('stWay') : s === 'served' ? t('stDone') : t('stCooking');
+    return s === 'cancelled' ? (noAnswer(o) ? t('dvNoAnswer') : t('statuses').cancelled)
+      : s === 'confirm' ? t('dvSt').confirm
+        : s === 'new' ? t('stWait') : s === 'ready' ? t('stReady') : s === 'on_the_way' ? t('stWay') : s === 'served' ? t('stDone') : t('stCooking');
   }
   const stKind = (o, kind) => {
     const s = o?.status;
     if (s === 'cancelled') return 'off';
     if (s === 'served') return 'ok';
-    return kind === 'delivery' && s !== 'new' ? 'go' : 'wait';
+    return kind === 'delivery' && s !== 'new' && s !== 'confirm' ? 'go' : 'wait';
   };
 
   // шаги доставки — как на макете: точка, линия, время там, где оно известно
-  function dvStepsHtml(o) {
+  function dvStepsHtml(o, call) {
     const s = dvStatus(o.status);
-    const rank = { new: 0, accepted: 1, cooking: 1, ready: 2, on_the_way: 3, served: 4 }[s] ?? 0;
+    const rank = { confirm: -1, new: 0, accepted: 1, cooking: 1, ready: 2, on_the_way: 3, served: 4 }[s] ?? 0;
     // имя курьера — в карточке ниже; здесь только расстояние, как на макете
     const way = o.distance_km != null ? t('kmToYou')(kmText(o.distance_km)) : '';
     const steps = [
+      // первым шагом — звонок ресторана, если заказ его ждал
+      ...(s === 'confirm' || call ? [{ b: s === 'confirm' ? t('dvSt').confirm : t('stCalled'), done: rank >= 0, now: s === 'confirm' }] : []),
       { b: rank >= 1 ? t('stAccepted') : t('stWait'), at: o.accepted_at, done: rank >= 1, now: rank === 0 },
       { b: s === 'ready' ? t('stReady') : t('stCooking'), done: rank >= 3, now: rank === 1 || rank === 2 },
       { b: t('stWay'), small: rank === 3 ? way : '', at: o.picked_at, done: rank >= 4, now: rank === 3 },
@@ -1765,8 +1831,10 @@
     const kind = o.kind || mine.kind || 'table';
     const dvk = kind === 'delivery';
     const gs = dvk ? dvStatus(o.status) : guestStatus(o.status);
-    const head = dvk ? t('dvSt')[gs] : t('statuses')[gs];
-    const hint = dvk ? t('dvHint')[gs] : t('statusHint')[gs];
+    const callPhone = dvk ? (mine.phone || e164(profile.phone)) : '';
+    const head = dvk ? (noAnswer(o) ? t('dvNoAnswer') : t('dvSt')[gs]) : t('statuses')[gs];
+    const hint = !dvk ? t('statusHint')[gs] : noAnswer(o) ? t('dvNoAnswerHint')
+      : gs === 'confirm' && callPhone ? t('dvCallHint')(ltr(callPhone)) : t('dvHint')[gs];
     const sentNow = justSent === id && o.status === 'new';
     const items = (o.items || []).map((i) => {
       const on = (i.opts || []).map((x) => L(x.name)).filter(Boolean);
@@ -1789,7 +1857,7 @@
         <p class="no">${esc(dvk ? t('trDv')(o.no) : t('trTable')(o.table_label, o.no))}</p>
         <h2>${esc(head)}</h2>
         <p class="hint">${esc(hint)}</p>
-        ${dvk && gs !== 'cancelled' ? dvStepsHtml(o) : `<p class="t-meta">${icon(gs === 'served' ? 'check' : gs === 'cancelled' ? 'x' : 'clock', 'sm')}<span>${esc(t('sentAt')(timeOf(o.created_at)))}</span>${o.paid_at ? `<span class="paid-tag">${icon('check', 'sm')}${esc(t('paid'))}</span>` : ''}</p>`}
+        ${dvk && gs !== 'cancelled' ? dvStepsHtml(o, !!mine.call) : `<p class="t-meta">${icon(gs === 'served' ? 'check' : gs === 'cancelled' ? 'x' : 'clock', 'sm')}<span>${esc(t('sentAt')(timeOf(o.created_at)))}</span>${o.paid_at ? `<span class="paid-tag">${icon('check', 'sm')}${esc(t('paid'))}</span>` : ''}</p>`}
         ${where}
       </section>
       ${courier}
@@ -2199,8 +2267,8 @@
     return JSON.stringify(lines().map((l) => [l.key, l.ok, l.unit])) === before;
   }
   // сервер подтвердил — только теперь «отправлен»: запоминаем заказ, чистим корзину, открываем «Где мой заказ»
-  function placed(o, kind) {
-    myOrders = [{ id: o.id, token: o.guest_token, no: o.no, at: Date.now(), kind }, ...myOrders.filter((x) => x.id !== o.id)].slice(0, 20);
+  function placed(o, kind, extra = {}) {
+    myOrders = [{ id: o.id, token: o.guest_token, no: o.no, at: Date.now(), kind, ...(o.status === 'confirm' ? { call: true } : {}), ...extra }, ...myOrders.filter((x) => x.id !== o.id)].slice(0, 20);
     tracked[o.id] = { ...o, kind, table_label: o.table_label || (kind === 'delivery' ? '' : table), updated_at: o.created_at };
     store.set('myOrders', myOrders);
     store.set('tracked', tracked);
@@ -2291,6 +2359,7 @@
         const rows = await rpc('get_order', { p_id: o.id, p_token: o.token });
         const row = Array.isArray(rows) ? rows[0] : rows;
         if (!row) { gone.push(o.id); return; }  // сервер не знает такой заказ (старше 3 дней или другая база)
+        if (row.status === 'confirm' && !o.call) { o.call = true; store.set('myOrders', myOrders); }
         if (JSON.stringify(tracked[o.id]) !== JSON.stringify(row)) {
           tracked[o.id] = row;
           changed = true;
@@ -3172,9 +3241,12 @@
         <div id="dv-sum"></div>
         <div class="pay" id="dv-pay" role="radiogroup" aria-label="${esc(t('payHow'))}"></div>
         <p class="hint-note pad">${esc(t('dvSaveHint'))}</p>
+        <p class="hint-note pad dv-call-note">${icon('phone', 'sm')}<span>${esc(t('dvMayCall'))}</span></p>
+        <div id="dv-sms"></div>
         <div class="cta-bar" id="dv-cta"></div>`;
     }
     updateDelivery();
+    renderSms();
     // цена считается и без карты (карта могла не загрузиться — точку даст «Моё местоположение»)
     if (profile.lat != null && !dv.quoting && (!dv.quote || dv.quote.reason === 'net')) quote();
     initMap();
@@ -3197,6 +3269,8 @@
         <div class="tot"><span>${esc(t('total'))}</span><b>${money(c.total)}</b></div></div>` : '';
     const block = count ? dvBlocker() : '';
     const msg = dv.error || block;
+    // пока гость вводит код из SMS — кнопка заказа спрятана: заказ уйдёт сам после верного кода
+    if (dv.sms && count) { $('#dv-cta').innerHTML = msg ? `<p class="notice${dv.error ? ' bad' : ''}" role="${dv.error ? 'alert' : 'status'}">${icon('alert')}<span>${esc(msg)}</span></p>` : ''; return; }
     $('#dv-cta').innerHTML = `${msg ? `<p class="notice${dv.error ? ' bad' : ''}" role="${dv.error ? 'alert' : 'status'}">${icon('alert')}<span>${esc(msg)}</span></p>` : ''}
       ${count ? `<button type="button" class="cta" data-act="dv-send"${block || dv.busy || dv.quoting || !c.q ? ' disabled' : ''}>${dv.busy ? `<span class="spinner" aria-hidden="true"></span><span>${esc(t('sending'))}</span>` : `<span>${esc(t('dvSend')(money(c.total)))}</span>`}</button>`
     : `<p class="notice info">${icon('bag')}<span>${esc(`${t('cartEmpty')}. ${t('cartEmptyHint')}`)}</span></p><button type="button" class="cta" data-act="go" data-to="menu"><span>${esc(t('openMenu'))}</span></button>`}`;
@@ -3278,6 +3352,142 @@
     renderModeBanner();
     renderBar();
   }
+  // ---------- Проверка номера по SMS ----------
+  // ключ номера живёт год: { "+60123456789": "uuid" } — во второй раз код не нужен
+  const phoneTokens = () => { const v = store.get('phoneTokens', {}); return v && typeof v === 'object' ? v : {}; };
+  function savePhoneToken(ph, tok) { store.set('phoneTokens', { ...phoneTokens(), [ph]: tok }); }
+  function forgetPhoneToken(ph) { const v = phoneTokens(); delete v[ph]; store.set('phoneTokens', v); }
+  let smsTimer = null;
+  // dv.sms: { phone, sentAt, wait, busy, error } — шаг «введите код»
+  function openSms(ph) {
+    dv.sms = { phone: ph, sentAt: 0, wait: 0, busy: false, error: '' };
+    dv.error = '';
+    updateDelivery();
+    renderSms();
+    $('#dv-sms .sms-step')?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    requestCode();
+  }
+  function closeSms() {
+    dv.sms = null;
+    clearInterval(smsTimer);
+    renderSms();
+    updateDelivery();
+  }
+  const smsLeft = () => (dv.sms?.sentAt ? Math.max(0, Math.ceil((dv.sms.sentAt + dv.sms.wait * 1000 - Date.now()) / 1000)) : 0);
+  const mmss = (x) => `${Math.floor(x / 60)}:${String(x % 60).padStart(2, '0')}`;
+  function paintSmsResend() {
+    const b = $('#sms-resend');
+    if (!b || !dv.sms) return;
+    const left = smsLeft();
+    b.disabled = left > 0 || dv.sms.busy;
+    b.textContent = left > 0 ? t('smsResendIn')(mmss(left)) : t('smsResend');
+  }
+  function paintSmsErr() {
+    const e = $('#sms-err');
+    if (!e || !dv.sms) return;
+    e.hidden = !dv.sms.error;
+    e.innerHTML = dv.sms.error ? `${icon('alert')}<span>${esc(dv.sms.error)}</span>` : '';
+    const v = $('#sms-verify');
+    if (v) {
+      v.disabled = dv.sms.busy || !dv.sms.sentAt;
+      v.innerHTML = dv.sms.busy && dv.sms.sentAt ? `<span class="spinner" aria-hidden="true"></span><span>${esc(t('smsVerify'))}</span>` : `<span>${esc(t('smsVerify'))}</span>`;
+    }
+    const sub = $('#sms-sub');
+    if (sub) sub.textContent = dv.sms.sentAt ? t('smsSent')(ltr(dv.sms.phone)) : dv.sms.busy ? t('smsSending') : t('smsWhy');
+    paintSmsResend();
+  }
+  // блок рисуется целиком только при открытии шага; дальше меняем текст ошибки, подпись и таймер
+  function renderSms() {
+    const box = $('#dv-sms');
+    if (!box) return;
+    if (!dv.sms) { box.innerHTML = ''; clearInterval(smsTimer); return; }
+    if (!box.querySelector('#sms-code') || box.dataset.phone !== dv.sms.phone || box.dataset.lang !== lang) {
+      const kept = $('#sms-code')?.value || '';
+      box.dataset.phone = dv.sms.phone;
+      box.dataset.lang = lang;
+      box.innerHTML = `<section class="sms-step" aria-labelledby="sms-title">
+        <h3 id="sms-title">${icon('phone', 'sm')}<span>${esc(t('smsTitle'))}</span></h3>
+        <p class="sms-sub" id="sms-sub" aria-live="polite"></p>
+        <label class="field sms-field"><small>${esc(t('smsCode'))}</small><input id="sms-code" type="text" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]*" maxlength="6" dir="ltr" placeholder="••••••" value="${esc(kept)}"></label>
+        <p class="notice bad" id="sms-err" role="alert" hidden></p>
+        <button type="button" class="cta" id="sms-verify" data-act="sms-verify"><span>${esc(t('smsVerify'))}</span></button>
+        <div class="sms-links"><button type="button" class="btn small ghost" id="sms-resend" data-act="sms-resend"></button>
+          <button type="button" class="btn small ghost" data-act="sms-change">${esc(t('smsChange'))}</button></div>
+      </section>`;
+    }
+    paintSmsErr();
+    clearInterval(smsTimer);
+    smsTimer = setInterval(() => { if (!dv.sms || !$('#sms-resend')) { clearInterval(smsTimer); return; } paintSmsResend(); }, 1000);
+  }
+  function smsErrText(m) {
+    const bad = m.match(/bad_code:(\d+)/);
+    if (bad) return t('smsBad')(Number(bad[1]));
+    if (/too_many_attempts/.test(m)) return t('smsTooMany');
+    if (/expired/.test(m)) return t('smsExpired');
+    if (/too_many/.test(m)) return t('smsLimit');
+    if (/bad_phone/.test(m)) return t('smsBadPhone');
+    if (/sms_off/.test(m)) return t('smsOff');
+    return t('errServer');
+  }
+  async function requestCode() {
+    const s = dv.sms;
+    if (!s || s.busy) return;
+    s.busy = true;
+    s.error = '';
+    paintSmsErr();
+    try {
+      const r = await rpc('request_phone_code', { p_phone: s.phone, p_lang: lang });
+      if (dv.sms !== s) return;
+      s.sentAt = Date.now();
+      s.wait = Number(r?.wait_s) || 60;
+    } catch (e) {
+      if (dv.sms !== s) return;
+      const m = String(e?.message || '');
+      const soon = m.match(/too_soon:(\d+)/);
+      if (soon) {
+        // код уже отправлен меньше минуты назад — он действует, просто ждём
+        s.wait = Number(soon[1]);
+        s.sentAt = Date.now();
+      } else if (/sms_off/.test(m)) {
+        // ресторан выключил проверку — заказываем без кода
+        await refreshMenu(true);
+        if (!R().dvSms) { closeSms(); sendDelivery(); return; }
+        s.error = smsErrText(m);
+      } else s.error = e?.net ? t('errNetwork') : smsErrText(m);
+    } finally {
+      if (dv.sms === s) { s.busy = false; paintSmsErr(); if (s.sentAt) $('#sms-code')?.focus(); }
+    }
+  }
+  async function verifyCode() {
+    const s = dv.sms;
+    const inp = $('#sms-code');
+    if (!s || s.busy || !inp) return;
+    const code = inp.value.replace(/\D/g, '');
+    if (code.length !== 6) { s.error = t('smsBad')(5).split(/[,，،]/)[0]; paintSmsErr(); inp.focus(); return; }
+    s.busy = true;
+    s.error = '';
+    paintSmsErr();
+    try {
+      const r = await rpc('verify_phone_code', { p_phone: s.phone, p_code: code });
+      if (dv.sms !== s) return;
+      if (!r?.phone_token) throw new Error('bad_reply');
+      savePhoneToken(r.phone || s.phone, r.phone_token);
+      closeSms();
+      toast(t('smsOk'));
+      sendDelivery();   // номер подтверждён — отправляем заказ сразу
+      return;
+    } catch (e) {
+      if (dv.sms !== s) return;
+      const m = String(e?.message || '');
+      s.error = e?.net ? t('errNetwork') : smsErrText(m);
+      // сгоревший или устаревший код — сразу можно просить новый
+      if (/too_many_attempts|expired/.test(m)) { s.sentAt = 0; s.wait = 0; inp.value = ''; }
+      else inp.select();
+    } finally {
+      if (dv.sms === s) { s.busy = false; paintSmsErr(); }
+    }
+  }
+
   async function sendDelivery() {
     if (dv.busy || !lines().length) return;
     const name = profile.name.trim();
@@ -3286,6 +3496,14 @@
     const bad = addr.length < 5 ? 'dv-addr' : !name ? 'dv-name' : !PHONE_RE.test(phone) ? 'dv-phone' : '';
     dv.error = dvBlocker() || (bad === 'dv-addr' ? t('dvNeedAddr') : bad === 'dv-name' ? t('bkNeedName') : bad === 'dv-phone' ? t('bkNeedPhone') : '');
     if (dv.error) { updateDelivery(); if (bad && !dvBlocker()) $(`#${bad}`)?.focus(); return; }
+    // проверка номера по SMS (если ресторан включил): без ключа номера — сначала код
+    const ph = e164(phone);
+    let phoneToken = null;
+    if (R().dvSms) {
+      if (!ph) { dv.error = t('smsBadPhone'); updateDelivery(); $('#dv-phone')?.focus(); return; }
+      phoneToken = phoneTokens()[ph] || null;
+      if (!phoneToken) { openSms(ph); return; }
+    }
     dv.busy = true;
     updateDelivery();
     try {
@@ -3301,6 +3519,7 @@
       const rows = await rpc('place_delivery', {
         p_items: itemsPayload(), p_name: name, p_phone: phone, p_address: addr, p_note: note.trim() || null,
         p_lat: profile.lat, p_lng: profile.lng, p_pay: dv.pay, p_lang: lang, p_client_key: pendingKey.key,
+        ...(phoneToken ? { p_phone_token: phoneToken } : {}),
       });
       const o = Array.isArray(rows) ? rows[0] : rows;
       if (!o?.id || !o.guest_token) throw new Error('bad_reply');
@@ -3310,8 +3529,17 @@
       saveProfile();
       dv.busy = false;
       dv.error = '';
-      placed({ ...o, kind: 'delivery', address: addr, pay_method: dv.pay, table_label: o.table_label || '' }, 'delivery');
+      placed({ ...o, kind: 'delivery', address: addr, pay_method: dv.pay, table_label: o.table_label || '' }, 'delivery', ph ? { phone: ph } : {});
+      if (o.status === 'confirm') toast(t('dvWillCall'));
     } catch (e) {
+      // ключ номера больше не подходит (стёрт, истёк, номер другой) — просим код ещё раз
+      if (/phone_unverified/.test(String(e?.message || ''))) {
+        forgetPhoneToken(ph);
+        dv.busy = false;
+        if (ph) { await refreshMenu(true); if (R().dvSms) { openSms(ph); return; } }
+        dv.error = t('smsBadPhone');
+        return;
+      }
       dv.error = await orderErr(e, 'delivery');
     } finally {
       dv.busy = false;
@@ -3562,6 +3790,9 @@
       else if (a === 'dv-me') locateMe();
       else if (a === 'dv-map-retry') initMap();
       else if (a === 'dv-send') sendDelivery();
+      else if (a === 'sms-verify') verifyCode();
+      else if (a === 'sms-resend') requestCode();
+      else if (a === 'sms-change') { closeSms(); $('#dv-phone')?.focus(); }
       else if (a === 'close-sheet') closeSheet();
       else if (a === 'theme') { theme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'; store.set('theme', theme); applyTheme(); renderProfile(); }
       else if (a === 'search-open') {
@@ -3699,7 +3930,13 @@
     if (id === 'bk-phone') bkForm.phone = e.target.value.slice(0, 20);
     if (id === 'bk-note') bkForm.note = e.target.value.slice(0, 300);
     if (id === 'pf-name' || id === 'dv-name') { profile.name = e.target.value.slice(0, 60); saveProfile(); }
-    if (id === 'pf-phone' || id === 'dv-phone') { profile.phone = e.target.value.slice(0, 20); saveProfile(); }
+    if (id === 'pf-phone' || id === 'dv-phone') { profile.phone = e.target.value.slice(0, 20); saveProfile(); if (dv.sms && e164(profile.phone) !== dv.sms.phone) closeSms(); }
+    if (id === 'sms-code') {
+      const v = e.target.value.replace(/\D/g, '').slice(0, 6);
+      if (v !== e.target.value) e.target.value = v;
+      if (dv.sms?.error) { dv.sms.error = ''; paintSmsErr(); }
+      if (v.length === 6 && dv.sms && !dv.sms.busy && dv.sms.sentAt) verifyCode();
+    }
     if (id === 'pf-addr' || id === 'dv-addr') { profile.address = e.target.value.slice(0, 300); saveProfile(); }
     if (id.startsWith('dv-') && dv.error) { dv.error = ''; updateDelivery(); }
     if (e.target.classList.contains('dn-input')) {

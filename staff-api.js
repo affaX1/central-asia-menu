@@ -147,7 +147,7 @@
           let q = sb.from('orders').select('*');
           q = toIso
             ? q.gte('created_at', fromIso).lt('created_at', toIso)
-            : q.or(`created_at.gte.${fromIso},status.in.(new,accepted,cooking,ready,on_the_way)`);
+            : q.or(`created_at.gte.${fromIso},status.in.(confirm,new,accepted,cooking,ready,on_the_way)`);
           return q.order('created_at', { ascending: true }).order('id', { ascending: true }).range(from, to);
         });
       },
@@ -163,6 +163,16 @@
       },
       async courierDone(id, method) {
         const { data, error } = await sb.rpc('courier_done', { p_id: id, p_method: method });
+        fail(error); return Array.isArray(data) ? data[0] : data;
+      },
+      // ---------- доставка ждёт звонка: «Принять заказ» → на кухню; «Не дозвонились» → отмена ----------
+      async confirmDelivery(id) {
+        const { data, error } = await sb.rpc('confirm_delivery', { p_order: id });
+        fail(error); return Array.isArray(data) ? data[0] : data;
+      },
+      // reason: no_answer | refused | other
+      async rejectDelivery(id, reason) {
+        const { data, error } = await sb.rpc('reject_delivery', { p_order: id, p_reason: reason });
         fail(error); return Array.isArray(data) ? data[0] : data;
       },
       async setOrderStatus(id, status) {
@@ -296,6 +306,11 @@
       },
       async setTelegram(token, chats, orders, calls, bills) {
         const { error } = await sb.rpc('set_telegram', { p_token: token, p_chats: chats, p_orders: orders, p_calls: calls, p_bills: bills }); fail(error);
+      },
+      // ---------- SMS (Twilio; только владелец). Токен только записывается: наружу { configured, from, sid_tail } ----------
+      async smsStatus() { const { data, error } = await sb.rpc('sms_status'); fail(error); return data; },
+      async setSms(sid, token, from) {
+        const { data, error } = await sb.rpc('set_sms', { p_sid: sid || '', p_token: token || '', p_from: from || '' }); fail(error); return data;
       },
       async clearTelegram() { const { error } = await sb.rpc('clear_telegram'); fail(error); },
       async telegramTest() { const { data, error } = await sb.rpc('telegram_test'); fail(error); return data; },

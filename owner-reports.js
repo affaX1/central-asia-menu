@@ -131,7 +131,9 @@
     if (!all.length) return '';
     const done = all.filter((o) => o.status === 'served');
     const cancelled = all.filter((o) => o.status === 'cancelled').length;
-    const open = all.length - done.length - cancelled;
+    const noAnswer = all.filter((o) => o.status === 'cancelled' && o.cancel_reason === 'no_answer').length;   // «не дозвонились»
+    const toCall = all.filter((o) => o.status === 'confirm').length;                                         // ещё ждут звонка
+    const open = all.length - done.length - cancelled - toCall;
     const rev = done.reduce((s2, o) => s2 + sen(o.total), 0);
     const fees = done.reduce((s2, o) => s2 + sen(o.delivery_fee), 0);
     const kms = done.map((o) => Number(o.distance_km)).filter((x) => Number.isFinite(x));
@@ -146,7 +148,7 @@
     }
     return `<section class="panel"><div class="panel-head"><h3>Доставка<small>${done.length}</small></h3></div><div class="panel-body">
       <div class="a-stats" style="margin-bottom:10px">
-        <div class="a-stat"><b>${done.length}</b><span>доставлено${open ? ` · ещё в работе ${open}` : ''}${cancelled ? ` · отменено ${cancelled}` : ''}</span></div>
+        <div class="a-stat"><b>${done.length}</b><span>доставлено${open ? ` · ещё в работе ${open}` : ''}${toCall ? ` · ждут звонка ${toCall}` : ''}${cancelled ? ` · отменено ${cancelled}${noAnswer ? ` (не дозвонились ${noAnswer})` : ''}` : ''}</span></div>
         <div class="a-stat"><b>${money(fromSen(rev))}</b><span>выручка доставки</span></div>
         <div class="a-stat"><b>${money(fromSen(fees))}</b><span>из них плата за доставку</span></div>
         <div class="a-stat"><b>${avgKm === null ? '—' : `${String(avgKm).replace('.', ',')} км`}</b><span>среднее расстояние</span></div>
@@ -204,7 +206,8 @@
       if (!R.error) loadReports(ctx).then(() => { if (location.hash === '#reports') reports(main, ctx); });
       return;
     }
-    const valid = R.orders.filter((o) => o.status !== 'cancelled');
+    // доставка, которая ждёт звонка, — ещё не заказ: не выручка и не «не оплачено»
+    const valid = R.orders.filter((o) => o.status !== 'cancelled' && o.status !== 'confirm');
     const cancelled = R.orders.filter((o) => o.status === 'cancelled');
     const sales = r2(valid.reduce((s, o) => s + Number(o.total), 0));
     const paid = r2(R.bills.reduce((s, b) => s + Number(b.total), 0));
@@ -476,7 +479,7 @@
     const tag = `${ymd(f)}_${ymd(addDays(t, -1))}`;
     const dt = (iso) => (iso ? new Date(iso).toLocaleString('ru-RU') : '');
     if (kind === 'orders') {
-      const DST = { new: 'новая', accepted: 'принята', cooking: 'готовится', ready: 'ждёт курьера', on_the_way: 'в пути', served: 'доставлен', cancelled: 'отменён' };
+      const DST = { confirm: 'ждёт звонка', new: 'новая', accepted: 'принята', cooking: 'готовится', ready: 'ждёт курьера', on_the_way: 'в пути', served: 'доставлен', cancelled: 'отменён' };
       csv(`заказы_${tag}.csv`, ['№', 'Дата и время', 'Стол', 'Статус', 'Позиции', 'Блюда', 'Сбор', 'Налог', 'Итого', 'Оплачен', 'Официант', 'Комментарий', 'Доставка', 'Км', 'Курьер'],
         R.orders.map((o) => [o.no, dt(o.created_at), o.table_label, (isDeliv(o) ? DST : { new: 'ждёт подачи', accepted: 'ждёт подачи', cooking: 'ждёт подачи', ready: 'ждёт подачи', served: 'подан', cancelled: 'отменён' })[o.status] || o.status,
           (o.items || []).map((i) => `${i.qty}× ${tr(i.name) || i.id}${optNames(i).length ? ` (${optNames(i).join(', ')})` : ''}${i.note ? ` [${i.note}]` : ''}`).join('; '),
@@ -489,7 +492,7 @@
           num(b.discount || 0), b.discount_reason || '', b.discount_by_name || '', num(b.rounding || 0), num(b.delivery_fee || 0)]));
     } else {
       const m = new Map();
-      for (const o of R.orders) if (o.status !== 'cancelled') for (const i of o.items || []) {
+      for (const o of R.orders) if (o.status !== 'cancelled' && o.status !== 'confirm') for (const i of o.items || []) {
         const k = `${tr(i.name) || i.id}${optNames(i).length ? ` (${optNames(i).join(', ')})` : ''}`;
         const r = m.get(k) || { qty: 0, sum: 0 };
         r.qty += Number(i.qty); r.sum += Number(i.price) * Number(i.qty);
@@ -515,7 +518,7 @@
     edited_at: 'изменён', edited_by_name: 'кто изменил', accepted_at: null, ready_at: null, cooking_at: null, cancelled_at: 'отменён в',
     accepted_by: null, status_by: null, method: 'оплата', tables_count: null, tip: 'чаевые', payments: 'части оплаты', discount: 'скидка', discount_pct: 'скидка %', discount_reason: 'причина скидки', discount_by_name: 'кто дал скидку', rounding: 'округление', cash_rounding: 'округление наличных', waiter_discounts: 'скидки официантов', receipt_info: 'реквизиты для чека', served_at: 'подан в', source: 'источник', created_by_name: 'пробил',
   };
-  const STV = { new: 'ждёт подачи', accepted: 'ждёт подачи', cooking: 'ждёт подачи', ready: 'ждёт подачи', served: 'подан', cancelled: 'отменён', waiter: 'официант', owner: 'владелец', cook: 'повар', guest: 'гость', staff: 'официант' };
+  const STV = { confirm: 'ждёт звонка', new: 'ждёт подачи', accepted: 'ждёт подачи', cooking: 'ждёт подачи', ready: 'ждёт подачи', served: 'подан', cancelled: 'отменён', waiter: 'официант', owner: 'владелец', cook: 'повар', guest: 'гость', staff: 'официант' };
   function val(k, v) {
     if (v === null || v === undefined || v === '') return '—';
     if (typeof v === 'boolean') return v ? 'да' : 'нет';
@@ -661,6 +664,7 @@
       <li><span>Средний чек</span><b>${money(n('bills') ? r2(n('total') / n('bills')) : 0)}</b></li>
       <li><span>Заказов</span><b>${n('orders')}</b></li>
       <li><span>Отменено заказов</span><b>${n('cancelled')}${n('cancelled') ? ` · ${money(n('cancelled_sum'))}` : ''}</b></li>
+      ${n('confirm_orders') ? `<li><span>Доставки ждут звонка (не в выручке)</span><b>${n('confirm_orders')}</b></li>` : ''}
       <li><span>Отменено оплат</span><b>${n('voided')}${n('voided') ? ` · ${money(n('voided_sum'))}` : ''}</b></li>
       ${cashiers.map(([k, v]) => `<li><span>Кассир: ${esc(k)}</span><b>${money(v)}</b></li>`).join('')}
     </ul>`;

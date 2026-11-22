@@ -434,7 +434,7 @@ window.STAFF_T = (() => {
     delivery: { ru: 'Доставка', en: 'Delivery', ms: 'Penghantaran', uz: 'Yetkazib berish' },
     deliv_no: { ru: (n) => `Доставка №${n}`, en: (n) => `Delivery #${n}`, ms: (n) => `Penghantaran #${n}`, uz: (n) => `Yetkazish №${n}` },
     // статусы доставки: у неё свои этапы (в зале — только «ждёт подачи / подан»)
-    dst: { ru: { new: 'Новый', accepted: 'Принят', cooking: 'Готовится', ready: 'Готов, ждёт курьера', on_the_way: 'В пути', served: 'Доставлен', cancelled: 'Отменён' }, en: { new: 'New', accepted: 'Accepted', cooking: 'Cooking', ready: 'Ready for courier', on_the_way: 'On the way', served: 'Delivered', cancelled: 'Cancelled' }, ms: { new: 'Baharu', accepted: 'Diterima', cooking: 'Dimasak', ready: 'Siap, tunggu penghantar', on_the_way: 'Dalam perjalanan', served: 'Dihantar', cancelled: 'Dibatalkan' }, uz: { new: 'Yangi', accepted: 'Qabul qilindi', cooking: 'Tayyorlanmoqda', ready: 'Tayyor, kuryer kutmoqda', on_the_way: 'Yo‘lda', served: 'Yetkazildi', cancelled: 'Bekor qilindi' } },
+    dst: { ru: { confirm: 'Ожидает подтверждения', new: 'Новый', accepted: 'Принят', cooking: 'Готовится', ready: 'Готов, ждёт курьера', on_the_way: 'В пути', served: 'Доставлен', cancelled: 'Отменён' }, en: { confirm: 'Awaiting confirmation', new: 'New', accepted: 'Accepted', cooking: 'Cooking', ready: 'Ready for courier', on_the_way: 'On the way', served: 'Delivered', cancelled: 'Cancelled' }, ms: { confirm: 'Menunggu pengesahan', new: 'Baharu', accepted: 'Diterima', cooking: 'Dimasak', ready: 'Siap, tunggu penghantar', on_the_way: 'Dalam perjalanan', served: 'Dihantar', cancelled: 'Dibatalkan' }, uz: { confirm: 'Tasdiq kutmoqda', new: 'Yangi', accepted: 'Qabul qilindi', cooking: 'Tayyorlanmoqda', ready: 'Tayyor, kuryer kutmoqda', on_the_way: 'Yo‘lda', served: 'Yetkazildi', cancelled: 'Bekor qilindi' } },
     km: { ru: (x) => `${x} км`, en: (x) => `${x} km`, ms: (x) => `${x} km`, uz: (x) => `${x} km` },
     pay_how: { ru: { cash: 'наличными', card: 'картой' }, en: { cash: 'in cash', card: 'by card' }, ms: { cash: 'tunai', card: 'kad' }, uz: { cash: 'naqd', card: 'karta bilan' } },
     c_to_pay: { ru: (m, how) => `К оплате ${m} · ${how}`, en: (m, how) => `To collect ${m} · ${how}`, ms: (m, how) => `Perlu dibayar ${m} · ${how}`, uz: (m, how) => `To‘lanadi ${m} · ${how}` },
@@ -485,5 +485,21 @@ window.STAFF_T = (() => {
     k_deliv_ready: { ru: 'Готово — отдать курьеру', en: 'Ready — hand to courier', ms: 'Siap — serah kepada penghantar', uz: 'Tayyor — kuryerga berish' },
     k_deliv_wait: { ru: 'Готово, ждёт курьера', en: 'Ready, waiting for courier', ms: 'Siap, menunggu penghantar', uz: 'Tayyor, kuryer kutmoqda' },
     k_deliv_new: { ru: 'Ещё не принят залом', en: 'Not accepted by the floor yet', ms: 'Belum diterima oleh pelayan', uz: 'Zal hali qabul qilmagan' },
+    // доставка ждёт звонка ресторана (status confirm)
+    sec_confirm: { ru: 'Позвоните гостю', en: 'Call the guest', ms: 'Hubungi tetamu', uz: 'Mehmonga qo‘ng‘iroq qiling' },
+    dv_hint: { ru: 'Позвоните, проверьте адрес и заказ. На кухню заказ уйдёт только после «Принять заказ».', en: 'Call, check the address and the order. It goes to the kitchen only after “Accept order”.', ms: 'Telefon, semak alamat dan pesanan. Pesanan ke dapur hanya selepas “Terima pesanan”.', uz: 'Qo‘ng‘iroq qilib, manzil va buyurtmani tekshiring. Buyurtma oshxonaga faqat «Buyurtmani qabul qilish»dan keyin ketadi.' },
+    dv_call: { ru: 'Позвонить', en: 'Call', ms: 'Telefon', uz: 'Qo‘ng‘iroq' },
+    dv_confirm: { ru: 'Принять заказ', en: 'Accept order', ms: 'Terima pesanan', uz: 'Buyurtmani qabul qilish' },
+    dv_reject: { ru: 'Не дозвонились', en: 'No answer', ms: 'Tiada jawapan', uz: 'Javob bermadi' },
+    dv_ask_reject: { ru: (n) => `Отменить доставку №${n}? На кухню она не пойдёт, гость увидит причину.`, en: (n) => `Cancel delivery #${n}? It will not go to the kitchen; the guest will see the reason.`, ms: (n) => `Batalkan penghantaran #${n}? Ia tidak akan ke dapur; tetamu akan nampak sebabnya.`, uz: (n) => `№${n} yetkazish bekor qilinsinmi? Oshxonaga bormaydi, mehmon sababini ko‘radi.` },
+    dv_reject_ok: { ru: 'Отменить заказ', en: 'Cancel order', ms: 'Batalkan pesanan', uz: 'Buyurtmani bekor qilish' },
+    dv_back: { ru: 'Назад', en: 'Back', ms: 'Kembali', uz: 'Orqaga' },
+    dv_reasons: { ru: { no_answer: 'Не дозвонились', refused: 'Гость отказался', other: 'Другая причина' }, en: { no_answer: 'No answer', refused: 'Guest refused', other: 'Other reason' }, ms: { no_answer: 'Tiada jawapan', refused: 'Tetamu menolak', other: 'Sebab lain' }, uz: { no_answer: 'Javob bermadi', refused: 'Mehmon voz kechdi', other: 'Boshqa sabab' } },
+    dv_cancelled_why: { ru: (r) => `Отменён: ${r}`, en: (r) => `Cancelled: ${r}`, ms: (r) => `Dibatalkan: ${r}`, uz: (r) => `Bekor qilindi: ${r}` },
+    dv_confirmed_by: { ru: (n, t) => `Подтвердил по телефону: ${n}${t ? `, ${t}` : ''}`, en: (n, t) => `Confirmed by phone: ${n}${t ? `, ${t}` : ''}`, ms: (n, t) => `Disahkan melalui telefon: ${n}${t ? `, ${t}` : ''}`, uz: (n, t) => `Telefonda tasdiqladi: ${n}${t ? `, ${t}` : ''}` },
+    dv_t_rejected: { ru: (n) => `Доставка №${n} отменена`, en: (n) => `Delivery #${n} cancelled`, ms: (n) => `Penghantaran #${n} dibatalkan`, uz: (n) => `№${n} yetkazish bekor qilindi` },
+    dv_t_gone: { ru: (n) => `Доставку №${n} уже обработал кто-то другой`, en: (n) => `Someone else has already handled delivery #${n}`, ms: (n) => `Orang lain sudah mengurus penghantaran #${n}`, uz: (n) => `№${n} yetkazishni boshqa kimdir ko‘rib chiqqan` },
+    b_confirm: { ru: (n) => `Доставка №${n} ждёт звонка`, en: (n) => `Delivery #${n} is waiting for your call`, ms: (n) => `Penghantaran #${n} menunggu panggilan`, uz: (n) => `№${n} yetkazish qo‘ng‘iroq kutmoqda` },
+    b_confirm_many: { ru: (k) => `Ждут звонка: ${k}`, en: (k) => `${k} waiting for your call`, ms: (k) => `${k} menunggu panggilan`, uz: (k) => `Qo‘ng‘iroq kutmoqda: ${k}` },
   };
 })();

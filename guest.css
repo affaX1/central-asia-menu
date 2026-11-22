@@ -832,3 +832,16 @@ body.has-bar .service-btn { padding: 0; width: 62px; justify-content: center; }
 .hero::before { opacity: .42; -webkit-mask-image: linear-gradient(110deg, transparent 0%, rgba(0,0,0,.35) 45%, #000 80%); mask-image: linear-gradient(110deg, transparent 0%, rgba(0,0,0,.35) 45%, #000 80%); }
 /* карта в тон приложению: приглушённые тёплые цвета вместо ярких по умолчанию */
 .leaflet-tile-pane { filter: grayscale(.55) sepia(.22) saturate(.9) brightness(1.04) contrast(.92); }
+
+/* ---------- доставка: звонок ресторана и код из SMS ---------- */
+.dv-call-note { display: flex; align-items: flex-start; gap: 6px; }
+.dv-call-note .ic { flex: none; width: 14px; height: 14px; margin-top: 2px; }
+.sms-step { margin: 18px 0 0; padding: 16px 0 4px; border-top: 1px solid var(--line); scroll-margin-top: 80px; }
+.sms-step h3 { display: flex; align-items: center; gap: 8px; margin: 0 var(--pad); color: var(--ink); font: 600 24px/1.15 var(--serif); }
+.sms-step h3 .ic { flex: none; width: 20px; height: 20px; color: var(--terra); }
+.sms-sub { margin: 6px var(--pad) 0; color: var(--muted); font: 600 14px/1.45 var(--sans); }
+.sms-field input { font: 700 28px/1.2 var(--sans); letter-spacing: .38em; text-align: center; font-variant-numeric: tabular-nums; }
+.sms-step .cta { width: calc(100% - 2 * var(--pad)); margin: 12px var(--pad) 0; }
+.sms-links { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px var(--pad) 0; }
+.sms-links .btn { flex: 1 1 auto; }
+.sms-links .btn:disabled { opacity: .6; }

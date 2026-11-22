@@ -693,6 +693,18 @@ body.signed #a-user .lang-pick select { width: 100%; }
 .dv-maps .btn { flex: 1 1 130px; }
 .dv-nopoint { margin: 0; color: var(--warn); font-size: 13.5px; font-weight: 700; }
 
+/* доставка ждёт звонка ресторана: жёлтая карточка наверху, крупные «Позвонить / Принять / Не дозвонились» (не тёмные) */
+.st-confirm { background: var(--warn-soft); color: var(--warn); }
+.o-card.is-confirm { border: 2px solid #E3A72F; border-inline-start-width: 6px; background: color-mix(in srgb, var(--warn-soft) 65%, var(--surface)); }
+.dv-call-hint { display: flex; gap: 8px; align-items: flex-start; margin: 0; padding: 10px 12px; border-radius: 12px; background: var(--warn-soft); color: var(--warn); font-size: 14.5px; font-weight: 700; }
+.dv-call-hint .ic { width: 16px; height: 16px; flex: none; margin-top: 2px; }
+.dv-confirm { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; margin-top: 10px; }
+.dv-confirm .btn { min-height: 54px; font-size: 16px; font-weight: 800; white-space: normal; text-align: center; justify-content: center; }
+.dv-confirm .dv-call { grid-column: 1 / -1; background: #F6C453; color: #3B2A06; border: 1.5px solid #E3A72F; text-decoration: none; }
+.dv-confirm .dv-ok { background: var(--ok-soft); color: var(--ok); border: 1.5px solid color-mix(in srgb, var(--ok) 35%, transparent); }
+.dv-confirm .dv-no { background: var(--surface); }
+.dv-why { color: var(--warn); font-weight: 700; }
+
 /* своё окно: выбор варианта (наличными / картой) */
 .ask-choices { display: grid; gap: 8px; margin-top: 14px; }
 .ask-choice { display: flex; align-items: center; gap: 10px; min-height: 50px; padding: 8px 14px; border: 1.5px solid var(--line); border-radius: 14px; background: var(--bg); font-weight: 700; font-size: 16px; cursor: pointer; }

@@ -26,8 +26,8 @@ test('тексты панелей сотрудников: у каждого кл
       if (Array.isArray(v[l])) assert.strictEqual(v[l].length, v.ru.length, `staff-i18n ${k}.${l}: длина`);
     }
   }
-  // доставка: все статусы, включая «в пути»
-  assert.deepStrictEqual(Object.keys(T.dst.ru).sort(), ['accepted', 'cancelled', 'cooking', 'new', 'on_the_way', 'ready', 'served']);
+  // доставка: все статусы, включая «ждёт звонка» и «в пути»
+  assert.deepStrictEqual(Object.keys(T.dst.ru).sort(), ['accepted', 'cancelled', 'confirm', 'cooking', 'new', 'on_the_way', 'ready', 'served']);
 });
 
 test('в интерфейсе нет эмодзи', () => {

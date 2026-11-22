@@ -62,7 +62,13 @@
   const isDeliv = (o) => o?.kind === 'delivery';
   const DELIV_OPEN = ['new', 'accepted', 'cooking', 'ready', 'on_the_way'];
   const delivSt = (s) => t('dst')[s] || s;
-  const telOf = (p) => String(p || '').replace(/[^\d+]/g, '');
+  // телефон для звонка: +60… как на сервере (phone_e164), иначе просто цифры
+  const e164 = (p) => {
+    const d = String(p || '').replace(/\D/g, '');
+    const e = /^\s*\+/.test(String(p || '')) ? `+${d}` : d.startsWith('00') ? `+${d.slice(2)}` : d.startsWith('60') ? `+${d}` : d.startsWith('0') ? `+60${d.slice(1)}` : '';
+    return /^\+[1-9]\d{7,14}$/.test(e) ? e : '';
+  };
+  const telOf = (p) => e164(p) || String(p || '').replace(/[^\d+]/g, '');
   const hasPoint = (o) => o?.lat != null && o?.lng != null && Number.isFinite(Number(o.lat)) && Number.isFinite(Number(o.lng));
   const mapsUrl = (o) => `https://www.google.com/maps/dir/?api=1&destination=${Number(o.lat)},${Number(o.lng)}`;
   const wazeUrl = (o) => `https://waze.com/ul?ll=${Number(o.lat)},${Number(o.lng)}&navigate=yes`;
@@ -92,19 +98,31 @@
   // карточка доставки в списке заказов (официант, владелец): вместо стола — «Доставка №…», гость и адрес.
   // «Подано» и «Счёт стола» у доставки нет — её закрывает курьер. «Изменить» тоже нет: пересчёт заказа
   // (edit_order) считает сбор зала и не знает про плату за доставку. extra — свои кнопки страницы.
+  // status confirm — гость ещё не подтверждён звонком: наверху, жёлтым, «Позвонить» / «Принять заказ» / «Не дозвонились»
   function delivCard(o, { busy = false, extra = '' } = {}) {
     const isNew = o.status === 'new';
-    return `<article class="o-card is-deliv${isNew ? ' is-new' : ''}">
-      <div class="o-head"><b class="o-table">${icon('bike', 'sm')}${esc(t('deliv_no', o.no))}</b>
+    const isConfirm = o.status === 'confirm';
+    const tel = telOf(o.customer_phone);
+    const dis = busy ? ' disabled' : '';
+    const why = o.status === 'cancelled' && o.cancel_reason ? (t('dv_reasons')[o.cancel_reason] || o.cancel_reason) : '';
+    return `<article class="o-card is-deliv${isConfirm ? ' is-confirm' : isNew ? ' is-new' : ''}">
+      <div class="o-head"><b class="o-table">${icon(isConfirm ? 'phone' : 'bike', 'sm')}${esc(t('deliv_no', o.no))}</b>
         <span class="st st-${esc(o.status)}">${o.status === 'served' ? icon('check', 'sm') : ''}${esc(delivSt(o.status))}</span></div>
-      <div class="o-meta">${esc(hhmm(o.created_at))} · ${esc(ago(o.created_at))}${o.accepted_by_name && o.status !== 'new' ? ` · ${esc(t('accepted_by', o.accepted_by_name, ''))}` : ''}</div>
+      <div class="o-meta">${esc(hhmm(o.created_at))} · ${esc(ago(o.created_at))}${o.accepted_by_name && !['new', 'confirm'].includes(o.status) ? ` · ${esc(t('accepted_by', o.accepted_by_name, ''))}` : ''}</div>
+      ${isConfirm ? `<p class="dv-call-hint">${icon('phone', 'sm')}<span>${esc(t('dv_hint'))}</span></p>` : ''}
+      ${o.confirmed_by_name && !isConfirm ? `<div class="o-meta">${esc(t('dv_confirmed_by', o.confirmed_by_name, o.confirmed_at ? hhmm(o.confirmed_at) : ''))}</div>` : ''}
       ${delivInfoHtml(o)}
       <ul class="o-items">${(o.items || []).map((i) => `<li><span><b>${esc(i.qty)}×</b> ${esc(tr(i.name) || i.id)}${optNames(i).length ? `<em class="o-opt">${esc(optNames(i).join(', '))}</em>` : ''}${noteHtml(i)}</span><span>${money(i.price * i.qty)}</span></li>`).join('')}</ul>
       ${o.note ? `<div class="o-note"><b>${esc(t('comment'))}:</b> ${esc(trNote(o.note))}</div>` : ''}
-      ${o.status === 'cancelled' ? `<div class="o-meta">${esc(t('order_cancelled'))}</div>` : ''}
-      ${isNew ? `<button type="button" class="btn block serve-btn" data-dv-accept="${esc(o.id)}"${busy ? ' disabled' : ''}>${icon('check')}${esc(t('d_accept'))}</button>` : ''}
-      ${o.status !== 'cancelled' || extra ? `<div class="o-actions">
-        ${o.status !== 'cancelled' ? `<button type="button" class="btn small ghost" data-fl-ticket="${esc(o.id)}">${icon('printer', 'sm')}${esc(t('print_kitchen'))}</button>` : ''}
+      ${o.status === 'cancelled' ? `<div class="o-meta${why ? ' dv-why' : ''}">${esc(why ? t('dv_cancelled_why', why) : t('order_cancelled'))}</div>` : ''}
+      ${isConfirm ? `<div class="dv-confirm">
+          ${tel ? `<a class="btn dv-call" href="tel:${esc(tel)}">${icon('phone')}${esc(t('dv_call'))}</a>` : ''}
+          <button type="button" class="btn dv-ok" data-dv-confirm="${esc(o.id)}"${dis}>${icon('check')}${esc(t('dv_confirm'))}</button>
+          <button type="button" class="btn ghost dv-no" data-dv-reject="${esc(o.id)}"${dis}>${icon('x', 'sm')}${esc(t('dv_reject'))}</button>
+        </div>` : ''}
+      ${isNew ? `<button type="button" class="btn block serve-btn" data-dv-accept="${esc(o.id)}"${dis}>${icon('check')}${esc(t('d_accept'))}</button>` : ''}
+      ${(o.status !== 'cancelled' && !isConfirm) || extra ? `<div class="o-actions">
+        ${o.status !== 'cancelled' && !isConfirm ? `<button type="button" class="btn small ghost" data-fl-ticket="${esc(o.id)}">${icon('printer', 'sm')}${esc(t('print_kitchen'))}</button>` : ''}
         ${extra}</div>` : ''}
     </article>`;
   }
@@ -160,6 +178,7 @@
     bill: { type: 'sine', notes: [[0, 1568], [0.1, 1568], [0.2, 2093]], len: 0.09, vol: 0.38 },           // частый звон: «принесите счёт»
     booking: { type: 'sine', notes: [[0, 523], [0.16, 659], [0.32, 784], [0.5, 1047]], len: 0.3, vol: 0.35 }, // мягкий перелив: новая бронь
     delivery: { type: 'square', notes: [[0, 587], [0.14, 784], [0.28, 587], [0.42, 784]], len: 0.11, vol: 0.18 }, // «би-бип, би-бип»: новая доставка
+    confirm: { type: 'sine', notes: [[0, 1047], [0.1, 1319], [0.2, 1047], [0.3, 1319], [0.62, 1047], [0.72, 1319], [0.82, 1047], [0.92, 1319]], len: 0.09, vol: 0.32 }, // «телефон звонит»: доставка ждёт звонка
   };
   function chime(audio, kind = 'order') {
     if (!audio || audio.state !== 'running') return;
@@ -808,6 +827,43 @@
       host.rerender();
     }
 
+    // доставка ждёт звонка: «Принять заказ» → на кухню. Одним нажатием: подтвердили звонком и сразу приняли залом.
+    async function confirmDeliv(id) {
+      const o = host.getOrders().find((x) => x.id === id);
+      if (!o || busy.has(id)) return;
+      busy.add(id);
+      host.rerender();
+      try {
+        const r = await host.api.confirmDelivery(id);
+        if (r && r.status === 'new') { try { await host.api.acceptOrder(id); } catch { /* примут кнопкой «Принять доставку» */ } }
+        S.toast(t('d_t_accepted', o.no));
+      } catch (ex) {
+        S.toast(/bad_status|not_found/.test(String(ex?.message || '')) ? t('dv_t_gone', o.no) : S.errText(ex), true);
+      }
+      try { await host.reloadOrders(); } catch { /* обновится само */ }
+      busy.delete(id);
+      host.rerender();
+    }
+    // «Не дозвонились» / «Гость отказался» / «Другое» — заказ отменён и на кухню не идёт
+    async function rejectDeliv(id) {
+      const o = host.getOrders().find((x) => x.id === id);
+      if (!o || busy.has(id)) return;
+      const R = t('dv_reasons');
+      const why = await S.ask(t('dv_ask_reject', o.no), { ok: t('dv_reject_ok'), cancel: t('dv_back'), choices: ['no_answer', 'refused', 'other'].map((k) => [k, R[k]]), choice: 'no_answer' });
+      if (!why) return;
+      busy.add(id);
+      host.rerender();
+      try {
+        await host.api.rejectDelivery(id, why);
+        S.toast(t('dv_t_rejected', o.no));
+      } catch (ex) {
+        S.toast(/bad_status|not_found/.test(String(ex?.message || '')) ? t('dv_t_gone', o.no) : S.errText(ex), true);
+      }
+      try { await host.reloadOrders(); } catch { /* обновится само */ }
+      busy.delete(id);
+      host.rerender();
+    }
+
     async function claim(tableId, on) {
       try {
         await host.api.claimTable(tableId, on);
@@ -1104,6 +1160,10 @@
       if (sv) { serve(sv.dataset.flServe); return true; }
       const da = e.target.closest('[data-dv-accept]');
       if (da) { acceptDeliv(da.dataset.dvAccept); return true; }
+      const dc = e.target.closest('[data-dv-confirm]');
+      if (dc) { confirmDeliv(dc.dataset.dvConfirm); return true; }
+      const dr = e.target.closest('[data-dv-reject]');
+      if (dr) { rejectDeliv(dr.dataset.dvReject); return true; }
       if (e.target.closest('[data-fl-disc-open]') && payState) { payState.discOpen = true; repaintPay(); return true; }
       if (e.target.closest('[data-fl-disc-clear]') && payState) { payState.disc = null; payState.discOpen = false; syncParts(); repaintPay(); return true; }
       const dp = e.target.closest('[data-fl-disc-pct]');
@@ -1175,6 +1235,7 @@
 
   window.Floor = {
     create, printSlip, printTicket, printReceipt, optNames, lineTitle, noteHtml, trNote, ACTIVE, stOf, chime,
-    isDeliv, DELIV_OPEN, delivSt, delivInfoHtml, placeTitle, hasPoint, mapsUrl, wazeUrl, telOf, kmText,
+    isDeliv, DELIV_OPEN, delivSt, delivInfoHtml, placeTitle, hasPoint, mapsUrl, wazeUrl, telOf, kmText, e164,
+    isConfirm: (o) => o?.kind === 'delivery' && o.status === 'confirm',
   };
 })();

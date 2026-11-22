@@ -873,9 +873,13 @@ select t_ok((select (q ->> 'fee')::numeric = 10 from (select public.delivery_quo
 select t_ok((select q ->> 'reason' = 'too_far' from (select public.delivery_quote(3.25, 101.6869) q) x), 'дальше 7 км — не возим');
 create temp table d36 as select * from public.place_delivery('[{"id":"green-tea","qty":2,"price":10}]', 'Алишер', '+60 12-345 6789',
   'Jalan Test 1, Kuala Lumpur', 'Позвонить у двери', 3.157, 101.6869, 'cash', 'ru', gen_random_uuid(), ' Guest@Mail.com ');
-select t_ok((select delivery_fee = 5 and total = subtotal + tax + 5 and status = 'new' from d36), 'гость заказал доставку: доставка сверху к сумме');
+select t_ok((select delivery_fee = 5 and total = subtotal + tax + 5 and status = 'confirm' from d36), 'гость заказал доставку: доставка сверху к сумме, новый номер — ждёт звонка');
 reset role;
 select t_ok((select o.customer_email = 'guest@mail.com' from public.orders o join d36 using (id)), 'почта гостя сохранена в заказе');
+grant select on d36 to anon, authenticated;
+set role authenticated; set request.jwt.claim.sub = '22222222-2222-2222-2222-222222222222';
+select t_ok((select status = 'new' and confirmed_by_name = 'Азиз' and confirmed_at is not null from public.confirm_delivery((select id from d36))), 'официант позвонил и принял доставку');
+reset role; reset request.jwt.claim.sub;
 set role anon;
 select t_fails($$select * from public.place_delivery('[{"id":"green-tea","qty":1,"price":10}]', 'А', '+60123456789', 'Jalan Far 1', null, 3.25, 101.6869, 'cash', 'ru', gen_random_uuid())$$, 'too_far', 'слишком далеко — заказ не принят');
 select t_fails($$select * from public.place_delivery('[{"id":"green-tea","qty":1,"price":10}]', 'А', 'abc', 'Jalan Test 1', null, 3.157, 101.6869, 'cash', 'ru', gen_random_uuid())$$, 'bad_request', 'неверный телефон');
@@ -956,4 +960,197 @@ set role authenticated; set request.jwt.claim.sub = '11111111-1111-1111-1111-111
 select t_ok(public.t_rows($$update public.promos set active = false where sort = 0$$) = 1, 'владелец выключает ролик');
 select t_ok(public.t_rows($$delete from public.promos$$) = 3, 'владелец удаляет ролики');
 reset role; reset request.jwt.claim.sub;
+-- ============ 38. Доставка: номер по SMS и звонок ресторана ============
+-- имитация pg_net запоминает и параметры запроса (Twilio получает To/From/Body в них)
+alter table net.sent add column if not exists params jsonb;
+alter table net.sent add column if not exists headers jsonb;
+create or replace function net.http_post(url text, body jsonb default '{}', params jsonb default '{}', headers jsonb default '{}', timeout_milliseconds int default 5000)
+returns bigint language sql as $$ insert into net.sent (url, body, params, headers) values (url, body, params, headers) returning id $$;
+update public.settings set delivery_enabled = true;
+set role anon;
+select t_ok(public.phone_e164('0123456789') = '+60123456789', 'номер 0123456789 → +60123456789');
+select t_ok(public.phone_e164('+60 12-345 6789') = '+60123456789', 'номер +60 12-345 6789 → +60123456789');
+select t_ok(public.phone_e164('0060123456789') = '+60123456789', 'номер 0060… → +60…');
+select t_ok(public.phone_e164('60123456789') = '+60123456789', 'номер 60… → +60…');
+select t_ok(public.phone_e164('abc') is null and public.phone_e164('123') is null and public.phone_e164('') is null and public.phone_e164(null) is null, 'мусор вместо номера → пусто');
+select t_ok((select dv_sms = false and dv_trust_after = 3 and dv_confirm_over = 150 from public.settings), 'гость видит настройки звонка: SMS выкл, 3 доставки, RM 150');
+select t_fails($$select public.set_sms('AC' || repeat('0', 32), 'x', '+15551234567')$$, 'permission denied', 'гость не трогает ключи SMS');
+select t_fails($$select * from private.sms$$, 'permission denied', 'гость не видит ключи SMS');
+select t_fails($$select public.request_phone_code('0123456789', 'ru')$$, 'sms_off', 'SMS выключены — код не отправить');
+reset role;
+
+set role authenticated; set request.jwt.claim.sub = '22222222-2222-2222-2222-222222222222';
+select t_fails($$select public.set_sms(('AC' || '0123456789abcdef' || '0123456789abcdef'), 'abcdef0123456789abcdef0123456789', '+15551234567')$$, 'forbidden', 'официант не меняет ключи SMS');
+select t_fails($$select public.sms_status()$$, 'forbidden', 'официант не видит настройки SMS');
+select t_ok(public.t_rows($$update public.settings set dv_trust_after = 0$$) = 0, 'официант не меняет правила звонка');
+reset role; reset request.jwt.claim.sub;
+
+set role authenticated; set request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
+select t_ok((public.sms_status() ->> 'configured')::boolean = false, 'SMS ещё не настроены');
+select t_fails($$update public.settings set dv_sms = true$$, 'sms_not_configured', 'проверку по SMS нельзя включить без настроек SMS');
+select t_fails($$select public.set_sms('XX0123', 'abcdef0123456789abcdef0123456789', '+15551234567')$$, 'bad_sid', 'кривой Account SID не сохранить');
+select t_fails($$select public.set_sms(('AC' || '0123456789abcdef' || '0123456789abcdef'), 'abcdef0123456789abcdef0123456789', 'abc')$$, 'bad_from', 'кривой номер отправителя не сохранить');
+create temp table sms1 as select public.set_sms(('AC' || '0123456789abcdef' || '0123456789abcdef'), 'abcdef0123456789abcdef0123456789', '+1 555 123 4567') j;
+select t_ok((select (j ->> 'configured')::boolean and j ->> 'sid_tail' = '…cdef' and j ->> 'from' = '+15551234567' and j::text not like '%abcdef0123456789abcdef0123456789%' from sms1),
+  'владелец сохранил Twilio: наружу только хвост SID и номер, токена нет');
+select t_ok((public.set_sms(('AC' || '0123456789abcdef' || '0123456789abcdef'), '', '+15551234567') ->> 'configured')::boolean, 'пустой токен — остаётся прежний');
+select t_fails($$update public.settings set dv_trust_after = 99$$, 'check', 'больше 50 доставок для доверия не поставить');
+select t_fails($$update public.settings set dv_confirm_over = -1$$, 'check', 'отрицательный порог суммы не поставить');
+select t_ok(public.t_rows($$update public.settings set dv_sms = true$$) = 1, 'владелец включил проверку номера по SMS');
+reset role; reset request.jwt.claim.sub;
+select t_ok((select auth_token = 'abcdef0123456789abcdef0123456789' from private.sms), 'токен Twilio лежит только на сервере');
+
+-- гость просит код
+set role anon;
+select t_fails($$select public.request_phone_code('junk', 'ru')$$, 'bad_phone', 'кривой номер — код не отправить');
+select t_ok((select r ->> 'phone' = '+60123456789' and (r ->> 'ok')::boolean and (r ->> 'wait_s')::int = 60 from (select public.request_phone_code('012-345 6789', 'ru') r) x), 'гость получил код на +60123456789');
+select t_fails($$select public.request_phone_code('+60123456789', 'ru')$$, 'too_soon:[0-9]+', 'второй код раньше чем через минуту — нельзя');
+reset role;
+select t_ok(exists (select 1 from net.sent where url = 'https://api.twilio.com/2010-04-01/Accounts/' || 'AC' || '0123456789abcdef' || '0123456789abcdef' || '/Messages.json'
+  and params ->> 'To' = '+60123456789' and params ->> 'From' = '+15551234567' and params ->> 'Body' ~ '^Central Asia Restaurant: код [0-9]{6}\. Никому не сообщайте\.$'
+  and headers ->> 'Authorization' = 'Basic ' || replace(encode(convert_to('AC' || '0123456789abcdef' || '0123456789abcdef' || ':' || 'abcdef0123456789abcdef0123456789', 'UTF8'), 'base64'), E'\n', '')),
+  'SMS ушло в Twilio: номер, отправитель, текст на русском, Basic-авторизация');
+select t_ok((select code_hash is not null and code_hash !~ '^[0-9]{6}$' from private.phone_codes where phone = '+60123456789'), 'в базе хранится только хэш кода');
+create temp table sc as select substring(params ->> 'Body' from '([0-9]{6})') as code, params ->> 'To' as phone from net.sent where params ->> 'To' = '+60123456789' order by id desc limit 1;
+grant select on sc to anon, authenticated;
+set role anon;
+select t_fails($$select public.verify_phone_code('+60123456789', case when (select code from sc) = '000000' then '111111' else '000000' end)$$, 'bad_code:4', 'неверный код: осталось 4 попытки');
+select t_fails($$select public.verify_phone_code('0123456789', 'abc')$$, 'bad_code:3', 'попытки считаются, даже если ошибка откатила запрос');
+create temp table tok1 as select public.verify_phone_code('+60 12 345 6789', (select code from sc)) j;
+select t_ok((select (j ->> 'phone_token') is not null and j ->> 'phone' = '+60123456789' from tok1), 'верный код: гость получил ключ номера');
+select t_fails($$select public.verify_phone_code('+60123456789', (select code from sc))$$, 'expired', 'код одноразовый');
+reset role;
+select t_ok(not exists (select 1 from private.phone_tokens where token_hash = (select j ->> 'phone_token' from tok1)), 'ключ номера в базе тоже только хэшем');
+
+-- 5 неверных — код сгорает
+update private.phone_codes set sent_at = now() - interval '2 minutes';
+set role anon;
+select t_ok((public.request_phone_code('+60111000999', 'en') ->> 'ok')::boolean, 'код на второй номер');
+reset role;
+create temp table sc2 as select substring(params ->> 'Body' from '([0-9]{6})') as code from net.sent where params ->> 'To' = '+60111000999' order by id desc limit 1;
+grant select on sc2 to anon, authenticated;
+select t_ok(exists (select 1 from net.sent where params ->> 'To' = '+60111000999' and params ->> 'Body' ~ 'your code is [0-9]{6}'), 'SMS на английском по языку гостя');
+set role anon;
+create temp table wrong as select case when (select code from sc2) = '000000' then '111111' else '000000' end w;
+select t_fails($$select public.verify_phone_code('+60111000999', (select w from wrong))$$, 'bad_code:4', 'ошибка 1');
+select t_fails($$select public.verify_phone_code('+60111000999', (select w from wrong))$$, 'bad_code:3', 'ошибка 2');
+select t_fails($$select public.verify_phone_code('+60111000999', (select w from wrong))$$, 'bad_code:2', 'ошибка 3');
+select t_fails($$select public.verify_phone_code('+60111000999', (select w from wrong))$$, 'bad_code:1', 'ошибка 4');
+select t_fails($$select public.verify_phone_code('+60111000999', (select w from wrong))$$, 'too_many_attempts', '5 неверных — код сгорел');
+select t_fails($$select public.verify_phone_code('+60111000999', (select code from sc2))$$, 'too_many_attempts', 'сгоревший код не принимается даже верный');
+reset role;
+-- новый код — попытки заново; просроченный — «устарел»
+update private.phone_codes set sent_at = now() - interval '2 minutes' where phone = '+60111000999';
+set role anon;
+select public.request_phone_code('+60111000999', 'ms');
+reset role;
+create temp table sc3 as select substring(params ->> 'Body' from '([0-9]{6})') as code from net.sent where params ->> 'To' = '+60111000999' order by id desc limit 1;
+grant select on sc3 to anon, authenticated;
+set role anon;
+select t_fails($$select public.verify_phone_code('+60111000999', case when (select code from sc3) = '000000' then '111111' else '000000' end)$$, 'bad_code:4', 'новый код — снова 5 попыток');
+reset role;
+update private.phone_codes set expires_at = now() - interval '1 second' where phone = '+60111000999';
+set role anon;
+select t_fails($$select public.verify_phone_code('+60111000999', (select code from sc3))$$, 'expired', 'код старше 10 минут устарел');
+reset role;
+update private.phone_codes set sent_at = now() - interval '2 minutes', sends_hour = 5, hour_start = now() - interval '10 minutes' where phone = '+60111000999';
+set role anon;
+select t_fails($$select public.request_phone_code('+60111000999', 'ru')$$, 'too_many', 'больше 5 SMS в час на номер — нельзя');
+reset role;
+
+-- заказ с проверкой номера
+grant select on tok1 to anon, authenticated;
+set role anon;
+select t_fails($$select * from public.place_delivery('[{"id":"green-tea","qty":1,"price":10}]', 'Гость', '+60123456789', 'Jalan Test 2', null, 3.157, 101.6869, 'cash', 'ru', gen_random_uuid())$$, 'phone_unverified', 'без кода из SMS доставку не заказать');
+select t_fails($$select * from public.place_delivery('[{"id":"green-tea","qty":1,"price":10}]', 'Гость', '+60199999999', 'Jalan Test 2', null, 3.157, 101.6869, 'cash', 'ru', gen_random_uuid(), null, (select (j ->> 'phone_token')::uuid from tok1))$$, 'phone_unverified', 'ключ от другого номера не подходит');
+create temp table d38 as select * from public.place_delivery('[{"id":"green-tea","qty":1,"price":10}]', 'Гость', '0123456789', 'Jalan Test 2', null, 3.157, 101.6869, 'cash', 'ru', gen_random_uuid(), null, (select (j ->> 'phone_token')::uuid from tok1));
+select t_ok((select status from d38) = 'confirm', 'номер подтверждён, но гость новый — заказ ждёт звонка');
+reset role;
+update private.phone_tokens set expires_at = now() - interval '1 second';
+set role anon;
+select t_fails($$select * from public.place_delivery('[{"id":"green-tea","qty":1,"price":10}]', 'Гость', '0123456789', 'Jalan Test 2', null, 3.157, 101.6869, 'cash', 'ru', gen_random_uuid(), null, (select (j ->> 'phone_token')::uuid from tok1))$$, 'phone_unverified', 'ключ номера старше года не подходит');
+reset role;
+grant select on d38 to anon, authenticated;
+select t_ok(exists (select 1 from net.sent where body ->> 'chat_id' = '987654321' and body ->> 'text' like 'Доставка №' || (select no from d38) || ' ждёт звонка: Гость 0123456789, RM %.__ — позвоните и примите заказ'), 'владельцу в Telegram: «ждёт звонка»');
+select t_ok(exists (select 1 from net.sent where body ->> 'chat_id' = '555000111' and body ->> 'text' like 'Доставка №' || (select no from d38) || ' ждёт звонка%'), 'официанту в Telegram: «ждёт звонка»');
+select t_ok(not exists (select 1 from net.sent where body ->> 'chat_id' = '777000222' and body ->> 'text' like '%№' || (select no from d38) || '%'), 'повар ничего не получил до звонка');
+
+-- кто видит и кто принимает
+set role authenticated; set request.jwt.claim.sub = '44444444-4444-4444-4444-444444444444';
+select t_ok(not exists (select 1 from public.orders where id = (select id from d38)), 'повар не видит доставку до звонка');
+select t_fails($$select public.confirm_delivery((select id from d38))$$, 'forbidden', 'повар не принимает доставку');
+select t_fails($$select public.reject_delivery((select id from d38), 'no_answer')$$, 'forbidden', 'повар не отменяет доставку');
+reset role; reset request.jwt.claim.sub;
+set role authenticated; set request.jwt.claim.sub = '77777777-7777-7777-7777-777777777777';
+select t_ok(not exists (select 1 from public.orders where id = (select id from d38)), 'курьер не видит доставку до звонка');
+select t_fails($$select public.courier_take((select id from d38))$$, 'bad_status', 'курьер не забирает доставку до звонка');
+select t_fails($$select public.courier_done((select id from d38), 'cash')$$, 'bad_status', 'курьер не закрывает доставку до звонка');
+select t_fails($$select public.confirm_delivery((select id from d38))$$, 'forbidden', 'курьер не принимает доставку');
+reset role; reset request.jwt.claim.sub;
+set role anon;
+select t_ok((select status = 'confirm' and cancel_reason is null from public.get_order((select id from d38), (select guest_token from d38))), 'гость видит «ждём звонка ресторана»');
+select t_fails($$select public.confirm_delivery((select id from d38))$$, 'permission denied', 'гость не принимает свой заказ сам');
+reset role;
+set role authenticated; set request.jwt.claim.sub = '22222222-2222-2222-2222-222222222222';
+select t_ok(exists (select 1 from public.orders where id = (select id from d38) and status = 'confirm'), 'официант видит доставку, которая ждёт звонка');
+select t_ok((select status = 'new' and confirmed_by_name = 'Азиз' from public.confirm_delivery((select id from d38))), 'официант позвонил — «Принять заказ»');
+select t_ok((select count(*) from public.confirm_delivery((select id from d38))) = 1, 'второе «Принять» ничего не ломает');
+select t_fails($$select public.reject_delivery((select id from d38), 'no_answer')$$, 'bad_status', 'принятую доставку «не дозвонились» уже не отменить');
+reset role; reset request.jwt.claim.sub;
+select t_ok(exists (select 1 from net.sent where body ->> 'chat_id' = '777000222' and body ->> 'text' like 'На кухню: заказ №' || (select no from d38) || ' · Доставка%'), 'после звонка заказ ушёл повару в Telegram');
+set role authenticated; set request.jwt.claim.sub = '44444444-4444-4444-4444-444444444444';
+select t_ok(exists (select 1 from public.orders where id = (select id from d38)), 'после звонка повар видит доставку');
+reset role; reset request.jwt.claim.sub;
+
+-- «Не дозвонились»: отмена и возврат остатков
+update public.settings set dv_sms = false;
+update public.dishes set stock = 10 where id = 'green-tea';
+set role anon;
+create temp table d38b as select * from public.place_delivery('[{"id":"green-tea","qty":2,"price":10}]', 'Гость Б', '+60 17 000 1111', 'Jalan Test 3', null, 3.157, 101.6869, 'cash', 'en', gen_random_uuid());
+reset role;
+grant select on d38b to anon, authenticated;
+select t_ok((select status from d38b) = 'confirm' and (select stock from public.dishes where id = 'green-tea') = 8, 'без SMS заказ тоже ждёт звонка; порции уже отложены');
+set role authenticated; set request.jwt.claim.sub = '22222222-2222-2222-2222-222222222222';
+select t_fails($$select public.reject_delivery((select id from d38b), 'bored')$$, 'bad_reason', 'причина отмены — только из списка');
+select t_ok((select status = 'cancelled' and cancel_reason = 'no_answer' from public.reject_delivery((select id from d38b), 'no_answer')), 'официант: «Не дозвонились» — заказ отменён');
+select t_fails($$select public.confirm_delivery((select id from d38b))$$, 'bad_status', 'отменённую доставку не принять');
+reset role; reset request.jwt.claim.sub;
+select t_ok((select stock from public.dishes where id = 'green-tea') = 10, 'порции вернулись в остаток');
+select t_ok(exists (select 1 from net.sent where body ->> 'text' = 'Доставка №' || (select no from d38b) || ' отменена: не дозвонились · Азиз'), 'владельцу в Telegram: «отменена: не дозвонились»');
+set role anon;
+select t_ok((select status = 'cancelled' and cancel_reason = 'no_answer' from public.get_order((select id from d38b), (select guest_token from d38b))), 'гость видит «не дозвонились — заказ отменён»');
+reset role;
+update public.dishes set stock = null where id = 'green-tea';
+
+-- постоянный гость: после N доставок звонок не нужен, кроме крупных сумм
+insert into public.orders (kind, table_label, items, subtotal, total, client_key, customer_name, customer_phone, address, pay_method, status, paid_at)
+select 'delivery', 'Доставка', '[{"id":"green-tea","qty":1,"price":10}]', 10, 15, gen_random_uuid(), 'Постоянный', p, 'Jalan Lama 1', 'cash', 'served', now()
+  from unnest(array['+60 13 222 3333', '013-222 3333', '0060132223333']) p;
+set role anon;
+select t_ok((select status from public.place_delivery('[{"id":"green-tea","qty":1,"price":10}]', 'Постоянный', '0132223333', 'Jalan Lama 1', null, 3.157, 101.6869, 'cash', 'ru', gen_random_uuid())) = 'new',
+  'три доставки на этот номер (в любом виде записи) — без звонка, сразу на кухню');
+reset role;
+update public.settings set dv_confirm_over = 20;
+set role anon;
+select t_ok((select status from public.place_delivery('[{"id":"green-tea","qty":2,"price":10}]', 'Постоянный', '0132223333', 'Jalan Lama 1', null, 3.157, 101.6869, 'cash', 'ru', gen_random_uuid())) = 'confirm',
+  'постоянный гость, но сумма больше порога — звонок обязателен');
+reset role;
+update public.settings set dv_confirm_over = 150, dv_trust_after = 0;
+set role anon;
+select t_ok((select status from public.place_delivery('[{"id":"green-tea","qty":1,"price":10}]', 'Постоянный', '0132223333', 'Jalan Lama 1', null, 3.157, 101.6869, 'cash', 'ru', gen_random_uuid())) = 'confirm',
+  '«0 доставок» — звонить всегда');
+select t_fails($$select * from public.place_delivery('[{"id":"green-tea","qty":1,"price":10}]', 'Постоянный', '+60132223333', 'Jalan Lama 1', null, 3.157, 101.6869, 'cash', 'ru', gen_random_uuid())$$, 'too_many', 'с одного номера — не больше 3 незавершённых доставок (включая ждущие звонка)');
+reset role;
+update public.settings set dv_trust_after = 3;
+
+-- отчёты: ждущая звонка доставка — не выручка
+set role authenticated; set request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
+select t_ok((public.z_preview() ->> 'confirm_orders')::int >= 1, 'Z-отчёт: ждущие звонка доставки отдельно');
+select t_ok((public.z_preview() ->> 'open_orders')::int = (select count(*) from public.orders where paid_at is null and status not in ('cancelled', 'confirm')), 'Z-отчёт: ждущие звонка не в «неоплаченных заказах»');
+-- выключить SMS совсем
+select t_ok((public.set_sms('', '', '') ->> 'configured')::boolean = false, 'владелец стёр ключи SMS');
+select t_ok((select dv_sms from public.settings) = false, 'без ключей проверка по SMS выключена');
+select t_fails($$update public.settings set dv_sms = true$$, 'sms_not_configured', 'без ключей снова не включить');
+reset role; reset request.jwt.claim.sub;
+update public.settings set delivery_enabled = false;
 \echo ALL DATABASE TESTS PASSED

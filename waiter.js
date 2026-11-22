@@ -101,12 +101,26 @@
     if (tab === 'floor' && !document.querySelector('.modal')) renderFloor();
   }
   function announce(fresh) {
+    // доставка ждёт звонка — важнее всего: свой баннер и звук «телефон звонит»
+    const calls = fresh.filter((o) => o.status === 'confirm');
+    if (calls.length) {
+      const c = calls[calls.length - 1];
+      bannerMsg = calls.length > 1 ? t('b_confirm_many', calls.length) : t('b_confirm', c.no);
+      bannerTo = 'orders';
+      renderBanner();
+      buzz(bannerMsg, 'order-' + c.id, 'confirm');
+      return;
+    }
     const o = fresh[fresh.length - 1];
     bannerMsg = fresh.length > 1 ? t('b_new_many', fresh.length) : isDeliv(o) ? t('b_new_deliv', o.no) : t('b_new_one', o.no, o.table_label);
     bannerTo = 'orders';
     renderBanner();
     buzz(bannerMsg, 'order-' + o.id, fresh.some(isDeliv) ? 'delivery' : 'order');   // у доставки свой звук
   }
+  // пока гость ждёт звонка — напоминаем каждые 30 секунд
+  setInterval(() => {
+    if (api && orders.some((o) => isDeliv(o) && o.status === 'confirm')) ding('confirm');
+  }, 30000);
   setInterval(() => {
     if (!api) return;
     const open = floor?.openCalls().filter((c) => c.kind === 'bill' || floor.isMineOrFree(c.table_id)) || [];
@@ -115,7 +129,7 @@
 
   function updateCount() {
     // ждут подачи (столы) + новые доставки, которые ещё никто не принял
-    const n = orders.filter((o) => (isDeliv(o) ? o.status === 'new' : window.Floor.ACTIVE.includes(o.status)) && visibleOrder(o)).length;
+    const n = orders.filter((o) => (isDeliv(o) ? ['confirm', 'new'].includes(o.status) : window.Floor.ACTIVE.includes(o.status)) && visibleOrder(o)).length;
     const el = $('#tab-count');
     if (el) { el.hidden = !n; el.textContent = n; }
     const calls = floor ? floor.openCalls().length : 0;
@@ -131,7 +145,7 @@
   async function loadOrders() {
     try {
       const rows = await api.orders(dayStart().toISOString());
-      const fresh = seen ? rows.filter((o) => o.status === 'new' && !seen.has(o.id) && (!floor || floor.isMineOrFree(o.table_id))) : [];
+      const fresh = seen ? rows.filter((o) => (o.status === 'new' || (isDeliv(o) && o.status === 'confirm')) && !seen.has(o.id) && (!floor || floor.isMineOrFree(o.table_id))) : [];
       seen = new Set([...(seen || []), ...rows.map((o) => o.id)]);
       orders = rows;
       ordersState = 'ready';
@@ -186,6 +200,8 @@
     // доставка: от «новой» до «в пути» (дальше её ведёт курьер)
     const deliv = vis.filter((o) => isDeliv(o) && window.Floor.DELIV_OPEN.includes(o.status) && !o.paid_at)
       .sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+    // доставка ждёт звонка — самой первой секцией
+    const toCall = vis.filter((o) => isDeliv(o) && o.status === 'confirm').sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
     const today = dayStart().getTime();
     const served = vis.filter((o) => o.status === 'served' && new Date(o.created_at).getTime() >= today)
       .sort((a, b) => new Date(b.served_at || b.updated_at) - new Date(a.served_at || a.updated_at));
@@ -206,6 +222,7 @@
         ${canNotify ? `<button type="button" class="btn small ghost" data-notify>${icon('bell', 'sm')}${esc(t('notifications'))}</button>` : ''}
       </div>
       ${mine && floor && !floor.myTables().length ? `<p class="notice info">${icon('table')}<span>${esc(t('no_my_tables'))}</span></p>` : ''}
+      ${toCall.length ? section(t('sec_confirm'), toCall, '', true, 'is-confirm-sec') : ''}
       ${section(t('sec_new'), by(window.Floor.ACTIVE), t('e_new'), true)}
       ${deliv.length || S.settings?.delivery_enabled ? section(t('sec_deliv'), deliv, t('e_deliv'), deliv.some((o) => o.status === 'new')) : ''}
       ${section(t('sec_served'), served.slice(0, 40), t('e_served'), false)}`;

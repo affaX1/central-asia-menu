@@ -28,6 +28,7 @@
   const busy = new Set();
 
   // ждут курьера: от «новой» до «готова»; «в пути» — у курьера; «served» у доставки = доставлен
+  // confirm (ждёт звонка ресторана) курьер не видит и не забирает — база тоже его не отдаёт
   const WAIT = ['new', 'accepted', 'cooking', 'ready'];
   const hhmm = (iso) => new Date(iso).toLocaleTimeString(S.locale(), { hour: '2-digit', minute: '2-digit' });
   const ago = (iso) => { const m = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 60000)); return (window.STAFF_T.ago[S.lang] || window.STAFF_T.ago.en)(m); };

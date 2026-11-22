@@ -876,6 +876,17 @@
           <button type="button" class="btn small ghost" id="dl-add">${icon('plus', 'sm')}Добавить зону</button>
           <label class="field" style="margin-top:14px"><span>Минимальная сумма заказа на доставку, ${esc(st.currency || '')}</span><input name="delivery_min" type="number" inputmode="decimal" min="0" max="99999" step="0.01" value="${esc(Number(st.delivery_min) ? st.delivery_min : '')}" placeholder="пусто — без минимума">
             <span class="hint">Считается по блюдам, без налога и платы за доставку.</span></label>
+          <p class="section-label">Звонок гостю и проверка номера</p>
+          <p class="help" style="margin-top:0">Новая доставка приходит как «Ожидает подтверждения» и на кухню не идёт, пока официант не позвонит гостю и не нажмёт «Принять заказ». Не дозвонились — «Не дозвонились», заказ отменяется.</p>
+          <div class="form-grid">
+            <label class="field"><span>Без звонка после N доставок</span><input name="dv_trust_after" type="number" inputmode="numeric" min="0" max="50" step="1" value="${esc(st.dv_trust_after ?? 3)}">
+              <span class="hint">Гостю, который уже получил и оплатил столько доставок на этот номер, не звоним. 0 — звонить всегда.</span></label>
+            <label class="field"><span>Всегда звонить, если сумма больше, ${esc(st.currency || '')}</span><input name="dv_confirm_over" type="number" inputmode="decimal" min="0" max="99999" step="0.01" value="${esc(st.dv_confirm_over ?? 150)}">
+              <span class="hint">Крупный заказ подтверждаем звонком даже у постоянного гостя. Сумма — вместе с доставкой.</span></label>
+          </div>
+          <div class="field full" style="margin-top:6px" id="dv-sms-field"><span>Проверка номера по SMS</span>
+            ${sw('name="dv_sms" data-dv-sms', !!st.dv_sms, 'Гость подтверждает телефон кодом из SMS', true)}
+            <span class="hint" id="dv-sms-hint">Проверяем, настроены ли SMS…</span></div>
         </div></section>
 
         <section class="panel"><div class="panel-head"><h3>Сбор, налог, скидки и округление</h3></div><div class="panel-body">
@@ -901,8 +912,10 @@
           <button type="submit" class="btn" style="flex:1;box-shadow:var(--shadow-lg)">${icon('check', 'sm')}Сохранить изменения</button>
         </div>
       </form>
+      <section class="panel" id="sms-panel" style="margin-top:18px"><div class="panel-head"><h3>SMS для проверки номера (Twilio)</h3></div><div class="panel-body"><p class="a-empty">Загрузка…</p></div></section>
       <section class="panel" id="tg-panel" style="margin-top:18px"><div class="panel-head"><h3>Уведомления в Telegram</h3></div><div class="panel-body"><p class="a-empty">Загрузка…</p></div></section>`;
     renderTelegram();
+    renderSms();
 
     const form = $('#settings-form');
     const err = (msg) => { const e = $('#set-err'); e.hidden = !msg; e.innerHTML = msg ? `${icon('alert')}<span>${esc(msg)}</span>` : ''; if (msg) e.scrollIntoView({ block: 'center' }); };
@@ -1112,6 +1125,14 @@
       if (!(Number.isFinite(dMin) && dMin >= 0 && dMin < 100000)) return err('Доставка: минимальная сумма — от 0, например 30. Или оставьте пусто.');
       const dOn = !!f.get('delivery_enabled');
       if (dOn && (dLat === null || !dZones.length)) return err(DL_NEED);
+      const trustRaw = String(f.get('dv_trust_after') ?? '').trim();
+      const dvTrust = trustRaw === '' ? 3 : Number(trustRaw);
+      if (!(Number.isInteger(dvTrust) && dvTrust >= 0 && dvTrust <= 50)) return err('Звонок гостю: «без звонка после» — целое число от 0 до 50.');
+      const overRaw = String(f.get('dv_confirm_over') ?? '').trim().replace(',', '.');
+      const dvOver = overRaw === '' ? 0 : Number(overRaw);
+      if (!(Number.isFinite(dvOver) && dvOver >= 0 && dvOver < 100000)) return err('Звонок гостю: сумма — от 0, например 150.');
+      // переключатель SMS сохраняем, только когда знаем, настроены ли SMS (иначе он выключен на экране, а не у вас)
+      const smsSw = form.querySelector('[data-dv-sms]');
       const receiptInfo = String(f.get('receipt_info') || '').split('\n').map((x) => x.trim()).filter(Boolean).slice(0, 5).join('\n').slice(0, 300);
       const schedule = [];
       for (let i = 0; i < 7; i++) {
@@ -1153,6 +1174,8 @@
           day_goal: dayGoal === null ? null : Math.round(dayGoal * 100) / 100,
           bookings_enabled: !!f.get('bookings_enabled'),
           delivery_enabled: dOn, delivery_lat: dLat, delivery_lng: dLng, delivery_zones: dZones, delivery_min: Math.round(dMin * 100) / 100,
+          dv_trust_after: dvTrust, dv_confirm_over: Math.round(dvOver * 100) / 100,
+          ...(smsSw && smsSw.dataset.known === '1' ? { dv_sms: !smsSw.disabled && smsSw.checked } : {}),
         };
         const saved = await api.saveSettings(patch);
         if (form.dataset.wifiLoaded === '1') await api.saveWifi(wifiName, wifiPass);
@@ -1167,6 +1190,81 @@
         btn.disabled = false;
         btn.innerHTML = `${icon('check', 'sm')}Сохранить изменения`;
       }
+    });
+  }
+
+  // ---------- SMS (Twilio): ключи только записываются, наружу — хвост SID и номер ----------
+  function paintSmsSwitch(info) {
+    const box = document.querySelector('[data-dv-sms]');
+    const hint = $('#dv-sms-hint');
+    if (!box || !hint) return;
+    const ok = !!info?.configured;
+    box.dataset.known = info ? '1' : '';
+    box.disabled = !ok;
+    if (!ok) box.checked = false;
+    hint.textContent = !info ? 'Не получилось узнать, настроены ли SMS — обновите страницу.'
+      : ok ? 'Без кода из SMS гость не сможет заказать доставку. Код приходит с вашего номера Twilio; каждое SMS Twilio берёт в счёт.'
+        : 'Сначала подключите SMS ниже (Twilio) — до этого включить нельзя.';
+  }
+  async function renderSms() {
+    const box = $('#sms-panel .panel-body');
+    if (!box) return;
+    let info;
+    try { info = await api.smsStatus(); } catch (ex) { paintSmsSwitch(null); box.innerHTML = `<p class="notice bad">${icon('alert')}<span>${esc(S.errText(ex))}</span></p>`; return; }
+    if (!box.isConnected) return;
+    paintSmsSwitch(info);
+    box.innerHTML = `
+      <p class="${info?.configured ? 'notice ok' : 'help'}">${info?.configured ? `${icon('check')}<span>Подключено: аккаунт ${esc(info.sid_tail || '')}, SMS уходят с номера ${esc(info.from || '')}.</span>` : 'Не подключено. Нужен аккаунт Twilio с номером, который может отправлять SMS в Малайзию.'}</p>
+      <ol class="tg-steps">
+        <li>Зарегистрируйтесь на <b>twilio.com</b> и купите номер с SMS (Phone Numbers → Buy a number).</li>
+        <li>В Console → Account Info скопируйте <b>Account SID</b> и <b>Auth Token</b>.</li>
+        <li>Вставьте их ниже вместе с номером и нажмите «Сохранить SMS». Затем включите «Проверка номера по SMS» в разделе «Доставка» и сохраните.</li>
+      </ol>
+      <form id="sms-form" novalidate>
+        <div class="form-grid">
+          <label class="field full"><span>Account SID</span><input name="sid" type="text" autocomplete="off" spellcheck="false" maxlength="40" placeholder="AC…" value=""></label>
+          <label class="field full"><span>Auth Token${info?.configured ? ' (сохранён — оставьте пустым, чтобы не менять)' : ''}</span><input name="token" type="password" autocomplete="new-password" spellcheck="false" maxlength="64" placeholder="${info?.configured ? 'сохранён' : '32 знака'}"></label>
+          <label class="field full"><span>Номер отправителя (Twilio)</span><input name="from" type="tel" inputmode="tel" autocomplete="off" maxlength="20" placeholder="+1…" value="${esc(info?.from || '')}"></label>
+        </div>
+        <p class="notice bad" id="sms-err" role="alert" hidden></p>
+        <div class="row-btns" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:12px">
+          <button type="submit" class="btn">${icon('check', 'sm')}Сохранить SMS</button>
+          ${info?.configured || info?.sid_tail ? `<button type="button" class="btn ghost danger" data-sms-clear>${icon('trash', 'sm')}Отключить SMS</button>` : ''}
+        </div>
+        <p class="help">Auth Token хранится только на сервере: ни вы, ни официанты его больше не увидите. Account SID нужно вписывать заново при каждом сохранении.</p>
+      </form>`;
+    const f = $('#sms-form');
+    const serr = (m) => { const e = $('#sms-err'); e.hidden = !m; e.innerHTML = m ? `${icon('alert')}<span>${esc(m)}</span>` : ''; };
+    const smsErr = (ex) => {
+      const m = String(ex?.message || '');
+      return /bad_sid/.test(m) ? 'Account SID: начинается с AC, дальше 32 знака (Twilio → Console → Account Info).'
+        : /bad_token/.test(m) ? 'Auth Token: 32 знака из Twilio → Console → Account Info.'
+          : /bad_from/.test(m) ? 'Номер отправителя: номер Twilio в международном виде, например +1 415 555 0100.' : S.errText(ex);
+    };
+    f.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      serr('');
+      const sid = String(f.sid.value || '').trim();
+      const token = String(f.token.value || '').trim();
+      const from = String(f.from.value || '').trim();
+      if (!/^AC[0-9a-fA-F]{32}$/.test(sid)) return serr('Account SID: начинается с AC, дальше 32 знака (Twilio → Console → Account Info).');
+      if (!token && !info?.configured) return serr('Вставьте Auth Token.');
+      const btn = f.querySelector('[type="submit"]');
+      btn.disabled = true;
+      try {
+        await api.setSms(sid, token, from);
+        S.toast('SMS сохранены. Теперь можно включить проверку номера в разделе «Доставка».');
+        renderSms();
+      } catch (ex) { serr(smsErr(ex)); btn.disabled = false; }
+    });
+    f.querySelector('[data-sms-clear]')?.addEventListener('click', async () => {
+      if (!await S.ask('Отключить SMS? Ключи Twilio сотрутся, проверка номера по SMS выключится.', { ok: 'Отключить', cancel: 'Не отключать' })) return;
+      try {
+        await api.setSms('', '', '');
+        S.settings = { ...S.settings, dv_sms: false };
+        S.toast('SMS отключены');
+        renderSms();
+      } catch (ex) { serr(smsErr(ex)); }
     });
   }
 
@@ -1338,7 +1436,8 @@
   const stOf = (s) => (ACTIVE.includes(s) ? 'new' : s);
   // доставка своим курьером: свои этапы (принята → готовится → в пути → доставлен), без стола
   const isDeliv = (o) => window.Floor.isDeliv(o);
-  const isActive = (o) => (isDeliv(o) ? window.Floor.DELIV_OPEN.includes(o.status) && !o.paid_at : ACTIVE.includes(o.status));
+  const isActive = (o) => (isDeliv(o) ? (o.status === 'confirm' || window.Floor.DELIV_OPEN.includes(o.status)) && !o.paid_at : ACTIVE.includes(o.status));
+  const isCall = (o) => isDeliv(o) && o.status === 'confirm';   // доставка ждёт звонка ресторана
   const placeOf = (o) => (isDeliv(o) ? `доставка, ${o.customer_name || 'гость'}` : `стол ${o.table_label}`);
   const pad = (n) => String(n).padStart(2, '0');
   const localDate = (d = new Date()) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
@@ -1443,6 +1542,17 @@
     el.innerHTML = parts.join('');
   }
   function announce(fresh) {
+    const calls = fresh.filter(isCall);
+    if (calls.length) {
+      const c = calls[calls.length - 1];
+      bannerMsg = calls.length > 1 ? `Ждут звонка: ${calls.length}` : `Доставка №${c.no} ждёт звонка — позвоните гостю`;
+      renderBanner();
+      if (soundOn) window.Floor.chime(audio, 'confirm');
+      try {
+        if ('Notification' in window && Notification.permission === 'granted' && document.hidden) new Notification(bannerMsg, { body: `${money(c.total)} · ${c.customer_name || ''}`, tag: 'order-' + c.id, icon: 'icon.svg' });
+      } catch { /* без системных уведомлений */ }
+      return;
+    }
     const o = fresh[fresh.length - 1];
     bannerMsg = fresh.length > 1 ? `Новых заказов: ${fresh.length}` : isDeliv(o) ? `Новая доставка №${o.no}${o.distance_km != null ? ` · ${window.Floor.kmText(o.distance_km)}` : ''}` : `Новый заказ №${o.no} — стол ${o.table_label}`;
     renderBanner();
@@ -1453,9 +1563,11 @@
       }
     } catch { /* без системных уведомлений */ }
   }
+  // пока гость ждёт звонка — напоминаем каждые 30 секунд
+  setInterval(() => { if (api && soundOn && orders.some(isCall)) window.Floor.chime(audio, 'confirm'); }, 30000);
   function updateCount() {
     // ждут подачи (столы) + новые доставки, которые ещё никто не принял
-    const n = orders.filter((o) => (isDeliv(o) ? o.status === 'new' : ACTIVE.includes(o.status))).length;
+    const n = orders.filter((o) => (isDeliv(o) ? ['confirm', 'new'].includes(o.status) : ACTIVE.includes(o.status))).length;
     const el = $('#tab-count');
     if (el) { el.hidden = !n; el.textContent = n; }
     const c = floor ? floor.openCalls().length : 0;
@@ -1475,7 +1587,7 @@
 
   async function loadOrders() {
     const rows = await api.orders(dayStart().toISOString());
-    const fresh = seenOrders ? rows.filter((o) => o.status === 'new' && !seenOrders.has(o.id)) : [];
+    const fresh = seenOrders ? rows.filter((o) => (o.status === 'new' || isCall(o)) && !seenOrders.has(o.id)) : [];
     seenOrders = new Set([...(seenOrders || []), ...rows.map((o) => o.id)]);
     orders = rows;
     if (fresh.length) announce(fresh);
@@ -1491,7 +1603,8 @@
     if (isDeliv(o)) {
       // доставку отменяет владелец или менеджер (пока не оплачена); принять — как заказ стола
       const b = busyOrders.has(o.id) ? ' disabled' : '';
-      const extra = o.status === 'cancelled' ? `<button type="button" class="btn small ghost" data-order-next="${esc(o.id)}" data-to="new"${b}>Вернуть заказ</button>`
+      // ждёт звонка: только «Позвонить / Принять заказ / Не дозвонились» на самой карточке
+      const extra = isCall(o) ? '' : o.status === 'cancelled' ? `<button type="button" class="btn small ghost" data-order-next="${esc(o.id)}" data-to="new"${b}>Вернуть заказ</button>`
         : !o.paid_at ? `<button type="button" class="btn small danger" data-order-cancel="${esc(o.id)}"${b}>Отменить</button>` : '';
       return floor.delivCard(o, extra);
     }
@@ -1523,10 +1636,13 @@
     const main = $('#a-main');
     const today = dayStart().getTime();
     const todays = orders.filter((o) => new Date(o.created_at).getTime() >= today);
+    // доставки, которые ждут звонка, — первыми
     const active = orders
       .filter(isActive)
-      .sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
-    const sum = (list) => list.filter((o) => o.status !== 'cancelled').reduce((s, o) => s + Number(o.total), 0);
+      .sort((a, b) => isCall(b) - isCall(a) || new Date(a.created_at) - new Date(b.created_at));
+    // ждущая звонка доставка — ещё не заказ: не в сумме и не в счётчике
+    const counted = (o) => o.status !== 'cancelled' && o.status !== 'confirm';
+    const sum = (list) => list.filter(counted).reduce((s, o) => s + Number(o.total), 0);
     const list = ordersView === 'active' ? active : [...history].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
     const canNotify = 'Notification' in window && Notification.permission === 'default';
     const off = !S.settings?.orders_enabled;
@@ -1538,7 +1654,7 @@
         <div class="a-stat${active.length ? ' hot' : ''}"><b>${active.length}</b><span>${active.some(isDeliv) ? `активные · доставок ${active.filter(isDeliv).length}` : 'ждут подачи'}</span></div>
         <div class="a-stat"><b>${todays.filter((o) => o.status === 'served').length}</b><span>подано сегодня</span></div>
         <div class="a-stat"><b>${todays.filter((o) => o.status === 'cancelled').length}</b><span>отменено сегодня</span></div>
-        <div class="a-stat"><b>${money(sum(todays))}</b><span>заказов сегодня: ${todays.filter((o) => o.status !== 'cancelled').length}</span></div>
+        <div class="a-stat"><b>${money(sum(todays))}</b><span>заказов сегодня: ${todays.filter(counted).length}</span></div>
       </div>
       <div class="toolbar">
         <div class="chips" style="margin:0">
@@ -1551,7 +1667,7 @@
         <button type="button" class="btn small ghost" data-sound>${icon('bell', 'sm')}${soundOn ? 'Звук включён' : 'Звук выключен'}</button>
         ${canNotify ? `<button type="button" class="btn small ghost" data-notify>${icon('bell', 'sm')}Уведомления на этом устройстве</button>` : ''}
       </div>
-      ${ordersView === 'history' ? `<p class="help">${esc(historyDay)}: заказов ${history.filter((o) => o.status !== 'cancelled').length}, сумма ${money(sum(history))}, отменено ${history.filter((o) => o.status === 'cancelled').length}.</p>` : ''}
+      ${ordersView === 'history' ? `<p class="help">${esc(historyDay)}: заказов ${history.filter(counted).length}, сумма ${money(sum(history))}, отменено ${history.filter((o) => o.status === 'cancelled').length}.</p>` : ''}
       ${list.length ? `<div class="o-grid">${list.map(orderCard).join('')}</div>`
         : `<div class="a-empty">${ordersView === 'active' ? 'Активных заказов нет. Новый заказ появится здесь сам — со звуком.' : 'В этот день заказов не было.'}</div>`}`;
   }

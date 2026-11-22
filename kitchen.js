@@ -41,6 +41,7 @@
   const itemsFor = (o) => (mode() === 'all' ? o.items || [] : (o.items || []).filter((i) => stationOf(i) === mode()));
   // заказ для этого экрана: только позиции своего цеха; без них заказа здесь нет
   const forMe = (o) => itemsFor(o).length > 0;
+  // confirm (доставка ждёт звонка ресторана) сюда не входит: на кухню она попадёт только после «Принять заказ»
   const ACTIVE = ['new', 'accepted', 'cooking', 'ready'];
   // на кухне — только свежие неподанные заказы: забытый вчерашний не висит в очереди
   const cookable = (o) => ACTIVE.includes(o.status) && !o.paid_at && Date.now() - new Date(o.created_at).getTime() < 12 * 60 * 60 * 1000;
