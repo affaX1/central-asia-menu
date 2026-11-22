@@ -56,7 +56,12 @@
   // как promos в базе: https-ссылка до 500 символов, 1–30 секунд
   const httpsOk = (u) => /^https:\/\//.test(u) && u.length <= 500;
   const promoSort = (a, b) => (a.sort - b.sort) || String(b.created_at).localeCompare(String(a.created_at));
-  const db = () => { try { return JSON.parse(localStorage.getItem(KEY)) || seed(); } catch { return seed(); } };
+  // код проверки чека (как private.new_verify_key в базе): 12 знаков без 0/O/1/I
+  const VK_ABC = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  const newVerifyKey = () => Array.from(crypto.getRandomValues(new Uint8Array(12)), (x) => VK_ABC[x % 32]).join('');
+  // старые счета в этой «базе» (до кода проверки) получают код один раз — как заполнение колонки в базе
+  const withKeys = (d) => { let ch = false; for (const b of d.bills || []) if (!b.verify_key) { b.verify_key = newVerifyKey(); ch = true; } if (ch) localStorage.setItem(KEY, JSON.stringify(d)); return d; };
+  const db = () => { try { const d = JSON.parse(localStorage.getItem(KEY)); return d ? withKeys(d) : seed(); } catch { return seed(); } };
   const save = (d) => localStorage.setItem(KEY, JSON.stringify(d));
   if (!localStorage.getItem(KEY)) save(seed());
   const role = () => localStorage.getItem('fake:role') || '';
@@ -400,7 +405,7 @@
       const roundS = method === 'cash' && d.settings.cash_rounding !== false ? Math.round(sen(o.total) / 5) * 5 - sen(o.total) : 0;
       d.billSeq = (d.billSeq || 0) + 1;
       const now = new Date().toISOString();
-      const bill = { id: crypto.randomUUID(), no: d.billSeq, table_id: null, table_label: 'Доставка', order_ids: [o.id], order_nos: [o.no],
+      const bill = { id: crypto.randomUUID(), verify_key: newVerifyKey(), no: d.billSeq, table_id: null, table_label: 'Доставка', order_ids: [o.id], order_nos: [o.no],
         subtotal: Number(o.subtotal ?? o.total), service: 0, tax: Number(o.tax || 0), delivery_fee: Number(o.delivery_fee || 0), total: Number(o.total), tip: 0,
         discount: 0, discount_pct: null, discount_reason: null, discount_by_name: null, rounding: roundS / 100,
         payments: [{ method, amount: (sen(o.total) + roundS) / 100 }], method, paid_at: now, paid_by: uid(), paid_by_name: myName() };
@@ -473,7 +478,7 @@
       if (pays.length < 1 || pays.length > 4 || pays.some((p) => !['cash', 'card', 'qr', 'other'].includes(p.method) || !(p.amount > 0 || (!payments && p.amount === 0)))) throw new Error('bad_payments');
       if (Math.abs(pays.reduce((x, p) => x + sen(p.amount), 0) - (totS + sen(tip) + roundS)) > 1) throw new Error('bad_payments');
       const methods = [...new Set(pays.map((p) => p.method))];
-      const bill = { id: crypto.randomUUID(), no: d.billSeq, table_id: tableId, table_label: tb?.label || list[0].table_label, order_ids: list.map((o) => o.id), order_nos: list.map((o) => o.no),
+      const bill = { id: crypto.randomUUID(), verify_key: newVerifyKey(), no: d.billSeq, table_id: tableId, table_label: tb?.label || list[0].table_label, order_ids: list.map((o) => o.id), order_nos: list.map((o) => o.no),
         subtotal: subS / 100, service: srvS / 100, tax: taxS / 100, total, tip: r2(tip),
         discount: D / 100, discount_pct: dpct, discount_reason: D ? dreason : null, discount_by_name: D ? myName() : null, rounding: roundS / 100, payments: pays, method: methods.length === 1 ? methods[0] : 'mixed', paid_at: new Date().toISOString(), paid_by: uid(), paid_by_name: myName() };
       list.forEach((o) => { o.paid_at = bill.paid_at; o.bill_id = bill.id; if (['new', 'accepted', 'cooking', 'ready'].includes(o.status)) { o.status = 'served'; o.served_at = o.served_at || bill.paid_at; o.served_by_name = o.served_by_name || myName(); } });
@@ -663,10 +668,25 @@
         const bl = o && o.bill_id && (d.bills || []).find((x) => x.id === o.bill_id && !x.voided_at);
         if (!bl) return reply(200, null);
         const os = d.orders.filter((x) => bl.order_ids.includes(x.id)).sort((x, y) => x.no - y.no);
-        return reply(200, { no: bl.no, paid_at: bl.paid_at, table_label: bl.table_label, order_nos: bl.order_nos, subtotal: bl.subtotal, discount: bl.discount || 0, discount_pct: bl.discount_pct, discount_reason: bl.discount_reason,
+        return reply(200, { id: bl.id, verify_key: bl.verify_key, no: bl.no, paid_at: bl.paid_at, table_label: bl.table_label, order_nos: bl.order_nos, subtotal: bl.subtotal, discount: bl.discount || 0, discount_pct: bl.discount_pct, discount_reason: bl.discount_reason,
           service: bl.service, tax: bl.tax, total: bl.total, tip: bl.tip || 0, rounding: bl.rounding || 0, delivery_fee: Number(bl.delivery_fee || 0),
           kind: os.some((x) => x.kind === 'delivery') ? 'delivery' : 'table', payments: bl.payments, method: bl.method, cashier: bl.paid_by_name || null,
           waiters: [...new Set(os.map((x) => x.served_by_name).filter(Boolean))], items: os.flatMap((x) => x.items) });
+      }
+      // проверка чека по QR (как verify_receipt): подлинный / аннулирован / «не найден» — без имён гостя и персонала
+      if (name === 'verify_receipt') {
+        const k = String(b.p_key || '').replace(/[\s-]/g, '').toUpperCase();
+        const bl = (d.bills || []).find((x) => x.id === b.p_id && x.verify_key && x.verify_key === k);
+        if (!bl) return reply(200, { ok: false });
+        const os = d.orders.filter((x) => bl.order_ids.includes(x.id)).sort((x, y) => x.no - y.no);
+        const kind = os.some((x) => x.kind === 'delivery') ? 'delivery' : 'table';
+        const st = d.settings;
+        return reply(200, { ok: true, no: bl.no, paid_at: bl.paid_at, kind, table_label: kind === 'delivery' ? null : bl.table_label, order_nos: bl.order_nos,
+          items: os.flatMap((x) => x.items || []).map((i) => ({ name: i.name, qty: i.qty, price: i.price, opts: (Array.isArray(i.opts) ? i.opts : []).map((o) => o.name) })),
+          subtotal: bl.subtotal, discount: bl.discount || 0, discount_pct: bl.discount_pct ?? null, service: bl.service, tax: bl.tax, tax_name: st.tax_name || 'SST',
+          delivery_fee: Number(bl.delivery_fee || 0), total: bl.total, rounding: bl.rounding || 0, tip: bl.tip || 0, method: bl.method, payments: bl.payments || [],
+          voided: !!bl.voided_at, voided_at: bl.voided_at || null,
+          restaurant: { name: st.name, receipt_info: st.receipt_info || '', address: st.address || {}, phone: st.phone || '', currency: st.currency, currency_before: st.currency_before, tax_on_service: st.tax_on_service !== false, timezone: st.timezone || 'Asia/Kuala_Lumpur' } });
       }
       if (name === 'get_order') {
         const o = d.orders.find((x) => x.id === b.p_id && x.guest_token === b.p_token);

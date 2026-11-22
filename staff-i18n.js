@@ -306,6 +306,8 @@ window.STAFF_T = (() => {
     p_orders: { ru: 'заказы', en: 'orders', ms: 'pesanan', uz: 'buyurtmalar' },
     p_total: { ru: 'ИТОГО', en: 'TOTAL', ms: 'JUMLAH', uz: 'JAMI' },
     p_not_receipt: { ru: 'Не является чеком об оплате', en: 'This is not a payment receipt', ms: 'Ini bukan resit bayaran', uz: 'Bu to‘lov cheki emas' },
+    p_verify_code: { ru: 'Код проверки', en: 'Verification code', ms: 'Kod pengesahan', uz: 'Tekshirish kodi' },
+    p_verify_at: { ru: 'Проверить', en: 'Verify at', ms: 'Sahkan di', uz: 'Tekshirish' },
     p_thanks: { ru: 'Спасибо! Рахмат!', en: 'Thank you! Rahmat!', ms: 'Terima kasih! Rahmat!', uz: 'Rahmat!' },
     p_bill_h: { ru: 'СЧЁТ', en: 'BILL', ms: 'BIL', uz: 'HISOB' },
     p_receipt_h: { ru: (n) => `ЧЕК № ${n}`, en: (n) => `RECEIPT # ${n}`, ms: (n) => `RESIT # ${n}`, uz: (n) => `CHEK № ${n}` },

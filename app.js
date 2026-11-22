@@ -81,7 +81,7 @@
       edited: (x) => `Ресторан изменил заказ в ${x}`,
       wifi: 'Wi‑Fi', wifiNet: 'Сеть', wifiPass: 'Пароль', wifiNoPass: 'Без пароля', wifiHint: 'Подключитесь в настройках телефона: Wi‑Fi → эта сеть → пароль.', copy: 'Скопировать', copied: 'Скопировано',
       receipt: 'Чек', receiptTitle: (n) => `Чек №${n}`, receiptSave: 'Сохранить или распечатать', receiptWait: 'Чек появится здесь, когда официант закроет счёт.', receiptBack: 'К заказу',
-      rcDate: 'Дата', rcWaiter: 'Официант', rcCashier: 'Кассир', rcOrders: 'Заказы', rcDiscount: 'Скидка', rcRounding: 'Округление', rcToPay: 'К оплате', rcTip: 'Чаевые', rcPaidTotal: 'Всего оплачено', rcThanks: 'Спасибо, что были у нас!',
+      rcDate: 'Дата', rcWaiter: 'Официант', rcCashier: 'Кассир', rcOrders: 'Заказы', rcDiscount: 'Скидка', rcRounding: 'Округление', rcToPay: 'К оплате', rcTip: 'Чаевые', rcPaidTotal: 'Всего оплачено', rcThanks: 'Спасибо, что были у нас!', rcVerifyCode: 'Код проверки', rcVerifyAt: 'Проверить',
       rcPay: { cash: 'Наличные', card: 'Карта', qr: 'QR', other: 'Другое' },
       googleAsk: 'Спасибо! Если вам понравилось — расскажите о нас в Google. Это очень помогает ресторану.', googleBtn: 'Оставить отзыв в Google',
       favAdd: 'Добавить в любимые', favRemove: 'Убрать из любимых', favs: 'Мои любимые',
@@ -208,7 +208,7 @@
       edited: (x) => `Restoran buyurtmani ${x} da o'zgartirdi`,
       wifi: 'Wi‑Fi', wifiNet: 'Tarmoq', wifiPass: 'Parol', wifiNoPass: 'Parolsiz', wifiHint: "Telefon sozlamalarida ulaning: Wi‑Fi → shu tarmoq → parol.", copy: 'Nusxalash', copied: 'Nusxalandi',
       receipt: 'Chek', receiptTitle: (n) => `Chek №${n}`, receiptSave: 'Saqlash yoki chop etish', receiptWait: "Ofitsiant hisobni yopganda chek shu yerda chiqadi.", receiptBack: 'Buyurtmaga',
-      rcDate: 'Sana', rcWaiter: 'Ofitsiant', rcCashier: 'Kassir', rcOrders: 'Buyurtmalar', rcDiscount: 'Chegirma', rcRounding: 'Yaxlitlash', rcToPay: "To'lovga", rcTip: 'Choychaqa', rcPaidTotal: "Jami to'landi", rcThanks: 'Kelganingiz uchun rahmat!',
+      rcDate: 'Sana', rcWaiter: 'Ofitsiant', rcCashier: 'Kassir', rcOrders: 'Buyurtmalar', rcDiscount: 'Chegirma', rcRounding: 'Yaxlitlash', rcToPay: "To'lovga", rcTip: 'Choychaqa', rcPaidTotal: "Jami to'landi", rcThanks: 'Kelganingiz uchun rahmat!', rcVerifyCode: 'Tekshirish kodi', rcVerifyAt: 'Tekshirish',
       rcPay: { cash: 'Naqd', card: 'Karta', qr: 'QR', other: 'Boshqa' },
       googleAsk: "Rahmat! Yoqqan bo'lsa, Google'da biz haqimizda yozing. Bu restoranga juda yordam beradi.", googleBtn: "Google'da sharh qoldirish",
       favAdd: "Sevimlilarga qo'shish", favRemove: 'Sevimlilardan olib tashlash', favs: 'Sevimlilarim',
@@ -335,7 +335,7 @@
       edited: (x) => `The restaurant updated your order at ${x}`,
       wifi: 'Wi‑Fi', wifiNet: 'Network', wifiPass: 'Password', wifiNoPass: 'No password', wifiHint: 'Connect in your phone settings: Wi‑Fi → this network → password.', copy: 'Copy', copied: 'Copied',
       receipt: 'Receipt', receiptTitle: (n) => `Receipt #${n}`, receiptSave: 'Save or print', receiptWait: 'Your receipt will appear here once the waiter closes the bill.', receiptBack: 'Back to order',
-      rcDate: 'Date', rcWaiter: 'Waiter', rcCashier: 'Cashier', rcOrders: 'Orders', rcDiscount: 'Discount', rcRounding: 'Rounding', rcToPay: 'To pay', rcTip: 'Tip', rcPaidTotal: 'Total paid', rcThanks: 'Thank you for visiting us!',
+      rcDate: 'Date', rcWaiter: 'Waiter', rcCashier: 'Cashier', rcOrders: 'Orders', rcDiscount: 'Discount', rcRounding: 'Rounding', rcToPay: 'To pay', rcTip: 'Tip', rcPaidTotal: 'Total paid', rcThanks: 'Thank you for visiting us!', rcVerifyCode: 'Verification code', rcVerifyAt: 'Verify at',
       rcPay: { cash: 'Cash', card: 'Card', qr: 'QR', other: 'Other' },
       googleAsk: 'Thank you! If you enjoyed it, please tell others on Google. It really helps the restaurant.', googleBtn: 'Leave a Google review',
       favAdd: 'Add to favourites', favRemove: 'Remove from favourites', favs: 'My favourites',
@@ -463,7 +463,7 @@
       edited: (x) => `عدّل المطعم طلبك في ${x}`,
       wifi: 'Wi‑Fi', wifiNet: 'الشبكة', wifiPass: 'كلمة المرور', wifiNoPass: 'بدون كلمة مرور', wifiHint: 'اتصل من إعدادات الهاتف: Wi‑Fi ← هذه الشبكة ← كلمة المرور.', copy: 'نسخ', copied: 'تم النسخ',
       receipt: 'الإيصال', receiptTitle: (n) => `إيصال رقم ${n}`, receiptSave: 'حفظ أو طباعة', receiptWait: 'سيظهر الإيصال هنا عندما يغلق النادل الحساب.', receiptBack: 'العودة إلى الطلب',
-      rcDate: 'التاريخ', rcWaiter: 'النادل', rcCashier: 'أمين الصندوق', rcOrders: 'الطلبات', rcDiscount: 'خصم', rcRounding: 'التقريب', rcToPay: 'المبلغ المستحق', rcTip: 'إكرامية', rcPaidTotal: 'إجمالي المدفوع', rcThanks: 'شكرًا لزيارتكم!',
+      rcDate: 'التاريخ', rcWaiter: 'النادل', rcCashier: 'أمين الصندوق', rcOrders: 'الطلبات', rcDiscount: 'خصم', rcRounding: 'التقريب', rcToPay: 'المبلغ المستحق', rcTip: 'إكرامية', rcPaidTotal: 'إجمالي المدفوع', rcThanks: 'شكرًا لزيارتكم!', rcVerifyCode: 'رمز التحقق', rcVerifyAt: 'تحقق عبر',
       rcPay: { cash: 'نقدًا', card: 'بطاقة', qr: 'QR', other: 'أخرى' },
       googleAsk: 'شكرًا لك! إذا أعجبك المكان، شارك رأيك على Google. هذا يساعد المطعم كثيرًا.', googleBtn: 'اكتب تقييمًا على Google',
       favAdd: 'أضف إلى المفضلة', favRemove: 'إزالة من المفضلة', favs: 'المفضلة لدي',
@@ -590,7 +590,7 @@
       edited: (x) => `Restoran telah mengemas kini pesanan anda pada ${x}`,
       wifi: 'Wi‑Fi', wifiNet: 'Rangkaian', wifiPass: 'Kata laluan', wifiNoPass: 'Tiada kata laluan', wifiHint: 'Sambung dalam tetapan telefon: Wi‑Fi → rangkaian ini → kata laluan.', copy: 'Salin', copied: 'Disalin',
       receipt: 'Resit', receiptTitle: (n) => `Resit #${n}`, receiptSave: 'Simpan atau cetak', receiptWait: 'Resit akan muncul di sini selepas pelayan menutup bil.', receiptBack: 'Kembali ke pesanan',
-      rcDate: 'Tarikh', rcWaiter: 'Pelayan', rcCashier: 'Juruwang', rcOrders: 'Pesanan', rcDiscount: 'Diskaun', rcRounding: 'Pembundaran', rcToPay: 'Perlu dibayar', rcTip: 'Tip', rcPaidTotal: 'Jumlah dibayar', rcThanks: 'Terima kasih kerana berkunjung!',
+      rcDate: 'Tarikh', rcWaiter: 'Pelayan', rcCashier: 'Juruwang', rcOrders: 'Pesanan', rcDiscount: 'Diskaun', rcRounding: 'Pembundaran', rcToPay: 'Perlu dibayar', rcTip: 'Tip', rcPaidTotal: 'Jumlah dibayar', rcThanks: 'Terima kasih kerana berkunjung!', rcVerifyCode: 'Kod pengesahan', rcVerifyAt: 'Sahkan di',
       rcPay: { cash: 'Tunai', card: 'Kad', qr: 'QR', other: 'Lain-lain' },
       googleAsk: 'Terima kasih! Jika anda suka, kongsi pengalaman anda di Google. Ia sangat membantu restoran.', googleBtn: 'Tulis ulasan di Google',
       favAdd: 'Tambah ke kegemaran', favRemove: 'Buang dari kegemaran', favs: 'Kegemaran saya',
@@ -717,7 +717,7 @@
       edited: (x) => `餐厅在 ${x} 修改了您的订单`,
       wifi: 'Wi‑Fi', wifiNet: '网络', wifiPass: '密码', wifiNoPass: '无密码', wifiHint: '在手机设置中连接：Wi‑Fi → 这个网络 → 密码。', copy: '复制', copied: '已复制',
       receipt: '收据', receiptTitle: (n) => `收据 №${n}`, receiptSave: '保存或打印', receiptWait: '服务员结账后，收据会显示在这里。', receiptBack: '返回订单',
-      rcDate: '日期', rcWaiter: '服务员', rcCashier: '收银员', rcOrders: '订单', rcDiscount: '折扣', rcRounding: '四舍五入', rcToPay: '应付', rcTip: '小费', rcPaidTotal: '实付合计', rcThanks: '感谢光临！',
+      rcDate: '日期', rcWaiter: '服务员', rcCashier: '收银员', rcOrders: '订单', rcDiscount: '折扣', rcRounding: '四舍五入', rcToPay: '应付', rcTip: '小费', rcPaidTotal: '实付合计', rcThanks: '感谢光临！', rcVerifyCode: '验证码', rcVerifyAt: '验证网址',
       rcPay: { cash: '现金', card: '刷卡', qr: '扫码', other: '其他' },
       googleAsk: '谢谢！如果您喜欢，请在 Google 上分享您的体验。这对餐厅帮助很大。', googleBtn: '在 Google 上评价',
       favAdd: '加入收藏', favRemove: '取消收藏', favs: '我的收藏',
@@ -1888,6 +1888,8 @@
     openSheet({ type: 'receipt', id, data: undefined });
     let data = null;
     try { data = await rpc('guest_receipt', { p_order: id, p_token: mine.token }); } catch { data = 'error'; }
+    // QR «Проверить чек» — библиотека QR грузится только сейчас; без неё на чеке остаются код и адрес
+    if (data && data !== 'error' && data.verify_key && window.ReceiptQR) await window.ReceiptQR.load();
     if (sheet?.type === 'receipt' && sheet.id === id) { sheet.data = data; renderSheet(); }
   }
   function receiptHtml() {
@@ -1941,10 +1943,21 @@
           ${pays.length > 1 || n('tip') ? row(t('rcPaidTotal'), cur(n('total') + n('tip') + n('rounding')), 'rc-strong') : ''}
         </div>
         <p class="rc-thanks">${esc(t('rcThanks'))}</p>
+        ${b.id && b.verify_key && window.ReceiptQR ? receiptVerifyHtml(b) : ''}
       </article>
       <div class="track-actions rc-actions">
         <button type="button" class="btn" data-act="receipt-print">${icon('download', 'sm')}<span>${esc(t('receiptSave'))}</span></button>
         ${back}
+      </div>`;
+  }
+  // QR на оригинал чека в базе + код проверки: подделку в фотошопе видно на verify.html
+  function receiptVerifyHtml(b) {
+    const Q = window.ReceiptQR;
+    const link = Q.url(b.id, b.verify_key);
+    return `<div class="rc-verify">
+        ${Q.svg(link, { cls: 'rc-qr', color: '#24190F', label: t('rcVerifyCode') })}
+        <div class="rc-vcode"><span>${esc(t('rcVerifyCode'))}</span> <b dir="ltr">${esc(Q.code(b.verify_key))}</b></div>
+        <a class="rc-vlink" href="${esc(link)}" target="_blank" rel="noopener"><span>${esc(t('rcVerifyAt'))}:</span> <bdi dir="ltr">${esc(Q.short())}</bdi></a>
       </div>`;
   }
   function printReceiptPage() {

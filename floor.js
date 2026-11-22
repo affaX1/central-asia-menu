@@ -159,6 +159,10 @@
       .note { border: 2px solid #000; padding: 4px 6px; margin-top: 6px; font-size: 14px; font-weight: 700; }
       .k td { font-size: 16px; font-weight: 700; padding: 2px 0; }
       .inote { display: inline-block; margin: 2px 0 2px 6px; padding: 1px 6px; border: 2px solid #000; font-size: 14px; font-weight: 800; }
+      .vq { text-align: center; margin-top: 2px; }
+      .vq-svg { display: block; margin: 3px auto 4px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .vq-code { font-size: 11px; } .vq-code b { font: 800 14px/1.3 'Courier New', Courier, monospace; letter-spacing: .04em; }
+      .vq-url { font-size: 10px; overflow-wrap: anywhere; }
       .stamp { border: 1.5px solid #000; text-align: center; font-weight: 800; font-size: 11px; letter-spacing: .06em; padding: 3px; margin: 6px 0 2px; text-transform: uppercase; }
     </style></head><body>${bodyHtml}</body></html>`);
     doc.close();
@@ -214,7 +218,11 @@
   // чек / предварительный счёт стола: шапка с реквизитами, кто/когда, позиции с ценой за штуку,
   // подытог, сервисный сбор и налог с процентом, ИТОГО, чаевые и чем оплатили
   // чек и счёт — на языке, который выбрал владелец («Ресторан» → «Язык чека»), у всех одинаково
-  function printReceipt(args) { return S.withLang(S.settings?.receipt_lang || 'en', () => printReceiptIn(args)); }
+  // у оплаченного счёта — QR «Проверить чек»: ждём библиотеку QR (не дольше 6 с; без сети печатаем код и адрес без QR)
+  async function printReceipt(args) {
+    if (args?.bill?.verify_key && window.ReceiptQR) await window.ReceiptQR.load();
+    return S.withLang(S.settings?.receipt_lang || 'en', () => printReceiptIn(args));
+  }
   function printReceiptIn({ table, orders, bill, draft }) {
     const st = S.settings || {};
     const lines = new Map();
@@ -285,7 +293,17 @@
         ${pays.length > 1 || Number(bill.tip) ? row(t('p_paid_total'), cur(Number(bill.total) + Number(bill.tip || 0) + roundT), 'tot') : ''}
       </table><hr>` : `<div class="stamp">${esc(t('p_not_receipt'))}</div>`}
       <div class="c" style="font-weight:700;margin-top:4px">${esc(t('p_thanks'))}</div>
+      ${bill?.verify_key ? verifyBlock(bill) : ''}
       <div class="c small muted">${esc(t('p_printed', hhmm(new Date().toISOString())))}</div>`);
+  }
+  // проверка подлинности: QR на оригинал чека в базе + код (если QR не считается — по коду и адресу)
+  function verifyBlock(bill) {
+    const Q = window.ReceiptQR;
+    if (!Q) return '';
+    const link = Q.url(bill.id, bill.verify_key);
+    return `<hr><div class="vq">${Q.svg(link, { mm: 28, cls: 'vq-svg', label: t('p_verify_code') })}
+      <div class="vq-code">${esc(t('p_verify_code'))}: <b>${esc(Q.code(bill.verify_key))}</b></div>
+      <div class="vq-url">${esc(t('p_verify_at'))}: ${esc(Q.short())}</div></div>`;
   }
 
   // ---------- «Зал» ----------

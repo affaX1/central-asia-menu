@@ -1369,7 +1369,7 @@ declare
   v_new jsonb := case when tg_op in ('INSERT', 'UPDATE') then to_jsonb(new) end;
   v_row jsonb := coalesce(v_new, v_old);
   v_ent text := tg_argv[0];
-  v_skip text[] := array['updated_at', 'status_by', 'guest_token', 'client_key'];
+  v_skip text[] := array['updated_at', 'status_by', 'guest_token', 'client_key', 'verify_key'];
   v_ch jsonb := '{}'::jsonb; k text; v_label text;
 begin
   if tg_op = 'UPDATE' then
@@ -1385,9 +1385,9 @@ begin
     end loop;
     if v_ch = '{}'::jsonb then return null; end if;
   elsif tg_op = 'INSERT' then
-    v_ch := v_new - array['token', 'guest_token', 'client_key'];
+    v_ch := v_new - array['token', 'guest_token', 'client_key', 'verify_key'];
   else
-    v_ch := v_old - array['token', 'guest_token', 'client_key'];
+    v_ch := v_old - array['token', 'guest_token', 'client_key', 'verify_key'];
   end if;
   v_label := case v_ent
     when 'dish' then coalesce(v_row -> 'name' ->> 'ru', v_row -> 'name' ->> 'en')
@@ -2134,24 +2134,8 @@ grant execute on function public.move_orders(uuid, uuid, uuid[]) to authenticate
 alter table public.settings add column if not exists google_review_url text
   check (google_review_url is null or (google_review_url ~ '^https://' and char_length(google_review_url) <= 500));
 
--- Чек оплаченного заказа: только у того, кто держит секрет этого заказа (guest_token).
--- В чеке весь счёт стола (все заказы, которые оплатили вместе). Отменённая оплата — чека нет.
-create or replace function public.guest_receipt(p_order uuid, p_token uuid)
-returns jsonb language sql stable security definer set search_path = public as $$
-  select jsonb_build_object(
-    'no', b.no, 'paid_at', b.paid_at, 'table_label', b.table_label, 'order_nos', b.order_nos,
-    'subtotal', b.subtotal, 'discount', b.discount, 'discount_pct', b.discount_pct, 'discount_reason', b.discount_reason,
-    'service', b.service, 'tax', b.tax, 'total', b.total, 'tip', b.tip, 'rounding', b.rounding,
-    'delivery_fee', b.delivery_fee,
-    'kind', (select case when bool_or(x.kind = 'delivery') then 'delivery' else 'table' end from public.orders x where x.id = any (b.order_ids)),
-    'payments', b.payments, 'method', b.method, 'cashier', b.paid_by_name,
-    'waiters', (select coalesce(jsonb_agg(distinct x.served_by_name), '[]'::jsonb) from public.orders x where x.id = any (b.order_ids) and x.served_by_name is not null),
-    'items', (select coalesce(jsonb_agg(i order by x.no), '[]'::jsonb) from public.orders x, jsonb_array_elements(x.items) i where x.id = any (b.order_ids)))
-  from public.orders o join public.bills b on b.id = o.bill_id
-  where o.id = p_order and o.guest_token = p_token and b.voided_at is null;
-$$;
-revoke all on function public.guest_receipt(uuid, uuid) from public;
-grant execute on function public.guest_receipt(uuid, uuid) to anon, authenticated;
+-- Чек оплаченного заказа для гостя — public.guest_receipt — в разделе «Проверка подлинности чека» в конце файла
+-- (в нём id счёта и код проверки, а колонка verify_key появляется только там).
 
 -- китайский язык (2026-11-21): язык по умолчанию может быть и zh
 alter table public.settings drop constraint if exists settings_default_language_check;
@@ -3106,3 +3090,105 @@ grant execute on function public.request_phone_code(text, text) to anon, authent
 grant execute on function public.verify_phone_code(text, text) to anon, authenticated;
 grant execute on function public.confirm_delivery(uuid) to authenticated;
 grant execute on function public.reject_delivery(uuid, text) to authenticated;
+
+-- =====================================================================
+-- Проверка подлинности чека (2026-11-23)
+-- Чек можно подделать в фотошопе — нарисованная печать ничего не доказывает.
+-- На каждом чеке QR и «Код проверки»: ссылка verify.html?b=<id счёта>&k=<код> открывает
+-- ОРИГИНАЛ чека из базы. Код — 12 знаков из 32 (без 0/O/1/I) = 60 бит случайности: перебрать нельзя.
+-- =====================================================================
+-- 12 случайных знаков. Случайность — из gen_random_uuid() (pg_strong_random, есть в любой базе без pgcrypto):
+-- берём байты v4-UUID, где нет служебных битов версии/варианта (0–5, 7, 9–13), по 5 бит с каждого.
+create or replace function private.new_verify_key()
+returns text language plpgsql volatile set search_path = public as $$
+declare
+  v_b bytea := uuid_send(gen_random_uuid());
+  v_a constant text := 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  v_r text := '';
+  i int;
+begin
+  foreach i in array array[0, 1, 2, 3, 4, 5, 7, 9, 10, 11, 12, 13] loop
+    v_r := v_r || substr(v_a, (get_byte(v_b, i) % 32) + 1, 1);
+  end loop;
+  return v_r;
+end $$;
+revoke all on function private.new_verify_key() from public, anon, authenticated;
+
+-- новая колонка с выражением по умолчанию сразу заполняет уже существующие счета (без UPDATE — журнал не засоряется)
+alter table public.bills add column if not exists verify_key text default private.new_verify_key();
+update public.bills set verify_key = private.new_verify_key() where verify_key is null;
+alter table public.bills alter column verify_key set default private.new_verify_key();
+alter table public.bills alter column verify_key set not null;
+alter table public.bills drop constraint if exists bills_verify_key_check;
+alter table public.bills add constraint bills_verify_key_check check (verify_key ~ '^[A-HJ-NP-Z2-9]{12}$');
+create unique index if not exists bills_verify_key_idx on public.bills (verify_key);
+
+-- код проверки никогда не меняется (иначе напечатанный чек «станет поддельным»)
+create or replace function public.bills_verify_key_fixed()
+returns trigger language plpgsql set search_path = public as $$
+begin
+  if old.verify_key is not null and new.verify_key is distinct from old.verify_key then raise exception 'verify_key_fixed'; end if;
+  return new;
+end $$;
+revoke all on function public.bills_verify_key_fixed() from public;
+drop trigger if exists bills_verify_key_fixed on public.bills;
+create trigger bills_verify_key_fixed before update of verify_key on public.bills for each row execute function public.bills_verify_key_fixed();
+
+-- Чек оплаченного заказа: только у того, кто держит секрет этого заказа (guest_token).
+-- В чеке весь счёт стола (все заказы, которые оплатили вместе). Отменённая оплата — чека нет.
+-- id + verify_key — для QR «Проверить чек» (приложение строит ссылку само).
+create or replace function public.guest_receipt(p_order uuid, p_token uuid)
+returns jsonb language sql stable security definer set search_path = public as $$
+  select jsonb_build_object(
+    'id', b.id, 'verify_key', b.verify_key,
+    'no', b.no, 'paid_at', b.paid_at, 'table_label', b.table_label, 'order_nos', b.order_nos,
+    'subtotal', b.subtotal, 'discount', b.discount, 'discount_pct', b.discount_pct, 'discount_reason', b.discount_reason,
+    'service', b.service, 'tax', b.tax, 'total', b.total, 'tip', b.tip, 'rounding', b.rounding,
+    'delivery_fee', b.delivery_fee,
+    'kind', (select case when bool_or(x.kind = 'delivery') then 'delivery' else 'table' end from public.orders x where x.id = any (b.order_ids)),
+    'payments', b.payments, 'method', b.method, 'cashier', b.paid_by_name,
+    'waiters', (select coalesce(jsonb_agg(distinct x.served_by_name), '[]'::jsonb) from public.orders x where x.id = any (b.order_ids) and x.served_by_name is not null),
+    'items', (select coalesce(jsonb_agg(i order by x.no), '[]'::jsonb) from public.orders x, jsonb_array_elements(x.items) i where x.id = any (b.order_ids)))
+  from public.orders o join public.bills b on b.id = o.bill_id
+  where o.id = p_order and o.guest_token = p_token and b.voided_at is null;
+$$;
+revoke all on function public.guest_receipt(uuid, uuid) from public;
+grant execute on function public.guest_receipt(uuid, uuid) to anon, authenticated;
+
+-- Проверка чека по QR: любой (гость, бухгалтер, проверяющий) с id счёта и кодом.
+-- Код — без учёта регистра, дефисы и пробелы не важны. Нет счёта или код неверный — одинаково {"ok":false}.
+-- Отменённая оплата — ok:true и voided:true (чек был, но аннулирован).
+-- Без личного: ни имени/телефона/адреса гостя, ни имён персонала, ни причины отмены, ни пожеланий к блюдам.
+create or replace function public.verify_receipt(p_id uuid, p_key text)
+returns jsonb language sql stable security definer set search_path = public as $$
+  select coalesce((
+    select jsonb_build_object(
+      'ok', true,
+      'no', b.no, 'paid_at', b.paid_at,
+      'kind', k.kind,
+      'table_label', case when k.kind = 'delivery' then null else b.table_label end,
+      'order_nos', b.order_nos,
+      'items', (select coalesce(jsonb_agg(jsonb_build_object(
+                  'name', i -> 'name', 'qty', i -> 'qty', 'price', i -> 'price',
+                  'opts', case when jsonb_typeof(i -> 'opts') = 'array'
+                            then (select coalesce(jsonb_agg(op -> 'name' order by n), '[]'::jsonb) from jsonb_array_elements(i -> 'opts') with ordinality op(op, n))
+                            else '[]'::jsonb end)
+                order by x.no, i_n), '[]'::jsonb)
+                from public.orders x, jsonb_array_elements(x.items) with ordinality it(i, i_n)
+                where x.id = any (b.order_ids)),
+      'subtotal', b.subtotal, 'discount', b.discount, 'discount_pct', b.discount_pct,
+      'service', b.service, 'tax', b.tax, 'tax_name', s.tax_name, 'delivery_fee', b.delivery_fee,
+      'total', b.total, 'rounding', b.rounding, 'tip', b.tip,
+      'method', b.method, 'payments', b.payments,
+      'voided', b.voided_at is not null, 'voided_at', b.voided_at,
+      'restaurant', jsonb_build_object('name', s.name, 'receipt_info', s.receipt_info, 'address', s.address, 'phone', s.phone,
+                                       'currency', s.currency, 'currency_before', s.currency_before, 'tax_on_service', s.tax_on_service, 'timezone', s.timezone))
+    from public.bills b
+    left join public.settings s on s.id = 1
+    cross join lateral (select case when bool_or(x.kind = 'delivery') then 'delivery' else 'table' end as kind
+                        from public.orders x where x.id = any (b.order_ids)) k
+    where b.id = p_id and b.verify_key = upper(regexp_replace(coalesce(p_key, ''), '[\s-]', '', 'g'))
+  ), '{"ok":false}'::jsonb);
+$$;
+revoke all on function public.verify_receipt(uuid, text) from public;
+grant execute on function public.verify_receipt(uuid, text) to anon, authenticated;

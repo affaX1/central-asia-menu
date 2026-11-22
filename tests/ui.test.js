@@ -10,6 +10,7 @@ const UI_FILES = ['index.html', 'admin.html', 'waiter.html', 'owner.html', 'prin
   'app.js', 'data.js', 'schedule.js', 'staff-core.js', 'staff-api.js', 'waiter.js', 'owner.js',
   'kitchen.html', 'kitchen.js', 'floor.js', 'owner-reports.js', 'staff-i18n.js', 'staff-tools.js', 'stop-list.js', 'staff-shift.js',
   'courier.html', 'courier.js', 'courier.webmanifest',
+  'verify.html', 'verify.js', 'verify.css', 'receipt-qr.js',
   'styles.css', 'staff.css', 'guest.css', 'supabase/seed.sql'];
 
 test('тексты панелей сотрудников: у каждого ключа 4 языка (RU/EN/MS/UZ) с одинаковым набором', () => {
@@ -54,6 +55,31 @@ test('у всех 6 языков одинаковый набор текстов'
     assert.deepStrictEqual(keys(T[l].allergenNames), keys(T.ru.allergenNames), `язык ${l}: аллергены`);
     assert.strictEqual(T[l].days.length, 7, `язык ${l}: дни недели`);
     for (const d of [0, 6]) assert.ok(T[l].opensOn(d, '10:00').includes('10:00'));
+  }
+});
+
+test('страница проверки чека: 6 языков с одинаковым набором текстов', () => {
+  const src = fs.readFileSync(path.join(root, 'verify.js'), 'utf8');
+  const block = src.slice(src.indexOf('const T = {'), src.indexOf('// ---------- конец текстов'));
+  const T = vm.runInNewContext(`(${block.replace('const T = ', '').replace(/;\s*$/, '')})`);
+  assert.deepStrictEqual(Object.keys(T).sort(), ['ar', 'en', 'ms', 'ru', 'uz', 'zh']);
+  for (const l of Object.keys(T)) {
+    assert.deepStrictEqual(Object.keys(T[l]).sort(), Object.keys(T.ru).sort(), `verify.js ${l}: не хватает или лишние ключи`);
+    assert.deepStrictEqual(Object.keys(T[l].pay).sort(), Object.keys(T.ru.pay).sort(), `verify.js ${l}: способы оплаты`);
+    assert.ok(T[l].voidTitle('01.01.2026').includes('01.01.2026'));
+  }
+});
+
+test('QR чека ведёт на verify.html сайта ресторана с id счёта и кодом', () => {
+  const ctx = { window: {}, document: {}, setTimeout };
+  vm.runInNewContext(fs.readFileSync(path.join(root, 'receipt-qr.js'), 'utf8'), ctx);
+  const Q = ctx.window.ReceiptQR;
+  assert.strictEqual(Q.url('11111111-2222-3333-4444-555555555555', 'ABCDEFGHJKLM'), 'https://affax1.github.io/central-asia-menu/verify.html?b=11111111-2222-3333-4444-555555555555&k=ABCDEFGHJKLM');
+  assert.strictEqual(Q.code('abcdefghjklm'), 'ABCD-EFGH-JKLM');
+  assert.strictEqual(Q.short(), 'affax1.github.io/central-asia-menu/verify');
+  for (const f of ['index.html', 'waiter.html', 'owner.html', 'courier.html', 'kitchen.html']) {
+    const h = fs.readFileSync(path.join(root, f), 'utf8');
+    assert.ok(h.indexOf('receipt-qr.js') > 0, `${f}: нет receipt-qr.js`);
   }
 });
 

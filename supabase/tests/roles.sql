@@ -1266,4 +1266,49 @@ select t_ok((select dv_sms from public.settings) = false, 'без ключей �
 select t_fails($$update public.settings set dv_sms = true$$, 'sms_not_configured', 'без ключей снова не включить');
 reset role; reset request.jwt.claim.sub;
 update public.settings set delivery_enabled = false;
+-- ============ 39. Проверка подлинности чека (QR + код) ============
+-- у каждого счёта — свой код: 12 знаков без 0/O/1/I, разные
+select t_ok((select count(*) from public.bills) >= 3 and not exists (select 1 from public.bills where verify_key !~ '^[A-HJ-NP-Z2-9]{12}$')
+  and (select count(distinct verify_key) from public.bills) = (select count(*) from public.bills), 'у каждого счёта свой код проверки из 12 знаков (без 0/O/1/I)');
+select t_ok((select count(distinct private.new_verify_key()) from generate_series(1, 2000)) = 2000, '2000 новых кодов — все разные');
+create temp table v39 as select b.id, b.no, b.total, b.verify_key from public.bills b join b25b using (id);
+create temp table v39d as select b.id, b.verify_key from public.bills b where b.order_ids @> array[(select id from d36)];
+create temp table v39o as select b.id, b.verify_key from public.bills b where b.voided_at is null and exists (select 1 from public.orders x, jsonb_array_elements(x.items) i
+  where x.id = any (b.order_ids) and jsonb_array_length(coalesce(i -> 'opts', '[]')) > 0) order by b.no limit 1;
+create temp table v39v as select b.id, b.verify_key from public.bills b join b27 using (id);
+grant select on v39, v39d, v39o, v39v to anon, authenticated;
+set role anon;
+create temp table r39 as select public.verify_receipt((select id from v39), (select verify_key from v39)) r;
+select t_ok((select (r ->> 'ok')::boolean and (r ->> 'no')::bigint = (select no from v39) and (r ->> 'total')::numeric = (select total from v39)
+  and (r ->> 'voided')::boolean = false and r -> 'voided_at' = 'null'::jsonb and r ->> 'kind' = 'table' and r ->> 'table_label' = 'VIP'
+  and jsonb_array_length(r -> 'items') >= 1 and r -> 'restaurant' ->> 'name' is not null and r ->> 'method' = 'cash' from r39), 'гость сайта проверяет чек по QR: подлинный, номер, сумма, стол, блюда');
+select t_ok((select r -> 'items' -> 0 ? 'name' and r -> 'items' -> 0 ? 'qty' and r -> 'items' -> 0 ? 'price' and jsonb_typeof(r -> 'items' -> 0 -> 'opts') = 'array' from r39), 'позиции чека: название, количество, цена, варианты');
+select t_ok((select (public.verify_receipt((select id from v39), lower(substr(verify_key, 1, 4)) || '-' || substr(verify_key, 5, 4) || ' ' || lower(substr(verify_key, 9))) ->> 'ok')::boolean from v39),
+  'код без учёта регистра, дефисы и пробелы не важны');
+select t_ok(public.verify_receipt((select id from v39), (select translate(verify_key, 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789', 'BCDEFGHJKLMNPQRSTUVWXYZ23456789A') from v39)) = '{"ok":false}'::jsonb, 'неверный код — «не найден»');
+select t_ok(public.verify_receipt(gen_random_uuid(), (select verify_key from v39)) = '{"ok":false}'::jsonb, 'чужой id с настоящим кодом — тот же ответ «не найден»');
+select t_ok(public.verify_receipt((select id from v39), null) = '{"ok":false}'::jsonb and public.verify_receipt((select id from v39), '') = '{"ok":false}'::jsonb
+  and public.verify_receipt(null, (select verify_key from v39)) = '{"ok":false}'::jsonb, 'без кода или без id — «не найден»');
+select t_ok(public.verify_receipt((select id from v39), substr((select verify_key from v39), 1, 11)) = '{"ok":false}'::jsonb, 'код без одного знака — «не найден»');
+-- отменённая оплата: чек был, но аннулирован
+select t_ok((select (r ->> 'ok')::boolean and (r ->> 'voided')::boolean and r ->> 'voided_at' is not null
+  from (select public.verify_receipt(v.id, v.verify_key) r from v39v v) x), 'отменённая оплата — «чек аннулирован» с датой');
+-- без личного: ни гостя, ни персонала, ни причины отмены
+select t_ok((select not (r ? 'cashier') and not (r ? 'waiters') and not (r ? 'void_reason') and not (r ? 'discount_reason') and not (r ? 'verify_key') and not (r ? 'id')
+  and r::text !~ '(Азиз|Хозяин|Курьер Тимур|проверка)' from (select public.verify_receipt(v.id, v.verify_key) r from v39v v) x), 'в ответе нет имён персонала и причины отмены');
+create temp table r39d as select public.verify_receipt((select id from v39d), (select verify_key from v39d)) r;
+select t_ok((select (r ->> 'ok')::boolean and r ->> 'kind' = 'delivery' and r -> 'table_label' = 'null'::jsonb and (r ->> 'delivery_fee')::numeric = 5 from r39d), 'чек доставки проверяется: вид «доставка», плата за доставку, без стола');
+select t_ok((select r::text !~ '(Алишер|12-345|Jalan Test 1|guest@mail|Позвонить у двери|Курьер Тимур|customer|phone_e164|lat|lng)' from r39d), 'в чеке доставки нет имени, телефона, адреса, почты гостя и курьера');
+select t_ok((select exists (select 1 from jsonb_array_elements(r -> 'items') i, jsonb_array_elements(i -> 'opts') op where op ->> 'ru' is not null)
+  from (select public.verify_receipt((select id from v39o), (select verify_key from v39o)) r) x), 'варианты блюда — названиями на языках');
+-- чек гостя теперь несёт id счёта и код (для QR)
+select t_ok((select r ->> 'id' = (select id::text from v39d) and r ->> 'verify_key' = (select verify_key from v39d)
+  from (select public.guest_receipt((select id from d36), (select guest_token from d36)) r) x), 'чек гостя: id счёта и код проверки для QR');
+select t_fails($$select * from public.bills$$, 'permission denied', 'гость не читает счета (коды) напрямую');
+reset role;
+set role authenticated; set request.jwt.claim.sub = '22222222-2222-2222-2222-222222222222';
+select t_ok((public.verify_receipt((select id from v39), (select verify_key from v39)) ->> 'ok')::boolean, 'проверка работает и с входом');
+reset role; reset request.jwt.claim.sub;
+select t_fails($$update public.bills set verify_key = 'ABCDEFGHJKLM' where id = (select id from v39)$$, 'verify_key_fixed', 'код проверки нельзя поменять даже из базы');
+select t_ok(not exists (select 1 from public.audit_log where entity = 'bill' and changes ? 'verify_key'), 'код проверки не попадает в журнал изменений');
 \echo ALL DATABASE TESTS PASSED
